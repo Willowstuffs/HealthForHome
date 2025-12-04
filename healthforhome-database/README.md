@@ -6,7 +6,7 @@
 Kompletny (prawie) schemat bazy danych PostgreSQL dla platformy HealthForHome.
 
 ## Struktura bazy danych
-####Główne tabele (14 tabel)
+#### Główne tabele (14 tabel)
 * <code>users</code> - główna tabela użytkowników systemu
 * <code>clients</code> - pacjenci korzystający z usług
 * <code>specialists</code> - pielęgniarki i fizjoterapeuci
@@ -27,7 +27,7 @@ Kompletny (prawie) schemat bazy danych PostgreSQL dla platformy HealthForHome.
 * diagrams/schemat.svg
 
 ## Jak uruchomić bazę danych
-###Wymagania:
+### Wymagania:
 * PostgreSQL 12+ (zalecane PostgreSQL 17)
 * Rozszerzenie uuid-ossp (zwykle domyślnie zainstalowane)
 
@@ -62,7 +62,7 @@ healthforhome-database/
 </pre> 
 
 # Kluczowe funkcjonalności
-###System weryfikacji specjalistów
+### System weryfikacji specjalistów
 * Sprawdzanie kwalifikacji (KIF dla fizjoterapeutów)
 * Weryfikacja dokumentów (dyplomy, licencje)
 * Panel administracyjny do zatwierdzania
@@ -84,7 +84,7 @@ healthforhome-database/
 * Weryfikacja czy recenzja pochodzi od realnej wizyty
 
 # Szczegóły techniczne
-###Typy danych:
+### Typy danych:
 * UUID jako klucze główne (bezpieczeństwo, skalowalność)
 * CHECK constraints - walidacja na poziomie bazy
 * TIMESTAMP z domyślną wartością CURRENT_TIMESTAMP
@@ -97,12 +97,12 @@ healthforhome-database/
 * Każda wizyta ma dokładnie jedną płatność i jedną recenzję
 
 # Możliwe rozszerzenia
-##Krótkoterminowe:
+## Krótkoterminowe:
 * Dodanie indeksów dla często wyszukiwanych pól
 * Tabela locations dla geolokalizacji (po zainstalowaniu PostGIS bo jeszcze tego nie mamy)
 
 ## Długoterminowe
-* -
+* ?
 
 # Znane ograniczenia
 * Brak indeksów (jeszcze ale będą)
