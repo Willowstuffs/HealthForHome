@@ -1,0 +1,251 @@
+-- TWORZENIE TABEL
+-- uzytkownicy
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    user_type VARCHAR(20) NOT NULL CHECK (user_type IN ('client', 'specialist')),
+    phone_number VARCHAR(20),
+    avatar_url TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_login_at TIMESTAMP
+);
+
+SELECT * FROM users;
+
+-- klienci
+CREATE TABLE clients (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    date_of_birth DATE,
+    address TEXT,
+    emergency_contact TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- specjalisci
+CREATE TABLE specialists (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    professional_title VARCHAR(200),
+    bio TEXT,
+    hourly_rate DECIMAL(10,2),
+    is_verified BOOLEAN DEFAULT false,
+    verification_status VARCHAR(20) DEFAULT 'pending' 
+        CHECK (verification_status IN ('pending', 'approved', 'rejected', 'needs_revision')),
+    average_rating DECIMAL(3,2) DEFAULT 0.00,
+    total_reviews INTEGER DEFAULT 0,
+    verified_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- katalog uslug
+CREATE TABLE service_types (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(100) NOT NULL,
+    category VARCHAR(50) NOT NULL CHECK (category IN ('nursing', 'physiotherapy')),
+    default_duration INTEGER,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- uslugi oferowane przez specjalstow
+CREATE TABLE specialist_services (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    specialist_id UUID REFERENCES specialists(id) ON DELETE CASCADE,
+    service_type_id UUID REFERENCES service_types(id) ON DELETE CASCADE,
+    duration_minutes INTEGER NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    description TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- obszary dzialania specjalistow
+CREATE TABLE service_areas (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    specialist_id UUID REFERENCES specialists(id) ON DELETE CASCADE,
+    city VARCHAR(100) NOT NULL,
+    postal_code VARCHAR(10),
+    max_distance_km INTEGER DEFAULT 20,
+    is_primary BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- dostepnosc specjalistow
+CREATE TABLE specialist_availability (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    specialist_id UUID REFERENCES specialists(id) ON DELETE CASCADE,
+    date DATE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    is_available BOOLEAN DEFAULT true,
+    recurrence_pattern VARCHAR(20) CHECK (recurrence_pattern IN ('once', 'daily', 'weekly', 'monthly')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- zablokowane terminy
+CREATE TABLE booked_slots (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    specialist_id UUID REFERENCES specialists(id) ON DELETE CASCADE,
+    start_datetime TIMESTAMP NOT NULL,
+    end_datetime TIMESTAMP NOT NULL,
+    is_blocked BOOLEAN DEFAULT true,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+--glowna tabela rezwerwacji wizyt
+CREATE TABLE appointments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id UUID REFERENCES clients(id) ON DELETE CASCADE,
+    specialist_id UUID REFERENCES specialists(id) ON DELETE CASCADE,
+    specialist_service_id UUID REFERENCES specialist_services(id),
+    appointment_status VARCHAR(20) DEFAULT 'pending'
+        CHECK (appointment_status IN ('pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show')),
+    scheduled_start TIMESTAMP NOT NULL,
+    scheduled_end TIMESTAMP NOT NULL,
+    total_price DECIMAL(10,2),
+    client_address TEXT,
+    client_notes TEXT,
+    specialist_notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    cancelled_at TIMESTAMP
+);
+
+-- paltnosci (robimy bez prowizji i tylko gotowka zeby latwiej)
+CREATE TABLE payments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    appointment_id UUID UNIQUE REFERENCES appointments(id) ON DELETE CASCADE,
+    payment_method VARCHAR(10) DEFAULT 'cash' CHECK (payment_method IN ('cash')),
+    payment_status VARCHAR(20) DEFAULT 'pending'
+        CHECK (payment_status IN ('pending', 'completed', 'cancelled', 'no_show')),
+    cash_received BOOLEAN DEFAULT false,
+    received_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- recenzje
+CREATE TABLE reviews (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    appointment_id UUID REFERENCES appointments(id) ON DELETE CASCADE,
+    client_id UUID REFERENCES clients(id) ON DELETE CASCADE,
+    specialist_id UUID REFERENCES specialists(id) ON DELETE CASCADE,
+    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    comment TEXT,
+    is_verified BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- kwalifikacje specjalistow - weryfikacja
+CREATE TABLE specialist_qualifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    specialist_id UUID REFERENCES specialists(id) ON DELETE CASCADE,
+    profession VARCHAR(50) NOT NULL CHECK (profession IN ('nurse', 'physiotherapist')),
+    license_number VARCHAR(100) NOT NULL,
+    license_photo_url TEXT,
+    id_card_photo_url TEXT,
+    verification_notes TEXT,
+    verified_by_admin_id UUID, -- dodamy pozniej referencje do admins
+    verified_at TIMESTAMP,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- administratorzy - admin panel
+CREATE TABLE admins (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(20) DEFAULT 'support' 
+        CHECK (role IN ('super_admin', 'support', 'verifier')),
+    full_name VARCHAR(200),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_login_at TIMESTAMP
+);
+
+-- logi weryfikacji - audit trail
+CREATE TABLE verification_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    specialist_id UUID REFERENCES specialists(id) ON DELETE CASCADE,
+    admin_id UUID REFERENCES admins(id) ON DELETE SET NULL,
+    action VARCHAR(50) NOT NULL 
+        CHECK (action IN ('submitted', 'approved', 'rejected', 'requested_changes')),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- lokalizacjee ??
+--CREATE TABLE locations (
+--    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+--    user_type VARCHAR(20) NOT NULL CHECK (user_type IN ('client', 'specialist')),
+--    latitude DECIMAL(10, 8),
+--    longitude DECIMAL(11, 8),
+--    address TEXT,
+--    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+--);
+
+-- czy sie zrobilo
+SELECT table_name 
+FROM information_schema.tables 
+WHERE table_schema = 'public'
+ORDER BY table_name;
+
+SELECT 
+    table_name,
+    (SELECT COUNT(*) FROM information_schema.columns 
+     WHERE table_name = t.table_name) as column_count
+FROM information_schema.tables t
+WHERE table_schema = 'public'
+ORDER BY table_name;
+
+-- ZMIANY W TABELACH
+
+--po dodaniu administratorow dodac klucz obcy w kwalifikacjach
+ALTER TABLE specialist_qualifications 
+ADD CONSTRAINT fk_verified_by_admin 
+FOREIGN KEY (verified_by_admin_id) 
+REFERENCES admins(id) 
+ON DELETE SET NULL;
+
+-- dodanie UNIQUE constraint w reviews (jedna recenzja na wizyte)
+ALTER TABLE reviews 
+ADD CONSTRAINT unique_appointment_review UNIQUE (appointment_id);
+
+-- INDEKSY ?
+--CREATE INDEX idx_users_email ON users(email);
+--CREATE INDEX idx_users_user_type ON users(user_type);
+--CREATE INDEX idx_specialists_is_verified ON specialists(is_verified);
+--CREATE INDEX idx_specialists_verification_status ON specialists(verification_status);
+--CREATE INDEX idx_appointments_status ON appointments(appointment_status);
+--CREATE INDEX idx_appointments_scheduled_start ON appointments(scheduled_start);
+--CREATE INDEX idx_appointments_client_id ON appointments(client_id);
+--CREATE INDEX idx_appointments_specialist_id ON appointments(specialist_id);
+--CREATE INDEX idx_reviews_specialist_id ON reviews(specialist_id);
+--CREATE INDEX idx_service_areas_city ON service_areas(city);
+--CREATE INDEX idx_specialist_availability_date ON specialist_availability(date);
+
+-- TEST INTEGRALNOSCI czy wszystkie relacje git
+SELECT 
+    tc.table_name, 
+    kcu.column_name, 
+    ccu.table_name AS foreign_table_name,
+    ccu.column_name AS foreign_column_name
+FROM information_schema.table_constraints tc
+JOIN information_schema.key_column_usage kcu 
+    ON tc.constraint_name = kcu.constraint_name
+JOIN information_schema.constraint_column_usage ccu 
+    ON ccu.constraint_name = tc.constraint_name
+WHERE tc.constraint_type = 'FOREIGN KEY'
+ORDER BY tc.table_name;
