@@ -196,6 +196,44 @@ CREATE TABLE verification_logs (
 --    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 --);
 
+
+-- Tabela wiadomości (chat)
+CREATE TABLE IF NOT EXISTS messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    receiver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    appointment_id UUID REFERENCES appointments(id) ON DELETE SET NULL,
+    content TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabela powiadomień
+CREATE TABLE IF NOT EXISTS notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type VARCHAR(50) NOT NULL CHECK (type IN ('message', 'appointment', 'reminder', 'system')),
+    title VARCHAR(200) NOT NULL,
+    content TEXT,
+    is_read BOOLEAN DEFAULT false,
+    related_id UUID,  -- appointment_id, message_id, etc.
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabela kodów weryfikacyjnych (6-cyfrowy kod z emaila)
+CREATE TABLE IF NOT EXISTS verification_codes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    email VARCHAR(255) NOT NULL,
+    code VARCHAR(6) NOT NULL,
+    purpose VARCHAR(50) NOT NULL CHECK (purpose IN ('registration', 'password_reset')),
+    is_used BOOLEAN DEFAULT false,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
 -- czy sie zrobilo
 SELECT table_name 
 FROM information_schema.tables 
@@ -235,6 +273,13 @@ ADD CONSTRAINT unique_appointment_review UNIQUE (appointment_id);
 --CREATE INDEX idx_reviews_specialist_id ON reviews(specialist_id);
 --CREATE INDEX idx_service_areas_city ON service_areas(city);
 --CREATE INDEX idx_specialist_availability_date ON specialist_availability(date);
+--CREATE INDEX idx_messages_sender ON messages(sender_id);
+--CREATE INDEX idx_messages_receiver ON messages(receiver_id);
+--CREATE INDEX idx_messages_appointment ON messages(appointment_id);
+--CREATE INDEX idx_notifications_user ON notifications(user_id);
+--CREATE INDEX idx_notifications_is_read ON notifications(is_read);
+--CREATE INDEX idx_verification_codes_email ON verification_codes(email);
+--CREATE INDEX idx_verification_codes_code ON verification_codes(code);
 
 -- TEST INTEGRALNOSCI czy wszystkie relacje git
 SELECT 

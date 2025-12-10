@@ -6,7 +6,7 @@
 Kompletny (prawie) schemat bazy danych PostgreSQL dla platformy HealthForHome.
 
 ## Struktura bazy danych
-#### Główne tabele (14 tabel)
+#### Główne tabele (17 tabel)
 * <code>users</code> - główna tabela użytkowników systemu
 * <code>clients</code> - pacjenci korzystający z usług
 * <code>specialists</code> - pielęgniarki i fizjoterapeuci
@@ -21,10 +21,14 @@ Kompletny (prawie) schemat bazy danych PostgreSQL dla platformy HealthForHome.
 * <code>specialist_qualifications</code> - weryfikacja kwalifikacji
 * <code>admins</code> - panel administracyjny
 * <code>verification_logs</code> - logi weryfikacji specjalistów
+* <code>messages</code> - wiadomości na chacie między pacjentem a specjalistą
+* <code>notifications</code> - powiadomienia o wizytach/wiadomościach
+* <code>verification_codes</code> - 6-cyfrowe kody weryfikacyjne do zakładania konta
 
 ## Diagram relacji
 * diagrams/schemat.png
 * diagrams/schemat.svg
+Diagramy nie są jeszcze zaktualizowane o 3 nowe tabele
 
 ## Jak uruchomić bazę danych
 ### Wymagania:
@@ -82,6 +86,10 @@ healthforhome-database/
 * Możliwość recenzji po każdej wizycie
 * Średnia ocena specjalisty
 * Weryfikacja czy recenzja pochodzi od realnej wizyty
+
+### Komunikacja
+* Możliwość wymiany wiadomości mięcy pacjentami a specjalistami
+* System powiadomień o nowych wiadomościach oraz nadchodzących wizytach
 
 # Szczegóły techniczne
 ### Typy danych:
