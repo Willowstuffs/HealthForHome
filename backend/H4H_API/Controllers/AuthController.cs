@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using H4H.Core.Interfaces;
+using System.ComponentModel.DataAnnotations;
 
 namespace H4H_API.Controllers
 {
@@ -20,6 +21,17 @@ namespace H4H_API.Controllers
             if (await _userRepository.EmailExistsAsync(request.Email))
             {
                 return BadRequest(new { message = "Email already exists" });
+            }
+
+            if (request.Password.Length < 6)
+            {
+                return BadRequest(new { message = "Password must be at least 6 characters long" });
+            }
+
+            var emailAttribute = new EmailAddressAttribute();
+            if (!emailAttribute.IsValid(request.Email))
+            {
+                return BadRequest(new { message = "Invalid email format" });
             }
 
             var user = await _userRepository.CreateUserAsync(
@@ -65,15 +77,25 @@ namespace H4H_API.Controllers
     // DTOs
     public class RegisterRequest
     {
+        [Required]
+        [EmailAddress]
         public string Email { get; set; } = string.Empty;
+        [Required]
+        [MinLength(6)]
         public string Password { get; set; } = string.Empty;
+        [Required]
         public string FirstName { get; set; } = string.Empty;
+        [Required]
         public string LastName { get; set; } = string.Empty;
     }
 
     public class LoginRequest
     {
+        [Required]
+        [EmailAddress]
         public string Email { get; set; } = string.Empty;
+        [Required]
+        [MinLength(6)]
         public string Password { get; set; } = string.Empty;
     }
 }
