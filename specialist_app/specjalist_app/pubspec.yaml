@@ -1,0 +1,27 @@
+name: specjalist_app
+description: "A new Flutter project."
+publish_to: 'none'
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  dio: ^5.9.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - lib/images/kot.jpg
+    - lib/images/ikona1.png
+    - lib/images/ikona2.png
+    - lib/images/ikona3.png
+    - lib/images/ikona4.png
+    - lib/images/ikona5.png
