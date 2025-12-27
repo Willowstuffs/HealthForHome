@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:marketplace_app/screens/login_register_screen.dart';
+import 'package:marketplace_app/services/api_service.dart';
 import '../../screens/request_success_screen.dart';
 import '../../theme/app_theme.dart';
 import '../../data/mock_data.dart';
@@ -67,18 +68,21 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
         backgroundColor: AppColors.background,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.person_outline,
-              color: AppColors.onBackground,
+          if (!ApiService().isLoggedIn)
+            IconButton(
+              icon: const Icon(
+                Icons.person_outline,
+                color: AppColors.onBackground,
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const LoginRegisterScreen(),
+                  ),
+                );
+              },
             ),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => LoginRegisterScreen()),
-              );
-            },
-          ),
         ],
       ),
       body: SingleChildScrollView(

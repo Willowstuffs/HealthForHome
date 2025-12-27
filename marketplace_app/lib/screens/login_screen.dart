@@ -35,8 +35,8 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Zalogowano pomyślnie')));
-
-      // TODO: nawigacja do ekranu glownego
+      Navigator.of(context).pop();
+      Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

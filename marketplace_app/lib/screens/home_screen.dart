@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../screens/login_register_screen.dart';
 import '../../screens/request_form_screen.dart';
+import '../../screens/account_screen.dart';
+import '../../services/api_service.dart';
 import '../../widgets/category_chip.dart';
 import '../../data/mock_data.dart';
 import '../../theme/app_theme.dart';
@@ -23,14 +25,29 @@ class HomeScreenState extends State<HomeScreen> {
         elevation: 0,
         actions: [
           IconButton(
-            icon: Icon(Icons.person_outline, color: AppColors.onBackground),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => LoginRegisterScreen(),
-                ),
-              );
+            icon: Icon(
+              ApiService().isLoggedIn
+                  ? Icons.account_circle
+                  : Icons.person_outline,
+              color: AppColors.onBackground,
+            ),
+            onPressed: () async {
+              if (ApiService().isLoggedIn) {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AccountScreen()),
+                );
+              } else {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const LoginRegisterScreen(),
+                  ),
+                );
+              }
+              setState(
+                () {},
+              ); // Refresh state after returning (e.g. login/logout)
             },
           ),
         ],
@@ -80,7 +97,7 @@ class HomeScreenState extends State<HomeScreen> {
   //   );
   // }
 
-    Widget _buildWelcomeSection() {
+  Widget _buildWelcomeSection() {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(vertical: 8),
@@ -88,11 +105,7 @@ class HomeScreenState extends State<HomeScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // LOGO
-          Image.asset(
-            'lib/images/logo.png',
-            width: 150,
-            height: 150,
-          ),
+          Image.asset('lib/images/logo.png', width: 150, height: 150),
           SizedBox(height: 16),
           Text(
             'Health for Home',
@@ -103,7 +116,7 @@ class HomeScreenState extends State<HomeScreen> {
             textAlign: TextAlign.center,
           ),
         ],
-      )
+      ),
     );
   }
 
@@ -117,7 +130,7 @@ class HomeScreenState extends State<HomeScreen> {
           'Wybierz kategorię',
           style: Theme.of(context).textTheme.headlineMedium,
           textAlign: TextAlign.center,
-          ),
+        ),
         SizedBox(height: 12),
         // Lista kategorii
         ListView.separated(
@@ -135,7 +148,8 @@ class HomeScreenState extends State<HomeScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => RequestFormScreen(categoryName: category.title),
+                    builder: (context) =>
+                        RequestFormScreen(categoryName: category.title),
                   ),
                 );
               },
@@ -145,7 +159,6 @@ class HomeScreenState extends State<HomeScreen> {
       ],
     );
   }
-
 
   // Widget _buildSpecialistsSection() {
   //   return Column(

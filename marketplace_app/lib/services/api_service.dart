@@ -1,14 +1,27 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
+import '../models/auth_models.dart';
+import '../models/client_profile.dart';
+import '../models/client_update_dto.dart';
 
 class ApiService {
   // 10.0.2.2 - bridge localhost dla emulatora Android
   static const String _baseUrl = 'https://10.0.2.2:7026';
 
   late final Dio _dio;
+  String? _token;
 
-  ApiService() {
+  bool get isLoggedIn => _token != null;
+
+  // Singleton pattern
+  static final ApiService _instance = ApiService._internal();
+
+  factory ApiService() {
+    return _instance;
+  }
+
+  ApiService._internal() {
     _dio = Dio(
       BaseOptions(
         baseUrl: _baseUrl,
@@ -29,6 +42,17 @@ class ApiService {
     );
 
     _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          if (_token != null) {
+            options.headers['Authorization'] = 'Bearer $_token';
+          }
+          return handler.next(options);
+        },
+      ),
+    );
+
+    _dio.interceptors.add(
       LogInterceptor(
         request: true,
         requestBody: true,
@@ -36,6 +60,14 @@ class ApiService {
         error: true,
       ),
     );
+  }
+
+  void setToken(String token) {
+    _token = token;
+  }
+
+  void clearToken() {
+    _token = null;
   }
 
   // Auth
@@ -63,16 +95,60 @@ class ApiService {
     }
   }
 
-  Future<void> login({required String email, required String password}) async {
+  Future<LoginResponse> login({
+    required String email,
+    required String password,
+  }) async {
     try {
-      await _dio.post(
+      final response = await _dio.post(
         '/api/Auth/login',
         data: {"email": email, "password": password},
       );
+
+      final loginResponse = LoginResponse.fromJson(response.data['data']);
+      setToken(loginResponse.accessToken);
+      return loginResponse;
     } on DioException catch (e) {
       throw _handleDioError(e);
     } catch (_) {
       throw Exception('Nieznany błąd logowania');
+    }
+  }
+
+  Future<void> logout() async {
+    try {
+      await _dio.post('/api/Auth/logout');
+    } catch (_) {
+      // Ignore errors on logout
+    } finally {
+      clearToken();
+    }
+  }
+
+  // Client Profile
+
+  Future<ClientProfile> getClientProfile() async {
+    try {
+      final response = await _dio.get('/api/Client/profile');
+      return ClientProfile.fromJson(response.data['data']);
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (_) {
+      throw Exception('Błąd pobierania profilu');
+    }
+  }
+
+  Future<ClientProfile> updateClientProfile(ClientUpdateDto dto) async {
+    try {
+      final response = await _dio.put(
+        '/api/Client/profile',
+        data: dto.toJson(),
+      );
+      return ClientProfile.fromJson(response.data['data']);
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (_) {
+      throw Exception('Błąd aktualizacji profilu');
     }
   }
 
@@ -84,13 +160,17 @@ class ApiService {
 
       switch (statusCode) {
         case 400:
-          return Exception('Niepoprawne dane rejestracyjne');
+          return Exception(e.response?.data['message'] ?? 'Niepoprawne dane');
+        case 401:
+          return Exception('Brak autoryzacji');
+        case 403:
+          return Exception('Brak dostępu');
         case 409:
           return Exception('Użytkownik już istnieje');
         case 500:
           return Exception('Błąd serwera');
         default:
-          return Exception(e.response?.data['message'] ?? 'Błąd rejestracji');
+          return Exception(e.response?.data['message'] ?? 'Wystąpił błąd');
       }
     } else {
       return Exception('Brak połączenia z serwerem');
