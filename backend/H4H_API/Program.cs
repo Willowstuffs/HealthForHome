@@ -2,6 +2,16 @@ using Microsoft.EntityFrameworkCore;
 using H4H.Data;
 using H4H.Core.Interfaces;
 using H4H.Data.Repositories;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using H4H_API.Middleware;
+using H4H_API.Services.Interfaces;
+using H4H_API.Services.Implementations;
+using H4H_API.Helpers;
+using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Authorization;
+using Swashbuckle.AspNetCore.SwaggerGen;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,8 +19,40 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 
+builder.Services.AddSwaggerGen(options =>
+{
+    // DODANA KONFIGURACJA AUTORYZACJI W SWAGGERZE (przez Bearer token)
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "WprowadŸ token JWT w formacie: Bearer {twój_token}",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer",
+        BearerFormat = "JWT"
+    });
+
+    // Wymagaj tokena dla wszystkich endpointów
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>() // Pusta lista - token wymagany
+        }
+    });
+
+    options.OperationFilter<SecurityRequirementsOperationFilter>();
+});
+
+builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 // Database context
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -22,16 +64,37 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Add logging
 builder.Services.AddLogging();
 
+// JWT Authentication 
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true, // Sprawdzaj czy token nie wygas³
+            ValidateIssuerSigningKey = true, // Weryfikuj klucz podpisu
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)) // Klucz do weryfikacji
+        };
+    });
+
+// Rejestracja serwisów
+builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IClientService, ClientService>();
+
 // CORS dla frontendu jeœli Flutter debuguje przez przegl¹darkê
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFlutter", 
+    options.AddPolicy("AllowFlutter",
         policy => policy
             .AllowAnyOrigin()  // Ka¿de Ÿród³o
             .AllowAnyMethod()
             .AllowAnyHeader());
-    });
-// Abo jeœli Flutter u¿ywa ip to cors nie jest potrzebne i naura
+});
 
 // Dependency Injection dla Repository
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -45,9 +108,46 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Middleware 
+app.UseMiddleware<ErrorHandlingMiddleware>();
+
 app.UseHttpsRedirection();
 app.UseCors("AllowFlutter");
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+
+
+public class SecurityRequirementsOperationFilter : IOperationFilter
+{
+    public void Apply(OpenApiOperation operation, OperationFilterContext context)
+    {
+        var authAttributes = context.MethodInfo.DeclaringType.GetCustomAttributes(true)
+            .Union(context.MethodInfo.GetCustomAttributes(true))
+            .OfType<AuthorizeAttribute>();
+
+        if (authAttributes.Any())
+        {
+            operation.Security = new List<OpenApiSecurityRequirement>
+            {
+                new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        Array.Empty<string>()
+                    }
+                }
+            };
+        }
+    }
+}

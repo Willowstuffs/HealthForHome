@@ -1,101 +1,78 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using H4H.Core.Interfaces;
-using System.ComponentModel.DataAnnotations;
+using H4H_API.DTOs.Auth;
+using H4H_API.DTOs.Common;
+using H4H_API.DTOs.Client;
+using H4H_API.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
-namespace H4H_API.Controllers
+[ApiController]
+[Route("api/[controller]")]
+public class AuthController : ControllerBase
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class AuthController : ControllerBase
+    private readonly IAuthService _authService;
+
+    public AuthController(IAuthService authService)
     {
-        private readonly IUserRepository _userRepository;
+        _authService = authService;
+    }
 
-        public AuthController(IUserRepository userRepository)
+    // Rejestracja klienta - endpoint publiczny
+    [HttpPost("register/client")]
+    public async Task<ActionResult<ApiResponse<RegisterResponse>>> RegisterClient([FromBody] ClientRegisterDto request)
+    {
+        try
         {
-            _userRepository = userRepository;
+            var result = await _authService.RegisterClientAsync(request);
+            return Ok(ApiResponse<RegisterResponse>.SuccessResponse(result, "Rejestracja zakończona sukcesem"));
         }
-
-        [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+        catch (Exception ex)
         {
-            if (await _userRepository.EmailExistsAsync(request.Email))
-            {
-                return BadRequest(new { message = "Email already exists" });
-            }
-
-            if (request.Password.Length < 6)
-            {
-                return BadRequest(new { message = "Password must be at least 6 characters long" });
-            }
-
-            var emailAttribute = new EmailAddressAttribute();
-            if (!emailAttribute.IsValid(request.Email))
-            {
-                return BadRequest(new { message = "Invalid email format" });
-            }
-
-            var user = await _userRepository.CreateUserAsync(
-                request.Email,
-                request.Password,
-                request.FirstName,
-                request.LastName,
-                "client");
-
-            return Ok(new
-            {
-                message = "Registration successful",
-                userId = user.Id,
-                requiresVerification = true
-            });
-        }
-
-        [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginRequest request)
-        {
-            var user = await _userRepository.AuthenticateAsync(request.Email, request.Password);
-
-            if (user == null)
-                return Unauthorized(new { message = "Invalid email or password" });
-
-            // TODO: Dodać JWT token później
-            var token = "temp-token-until-jwt-implementation";
-
-            return Ok(new
-            {
-                token,
-                user = new
-                {
-                    id = user.Id,
-                    email = user.Email,
-                    userType = user.UserType,
-                    firstName = user.UserType == "client" ? user.Client?.FirstName : user.Specialist?.FirstName
-                }
-            });
+            return BadRequest(ApiResponse<RegisterResponse>.ErrorResponse(ex.Message));
         }
     }
 
-    // DTOs
-    public class RegisterRequest
+    // Logowanie - endpoint publiczny
+    [HttpPost("login")]
+    public async Task<ActionResult<ApiResponse<LoginResponse>>> Login([FromBody] LoginRequest request)
     {
-        [Required]
-        [EmailAddress]
-        public string Email { get; set; } = string.Empty;
-        [Required]
-        [MinLength(6)]
-        public string Password { get; set; } = string.Empty;
-        [Required]
-        public string FirstName { get; set; } = string.Empty;
-        [Required]
-        public string LastName { get; set; } = string.Empty;
+        try
+        {
+            var result = await _authService.LoginAsync(request);
+            return Ok(ApiResponse<LoginResponse>.SuccessResponse(result));
+        }
+        catch (UnauthorizedAccessException ex) // Błąd autoryzacji - niepoprawne dane
+        {
+            return Unauthorized(ApiResponse<LoginResponse>.ErrorResponse(ex.Message));
+        }
+        catch (Exception ex) // Inne błędy
+        {
+            return BadRequest(ApiResponse<LoginResponse>.ErrorResponse(ex.Message));
+        }
     }
 
-    public class LoginRequest
+    // Odświeżanie tokena - używa starego tokena do uzyskania nowego
+    [HttpPost("refresh-token")]
+    public async Task<ActionResult<ApiResponse<LoginResponse>>> RefreshToken([FromBody] RefreshTokenRequest request)
     {
-        [Required]
-        [EmailAddress]
-        public string Email { get; set; } = string.Empty;
-        [Required]
-        [MinLength(6)]
-        public string Password { get; set; } = string.Empty;
+        try
+        {
+            var result = await _authService.RefreshTokenAsync(request);
+            return Ok(ApiResponse<LoginResponse>.SuccessResponse(result));
+        }
+        catch (UnauthorizedAccessException ex) // Token nieprawidłowy lub wygasły
+        {
+            return Unauthorized(ApiResponse<LoginResponse>.ErrorResponse(ex.Message));
+        }
+    }
+
+    // Wylogowanie - wymaga autoryzacji
+    [HttpPost("logout")]
+    [Authorize] // Wymaga zalogowanego użytkownika
+    public async Task<ActionResult<ApiResponse>> Logout()
+    {
+        // Pobierz token z nagłówka Authorization
+        var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+        await _authService.LogoutAsync(token);
+        return Ok(ApiResponse.SuccessResponse("Wylogowano pomyślnie"));
     }
 }
