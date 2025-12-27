@@ -35,17 +35,19 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
     selectedCategory = widget.categoryName;
   }
 
-  Future<void> _pickDate({required bool isFrom}) async {
-
+  Future<void> _pickDate({
+    required bool isFrom,
+    required StateSetter stateSetter,
+  }) async {
     final picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
       firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(Duration(days:365)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
     );
 
     if (picked != null) {
-      setState(() {
+      stateSetter(() {
         if (isFrom) {
           fromDate = picked;
         } else {
@@ -55,59 +57,21 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
     }
   }
 
-  bool checkFormsValidity() {
-    if (_formKey.currentState!.validate()) {
-      if (selectedCategory == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Proszę wybrać kategorię')),
-        );
-        return false;
-      }
-      if (addressController.text.isEmpty ||
-          phoneController.text.isEmpty ||
-          emailController.text.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Proszę wypełnić wszystkie wymagane pola')),
-        );
-        return false;
-      }
-      if(phoneController.text.contains(RegExp(r'[A-Za-z]'))){
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Numer telefonu nie może zawierać liter')),
-        );
-        return false;
-      }
-      if (fromDate == null || toDate == null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Proszę wybrać daty')));
-        return false;
-      }
-      if (fromDate!.isAfter(toDate!)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Data "od" musi być przed datą "do"')),
-        );
-        return false;
-      }
-    }
-    else {
-      return false;
-    }
-    return true;
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Formularz zgłoszeniowy"),
+        title: const Text("Formularz zgłoszeniowy"),
         backgroundColor: AppColors.background,
         elevation: 0,
         actions: [
           IconButton(
-            icon: Icon(Icons.person_outline, color: AppColors.onBackground),
+            icon: const Icon(
+              Icons.person_outline,
+              color: AppColors.onBackground,
+            ),
             onPressed: () {
               Navigator.push(
                 context,
@@ -126,15 +90,18 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
               _buildCategoryDropdown(),
               const SizedBox(height: 12),
 
-              _buildDropdown(
-                label: 'Usługi',
-                value: null
-                ),
+              _buildDropdown(label: 'Usługi', value: null),
               const SizedBox(height: 12),
 
               _buildTextField(
                 controller: addressController,
                 label: 'Adres zamieszkania',
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Proszę wypełnić wszystkie wymagane pola';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 12),
 
@@ -142,6 +109,15 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                 controller: phoneController,
                 label: 'Telefon',
                 keyboardType: TextInputType.phone,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Proszę wypełnić wszystkie wymagane pola';
+                  }
+                  if (value.contains(RegExp(r'[A-Za-z]'))) {
+                    return 'Numer telefonu nie może zawierać liter';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 12),
 
@@ -149,6 +125,12 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                 controller: emailController,
                 label: 'Email',
                 keyboardType: TextInputType.emailAddress,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Proszę wypełnić wszystkie wymagane pola';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 12),
 
@@ -165,20 +147,96 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
               const SizedBox(height: 8),
 
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: _buildDateField(
-                      label: 'od',
-                      date: fromDate,
-                      onTap: () => _pickDate(isFrom: true),
+                    child: FormField<DateTime>(
+                      validator: (value) {
+                        if (fromDate == null) {
+                          return 'Proszę wybrać datę';
+                        }
+                        if (toDate != null && fromDate!.isAfter(toDate!)) {
+                          return 'Data "od" musi być przed datą "do"';
+                        }
+                        return null;
+                      },
+                      builder: (FormFieldState<DateTime> state) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildDateField(
+                              label: 'od',
+                              date: fromDate,
+                              onTap: () async {
+                                await _pickDate(
+                                  isFrom: true,
+                                  stateSetter: setState,
+                                );
+                                state.didChange(fromDate);
+                                _formKey.currentState?.validate();
+                              },
+                            ),
+                            if (state.hasError)
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  top: 5,
+                                  left: 12,
+                                ),
+                                child: Text(
+                                  state.errorText!,
+                                  style: TextStyle(
+                                    color: theme.colorScheme.error,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _buildDateField(
-                      label: 'do',
-                      date: toDate,
-                      onTap: () => _pickDate(isFrom: false),
+                    child: FormField<DateTime>(
+                      validator: (value) {
+                        if (toDate == null) {
+                          return 'Proszę wybrać datę';
+                        }
+                        return null;
+                      },
+                      builder: (FormFieldState<DateTime> state) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildDateField(
+                              label: 'do',
+                              date: toDate,
+                              onTap: () async {
+                                await _pickDate(
+                                  isFrom: false,
+                                  stateSetter: setState,
+                                );
+                                state.didChange(toDate);
+                                _formKey.currentState?.validate();
+                              },
+                            ),
+                            if (state.hasError)
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  top: 5,
+                                  left: 12,
+                                ),
+                                child: Text(
+                                  state.errorText!,
+                                  style: TextStyle(
+                                    color: theme.colorScheme.error,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -199,15 +257,12 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                 child: ElevatedButton(
                   onPressed: () {
                     if (_formKey.currentState!.validate()) {
-                      // TODO: wyslanie zapytania
-                      if(checkFormsValidity()) {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const RequestSuccessScreen(),
-                          ),
-                        );  
-                      }                      
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const RequestSuccessScreen(),
+                        ),
+                      );
                     }
                   },
                   child: const Text('Wyślij zapytanie'),
@@ -225,11 +280,13 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
     required String label,
     int maxLines = 1,
     TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
       keyboardType: keyboardType,
+      validator: validator,
       decoration: InputDecoration(
         labelText: label,
         filled: true,
@@ -254,6 +311,7 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
           selectedCategory = value;
         });
       },
+      validator: (value) => value == null ? 'Proszę wybrać kategorię' : null,
       decoration: InputDecoration(
         labelText: 'Kategoria',
         filled: true,

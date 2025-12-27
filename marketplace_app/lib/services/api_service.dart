@@ -48,7 +48,7 @@ class ApiService {
   }) async {
     try {
       await _dio.post(
-        '/api/Auth/register',
+        '/api/Auth/register/client',
         data: {
           "email": email,
           "password": password,
@@ -60,6 +60,19 @@ class ApiService {
       throw _handleDioError(e);
     } catch (_) {
       throw Exception('Nieznany błąd');
+    }
+  }
+
+  Future<void> login({required String email, required String password}) async {
+    try {
+      await _dio.post(
+        '/api/Auth/login',
+        data: {"email": email, "password": password},
+      );
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (_) {
+      throw Exception('Nieznany błąd logowania');
     }
   }
 

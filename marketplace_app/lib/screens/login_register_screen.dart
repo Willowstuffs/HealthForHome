@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:marketplace_app/screens/login_screen.dart';
 import 'package:marketplace_app/screens/register_account_screen.dart';
 import '../../theme/app_theme.dart';
 
@@ -35,10 +36,8 @@ class LoginRegisterScreen extends StatelessWidget {
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(
-                              builder: (_) => RegisterScreen(),
-                            ),
-                          );  
+                            MaterialPageRoute(builder: (_) => RegisterScreen()),
+                          );
                         },
                         child: Text('Zarejestruj się'),
                       ),
@@ -59,7 +58,10 @@ class LoginRegisterScreen extends StatelessWidget {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          // TODO: nawigacja do ekranu logowania
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => LoginScreen()),
+                          );
                         },
                         child: Text('Zaloguj się'),
                       ),
