@@ -1,6 +1,9 @@
 ﻿namespace H4H_API.DTOs.Common
 {
-    // Generyczna klasa odpowiedzi API dla endpointów które zwracają dane
+    /// <summary>
+    /// Generyczna klasa odpowiedzi API dla endpointów które zwracają dane
+    /// </summary>
+    /// <typeparam name="T">Typ danych zwracanych w sukcesie</typeparam>
     public class ApiResponse<T>
     {
         public bool Success { get; set; }
@@ -9,7 +12,11 @@
         public List<string>? Errors { get; set; } // Lista błędów (jeśli success=false)
         public DateTime Timestamp { get; set; } = DateTime.Now; // Znacznik czasu odpowiedzi
 
-        // Metoda pomocnicza do tworzenia pozytywnej odpowiedzi
+        /// <summary>
+        /// Metoda pomocnicza do tworzenia pozytywnej odpowiedzi
+        /// </summary>
+        /// <param name="data">Dane do zwrócenia</param>
+        /// <param name="message">Opcjonalna wiadomość</param>
         public static ApiResponse<T> SuccessResponse(T data, string message = "Operacja zakończona sukcesem")
         {
             return new ApiResponse<T>
@@ -19,7 +26,11 @@
                 Data = data
             };
         }
-
+        /// <summary>
+        /// Tworzy odpowiedzi błędu
+        /// </summary>
+        /// <param name="message">Wiadomość błędu</param>
+        /// <param name="errors">Opcjonalna lista szczegółów błędów</param>
         public static ApiResponse<T> ErrorResponse(string message, List<string>? errors = null)
         {
             return new ApiResponse<T>
@@ -31,7 +42,9 @@
         }
     }
 
-    // Dla endpointów które nie zwracają danych
+    /// <summary>
+    /// Dla endpointów które nie zwracają danych
+    /// </summary>
     public class ApiResponse
     {
         public bool Success { get; set; }

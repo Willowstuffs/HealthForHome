@@ -1,5 +1,9 @@
 ﻿namespace H4H_API.DTOs.Specialist
 {
+    /// <summary>
+    /// Główny obiekt transferu danych reprezentujący profil specjalisty.
+    /// Zawiera podstatowe informacje oraz listy usług i obszarów.
+    /// </summary>
     public class SpecialistDto
     {
         public Guid Id { get; set; }
@@ -9,12 +13,14 @@
         public string? Bio { get; set; }
         public decimal? HourlyRate { get; set; }
         public bool IsVerified { get; set; }
+        /// <summary>Średnia ocen z tabeli reviews</summary>
         public decimal AverageRating { get; set; }
         public int TotalReviews { get; set; }
         public List<SpecialistServiceDto> Services { get; set; } = new();
         public List<ServiceAreaDto> ServiceAreas { get; set; } = new();
     }
 
+    /// <summary>Reprezentuje pojedynczą usługę przypisaną do specjalisty</summary>
     public class SpecialistServiceDto
     {
         public Guid Id { get; set; }
@@ -25,11 +31,13 @@
         public string? Description { get; set; }
     }
 
+    /// <summary>Obszar w którym specjalista przyjmuje lub dojeżdża.</summary>
     public class ServiceAreaDto
     {
         public string City { get; set; } = string.Empty;
         public string? PostalCode { get; set; }
         public int MaxDistanceKm { get; set; }
+        /// <summary>Czy to główny obszar działalności?</summary>
         public bool IsPrimary { get; set; }
     }
 }

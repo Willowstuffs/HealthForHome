@@ -85,6 +85,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IClientService, ClientService>();
+builder.Services.AddScoped<ISpecialistService, SpecialistService>();
 
 // CORS dla frontendu jeœli Flutter debuguje przez przegl¹darkê
 builder.Services.AddCors(options =>
