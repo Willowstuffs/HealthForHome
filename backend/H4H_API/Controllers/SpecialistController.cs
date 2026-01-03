@@ -1,8 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
-using H4H_API.Services.Interfaces;
-using H4H_API.DTOs.Common;
+﻿using H4H_API.DTOs.Common;
 using H4H_API.DTOs.Specialist;
+using H4H_API.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace H4H_API.Controllers
@@ -36,26 +37,42 @@ namespace H4H_API.Controllers
             // Najpierw wyciagamy id zalogowanego klienta z tokena
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            if(string.IsNullOrEmpty(userIdClaim))
+            if (string.IsNullOrEmpty(userIdClaim))
             {
                 return Unauthorized(ApiResponse<object>.ErrorResponse("Blad tokena: Brak identyfikatora uzytkownika."));
             }
-            try
-            {
-                var userId = Guid.Parse(userIdClaim);
-                //Nastepnie Pobieramy dane z serwisu
-                var profile = await _specialistService.GetProfileAsync(userId);
-                //i zwracamy odpowiedź w formacie ApiResponse
-                return Ok(ApiResponse<SpecialistDto>.SuccessResponse(profile));
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ApiResponse<object>.ErrorResponse(ex.Message));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ApiResponse<object>.ErrorResponse("Wystapil nieoczekiwany blad serwera", new List<string> { ex.Message }));
-            }
+            var userId = Guid.Parse(userIdClaim);
+            //Nastepnie Pobieramy dane z serwisu
+            var profile = await _specialistService.GetProfileAsync(userId);
+            //i zwracamy odpowiedź w formacie ApiResponse
+            return Ok(ApiResponse<SpecialistDto>.SuccessResponse(profile));
+        }
+        /// <summary>Pobiera listę zapytań dla zalogowanego specjalisty</summary>
+        [HttpGet("inquiries")]
+        [ProducesResponseType(typeof(ApiResponse<List<InquiryListItemDto>>), 200)]
+        public async Task<ActionResult<ApiResponse<List<InquiryListItemDto>>>> GetInquiries([FromQuery] InquiryFilterDto filters)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized(ApiResponse<object>.ErrorResponse("Błąd autoryzacji."));
+
+            var userId = Guid.Parse(userIdClaim);
+            var inquiries = await _specialistService.GetInquiriesAsync(userId, filters);
+
+            return Ok(ApiResponse<List<InquiryListItemDto>>.SuccessResponse(inquiries, "Pobrano listę zapytań."));
+        }
+        /// <summary>
+        /// Aktualizuje numer PWZ/licencji specjalisty
+        /// </summary>
+        [HttpPost("license")]
+        public async Task<ActionResult<ApiResponse<object?>>> UpdateLicense([FromBody] string licenseNumber)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized(ApiResponse<object>.ErrorResponse("Błąd autoryzacji."));
+
+            var userId = Guid.Parse(userIdClaim);
+            await _specialistService.UpdateLicenseNumberAsync(userId, licenseNumber);
+
+            return Ok(ApiResponse<object?>.SuccessResponse(data: null, message: "Numer licencji został zapisany i oczekuje na weryfikację."));
         }
     }
 }

@@ -16,8 +16,8 @@
         /// <summary>Średnia ocen z tabeli reviews</summary>
         public decimal AverageRating { get; set; }
         public int TotalReviews { get; set; }
-        public List<SpecialistServiceDto> Services { get; set; } = new();
-        public List<ServiceAreaDto> ServiceAreas { get; set; } = new();
+        public List<SpecialistServiceDto> Services { get; set; } = [];
+        public List<ServiceAreaDto> ServiceAreas { get; set; } = [];
     }
 
     /// <summary>Reprezentuje pojedynczą usługę przypisaną do specjalisty</summary>
@@ -42,20 +42,7 @@
     }
 }
 
-namespace H4H_API.Dtos.Auth
-{
-    // TYMCZASOWY DTO dla rejestracji specjalisty
-    public class SpecialistRegisterDto
-    {
-        // To tutaj moj kierownik zrobi pełną wersję
-        public string Email { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
-        public string FirstName { get; set; } = string.Empty;
-        public string LastName { get; set; } = string.Empty;
-    }
-}
-
-namespace H4H_API.Dtos.Client
+namespace H4H_API.DTOs.Specialist
 {
     // DTO do wyszukiwania specjalistów
     public class SearchSpecialistsDto
