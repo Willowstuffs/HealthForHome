@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:specjalist_app/screens/waiting_screen.dart';
 import '../theme/app_theme.dart';
+import '../services/api_service.dart';
 
 
 class CertyficateNurseScreen extends StatefulWidget {
@@ -14,7 +15,6 @@ class _CertyficateNurseScreenState extends State<CertyficateNurseScreen> {
   final _formKey = GlobalKey<FormState>();
   
   
-  final TextEditingController peselController= TextEditingController();
   final TextEditingController pwzController = TextEditingController();
 
   bool isLoading = false;
@@ -23,16 +23,12 @@ class _CertyficateNurseScreenState extends State<CertyficateNurseScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => isLoading = true);
-    //TODO: jak wiktor stworzy api :)
-    //final apiService = ApiService();
+    final apiService = ApiService();
 
     try {
-      // await apiService.register(
-      //   email: emailController.text.trim(),
-      //   password: passwordController.text,
-      //   firstName: firstNameController.text.trim(),
-      //   lastName: lastNameController.text.trim(),
-      // );
+      await apiService.certyficatenurse(
+        licenseNumber: pwzController.text.trim(),
+      );
 
       if (!mounted) return;
 
@@ -86,9 +82,7 @@ Widget build(BuildContext context) {
                     child: Column(
                       children: [
                         const SizedBox(height: 16),
-                        _buildTextField(peselController, 'NIP'),
-                        const SizedBox(height: 16),
-                        _buildTextField(pwzController, 'Numer Księgi Rejestrowej'),
+                        _buildTextField(pwzController, 'numer PWZ')
                         
                       ],
                     ),
@@ -137,28 +131,33 @@ Widget build(BuildContext context) {
   
 
   // Pole tekstowe
-  Widget _buildTextField(TextEditingController controller, String label,
+ Widget _buildTextField(TextEditingController controller, String label,
       {bool obscureText = false, TextInputType keyboardType = TextInputType.text}) {
-    return TextFormField(
-      controller: controller,
-      obscureText: obscureText,
-      keyboardType: keyboardType,
-      validator: (v) => v == null || v.isEmpty ? 'Pole wymagane' : null,
-      decoration: InputDecoration(
-        labelText: label,
-        filled: true,
-        fillColor: AppColors.onPrimary,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+  return TextFormField(
+    controller: controller,
+    obscureText: obscureText,
+    keyboardType: keyboardType,
+    validator: (v) {
+      if (pwzController.text.isEmpty) {
+        return 'Wypełnij';
+      }
+      return null; 
+    },
+    decoration: InputDecoration(
+      labelText: label,
+      filled: true,
+      fillColor: AppColors.onPrimary,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
       ),
-    );
-  }
+    ),
+  );
+}
   Widget _buildLogoSection(){
     return Column(
       children: [
         Image.asset(
-          'lib/images/kot.jpg',
+          'lib/images/aaa.png',
           width: 150,
           height: 150,
           ),
@@ -170,7 +169,6 @@ Widget build(BuildContext context) {
   @override
   void dispose() {
     
-    peselController.dispose();
     pwzController.dispose();
     
     super.dispose();

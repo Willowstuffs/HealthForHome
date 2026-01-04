@@ -10,7 +10,6 @@ class AppColors {
   static const Color secondary = Color(0xFF8AA39B);
   static const Color outline = Color(0xFFD1D5DB);
 }
-
 class AppTheme {
   static final lightTheme = ThemeData(
     primaryColor: AppColors.primary,

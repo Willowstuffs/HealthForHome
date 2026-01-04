@@ -1,44 +1,58 @@
 import 'package:flutter/material.dart';
-import 'package:specjalist_app/screens/maintoolbar_screen.dart';
+import 'package:specjalist_app/screens/login_screen.dart';
 import '../theme/app_theme.dart';
 
+import '../services/api_service.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+  String? selectedSpecialization;
+  final List<String> specializations = [
+    'Pielęgniarz',
+    'Rehabilitant'
+  ];
+  final TextEditingController firstNameController = TextEditingController();
+  final TextEditingController lastNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  final TextEditingController repeatPasswordController = TextEditingController();
 
   bool isLoading = false;
 
-  Future<void> _login() async {
+  Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => isLoading = true);
-    //TODO: jak wiktor stworzy api :)
-    //final apiService = ApiService();
+    final apiService = ApiService();
 
     try {
-      // await apiService.login(
-      //   email: emailController.text.trim(),
-      //   password: passwordController.text,
-      // );
-
-       if (!mounted) return;
-
+      await apiService.registerSpecialist(
+      email: emailController.text.trim(),
+      password: passwordController.text,
+      firstName: firstNameController.text.trim(),
+      lastName: lastNameController.text.trim(),
+      specialization: mapSpecializationToProfession(selectedSpecialization!),
+    );
     
-    
-      Navigator.pushReplacement(
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
         context,
-        MaterialPageRoute(builder: (_) => const MainScreen()),
-      );
+      ).showSnackBar(const SnackBar(content: Text('Konto zostało utworzone')));
+
+      Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => LoginScreen()),
+            );
     } catch (e) {
       if (!mounted) return;
 
@@ -79,7 +93,12 @@ Widget build(BuildContext context) {
                     key: _formKey,
                     child: Column(
                       children: [
-                       
+                        _buildDropdownField(),
+                        const SizedBox(height: 16),
+                        _buildTextField(firstNameController, 'Imię'),
+                        const SizedBox(height: 16),
+                        _buildTextField(lastNameController, 'Nazwisko'),
+                        const SizedBox(height: 16),
                         _buildTextField(
                           emailController,
                           'Email',
@@ -88,7 +107,11 @@ Widget build(BuildContext context) {
                         const SizedBox(height: 16),
                         _buildTextField(passwordController, 'Hasło', obscureText: true),
                         const SizedBox(height: 16),
-                        
+                        _buildTextField(
+                          repeatPasswordController,
+                          'Powtórz hasło',
+                          obscureText: true,
+                        ),
                       ],
                     ),
                   ),
@@ -99,7 +122,7 @@ Widget build(BuildContext context) {
                 width: 250,
                 height: 53, // wysokość przycisku
                 child: ElevatedButton(
-                  onPressed: isLoading ? null : _login,
+                  onPressed: isLoading ? null : _register,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.onSurface, 
                     foregroundColor: AppColors.surface, 
@@ -117,7 +140,7 @@ Widget build(BuildContext context) {
                           ),
                         )
                       : const Text(
-                          'Zaloguj się',
+                          'Załóż konto',
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                 ),
@@ -132,6 +155,32 @@ Widget build(BuildContext context) {
 }
 
 
+// Lista rozwijana ze specjalizacjami
+  Widget _buildDropdownField() {
+    return DropdownButtonFormField<String>(
+      initialValue: selectedSpecialization,
+      items: specializations
+          .map((s) => DropdownMenuItem(
+                value: s,
+                child: Text(s),
+              ))
+          .toList(),
+      onChanged: (value) {
+        setState(() {
+          selectedSpecialization = value;
+        });
+      },
+      decoration: InputDecoration(
+        labelText: 'Specjalizacja',
+        filled: true,
+        fillColor: AppColors.onPrimary,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      validator: (v) => v == null ? 'Wybierz specjalizację' : null,
+    );
+  }
 
   // Pole tekstowe
   Widget _buildTextField(TextEditingController controller, String label,
@@ -164,11 +213,23 @@ Widget build(BuildContext context) {
       ],
     );
   }
+  String mapSpecializationToProfession(String specialization) {
+  switch (specialization) {
+    case 'Pielęgniarz':
+      return 'nurse';
+    case 'Rehabilitant':
+      return 'physiotherapist';
+    default:
+      throw Exception('Nieobsługiwana specjalizacja: $specialization');
+  }
+}
   @override
   void dispose() {
+    firstNameController.dispose();
+    lastNameController.dispose();
     emailController.dispose();
     passwordController.dispose();
-    
+    repeatPasswordController.dispose();
     super.dispose();
   }
 }

@@ -42,7 +42,7 @@ class HomeScreenState extends State<HomeScreen> {
     return Column(
       children: [
         Image.asset(
-          'lib/images/kot.jpg',
+          'lib/images/aaa.png',
           width: 150,
           height: 150,
           ),

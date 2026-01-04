@@ -10,6 +10,7 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
   dio: ^5.9.0
+  flutter_secure_storage: ^9.0.0
 
 dev_dependencies:
   flutter_test:
@@ -20,6 +21,7 @@ flutter:
   uses-material-design: true
   assets:
     - lib/images/kot.jpg
+    - lib/images/aaa.png
     - lib/images/ikona1.png
     - lib/images/ikona2.png
     - lib/images/ikona3.png

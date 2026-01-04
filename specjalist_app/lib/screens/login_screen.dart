@@ -1,68 +1,88 @@
 import 'package:flutter/material.dart';
+import 'package:specjalist_app/screens/certfikate_nurse_screen.dart';
+import 'package:specjalist_app/screens/certyficate_notnurse_screen.dart';
+import 'package:specjalist_app/screens/maintoolbar_screen.dart';
+import 'package:specjalist_app/screens/waiting_screen.dart';
 import '../theme/app_theme.dart';
-import '../screens/certyficate_notnurse_screen.dart';
-import '../screens/certfikate_nurse_screen.dart';
+import '../services/api_service.dart';
+import '../services/token_storage.dart';
 
 
-class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  String? selectedSpecialization;
-  final List<String> specializations = [
-    'Pielęgniarz',
-    'Rechabilitant',
-    'Masażysta',
-  ];
-  final TextEditingController firstNameController = TextEditingController();
-  final TextEditingController lastNameController = TextEditingController();
+  
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController repeatPasswordController = TextEditingController();
 
   bool isLoading = false;
 
-  Future<void> _register() async {
+  Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => isLoading = true);
-    //TODO: jak wiktor stworzy api :)
-    //final apiService = ApiService();
+    final apiService = ApiService();
 
     try {
-      // await apiService.register(
-      //   email: emailController.text.trim(),
-      //   password: passwordController.text,
-      //   firstName: firstNameController.text.trim(),
-      //   lastName: lastNameController.text.trim(),
-      // );
+      //logowanie
+      final loginResponse = await apiService.login(
+        email: emailController.text.trim(),
+        password: passwordController.text,
+      );
+      //zapisywanie tokena
+      await TokenStorage.saveTokens(
+        accessToken: loginResponse.accessToken,
+        refreshToken: loginResponse.refreshToken,
+      );
 
       if (!mounted) return;
+      //pobieranie danych o użytkownku
+      final profile = await apiService.getProfile();
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Konto zostało utworzone')));
+      final String specialization = (profile['professionalTitle'] ?? profile['ProfessionalTitle'] ?? '').toString().toLowerCase();
 
-      if (selectedSpecialization == 'Pielęgniarz') {
-      Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => CertyficateNurseScreen()),
-            );
-    } else if (selectedSpecialization == 'Masażysta' ||
-               selectedSpecialization == 'Rechabilitant') {
-      Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => CertyficateNotnurseScreen()),
-            );
-    }
+      final bool isVerified = profile['isVerified'] == true || profile['IsVerified'] == true;
+      // 4️⃣ VERIFIED → MAIN
+      if (isVerified) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MainScreen()),
+        );
+        return;
+      }
+
+      final qualification = await apiService.getQualification();
+
+      final hasLicense = qualification != null && 
+                   (qualification['licenseNumber'] ?? qualification['LicenseNumber']) != null &&
+                   (qualification['licenseNumber'] ?? qualification['LicenseNumber']).toString().isNotEmpty;
+
+      if (!hasLicense) {
+        if (specialization == 'nurse') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const CertyficateNurseScreen()),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const CertyficateNotnurseScreen()),
+          );
+        }
+      } else {
+         Navigator.pushReplacement(
+           context,
+           MaterialPageRoute(builder: (_) => const WaitingScreen()),
+        );
+       }
     } catch (e) {
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
       );
@@ -100,12 +120,7 @@ Widget build(BuildContext context) {
                     key: _formKey,
                     child: Column(
                       children: [
-                        _buildDropdownField(),
-                        const SizedBox(height: 16),
-                        _buildTextField(firstNameController, 'Imię'),
-                        const SizedBox(height: 16),
-                        _buildTextField(lastNameController, 'Nazwisko'),
-                        const SizedBox(height: 16),
+                       
                         _buildTextField(
                           emailController,
                           'Email',
@@ -114,11 +129,7 @@ Widget build(BuildContext context) {
                         const SizedBox(height: 16),
                         _buildTextField(passwordController, 'Hasło', obscureText: true),
                         const SizedBox(height: 16),
-                        _buildTextField(
-                          repeatPasswordController,
-                          'Powtórz hasło',
-                          obscureText: true,
-                        ),
+                        
                       ],
                     ),
                   ),
@@ -129,7 +140,7 @@ Widget build(BuildContext context) {
                 width: 250,
                 height: 53, // wysokość przycisku
                 child: ElevatedButton(
-                  onPressed: isLoading ? null : _register,
+                  onPressed: isLoading ? null : _login,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.onSurface, 
                     foregroundColor: AppColors.surface, 
@@ -147,7 +158,7 @@ Widget build(BuildContext context) {
                           ),
                         )
                       : const Text(
-                          'Załóż konto',
+                          'Zaloguj się',
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                 ),
@@ -162,32 +173,6 @@ Widget build(BuildContext context) {
 }
 
 
-// Lista rozwijana ze specjalizacjami
-  Widget _buildDropdownField() {
-    return DropdownButtonFormField<String>(
-      initialValue: selectedSpecialization,
-      items: specializations
-          .map((s) => DropdownMenuItem(
-                value: s,
-                child: Text(s),
-              ))
-          .toList(),
-      onChanged: (value) {
-        setState(() {
-          selectedSpecialization = value;
-        });
-      },
-      decoration: InputDecoration(
-        labelText: 'Specjalizacja',
-        filled: true,
-        fillColor: AppColors.onPrimary,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-      validator: (v) => v == null ? 'Wybierz specjalizację' : null,
-    );
-  }
 
   // Pole tekstowe
   Widget _buildTextField(TextEditingController controller, String label,
@@ -211,7 +196,7 @@ Widget build(BuildContext context) {
     return Column(
       children: [
         Image.asset(
-          'lib/images/kot.jpg',
+          'lib/images/aaa.png',
           width: 150,
           height: 150,
           ),
@@ -222,11 +207,9 @@ Widget build(BuildContext context) {
   }
   @override
   void dispose() {
-    firstNameController.dispose();
-    lastNameController.dispose();
     emailController.dispose();
     passwordController.dispose();
-    repeatPasswordController.dispose();
+    
     super.dispose();
   }
 }
