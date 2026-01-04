@@ -1,6 +1,7 @@
 ﻿using H4H_API.DTOs.Auth;
 using H4H_API.DTOs.Common;
 using H4H_API.DTOs.Client;
+using H4H_API.DTOs.Specialist;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -29,6 +30,14 @@ public class AuthController : ControllerBase
         {
             return BadRequest(ApiResponse<RegisterResponse>.ErrorResponse(ex.Message));
         }
+    }
+
+    //Rejestracja specjalisty - endpoint publiczny
+    [HttpPost("register/specialist")]
+    public async Task<ActionResult<ApiResponse<RegisterResponse>>> RegisterSpecialist([FromBody] SpecialistRegisterDto request)
+    {
+        var result = await _authService.RegisterSpecialistAsync(request);
+        return Ok(ApiResponse<RegisterResponse>.SuccessResponse(result, "Zarejestrowano pomyślnie. Oczekiwanie na weryfikacje."));
     }
 
     // Logowanie - endpoint publiczny
