@@ -34,3 +34,25 @@ Zmiana SpecialistService.cs by uwzględnić zapytania i zmianę numeru PWZ (Lice
 Dodano oba endpointy do kontrolera, usunięto stare try-catche które były niepotrzebne.
 
 Wypchnięto na Wiktor, nowy branch by utrzymać konsensus nazw.
+
+Commit 3: 10.01.2026
+
+Stworzono SpecialistServiceManageDto.cs do dodawania/edycji usługi. W tej chwili nałożyłem range na DurationMinutes, od 5 minut do 12 godzin. Jeśli niepotrzebne lub potrzebna zmiana, mogę to zrobić.
+
+Stworzono ServiceAreaManageDto.cs do ustalania zasięgu dojazdu specjalisty. Dodano dwa zakomentowane pola pod przyszłą geolokalizacje Latitude i Longitude. MaxDistanceKm ma zasięg 0-500.
+
+ISpecialistService:
+Dodano sygnatury nowych metod: pobieranie pwz, dodawanie/zmienianie/usuwanie uslug, zarzadzanie zasiegiem uslug
+
+SpecialistService:
+Dodano logike powyzszych metod operujac na tabelach powiazanych. W UpdateServiceAreaAsync zakładamy, że specjalista ma jeden ServiceArea.
+
+Utworzono leksykon błędów w H4H.Core/Helpers/ErrorCodes.
+
+Zmieniono ApiResponse by obsługiwało ErrorCodes. WAŻNE: ApiResponse, konkretnie ErrorResponse urósł do trzech argumentów. (zarówno ten z typem generycznym jak i bez)
+
+Utworzono H4H.Api/Exceptions/AppException.cs z własnym wyjątkiem
+
+Napisano na nowo ErrorHandlingMiddleware.cs uwzględniając leksykon
+
+Dodano nowe metody do SpecialistController.
