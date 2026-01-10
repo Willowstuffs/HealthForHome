@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using System.Text.Json;
 using H4H_API.DTOs.Common;
+using H4H_API.Exceptions;
 
 namespace H4H_API.Middleware
 {
@@ -31,22 +32,38 @@ namespace H4H_API.Middleware
         {
             _logger.LogError(exception, "An unhandled exception occurred");
 
-            // Mapuj typy wyjątków na kody HTTP
-            var statusCode = exception switch
-            {
-                UnauthorizedAccessException => HttpStatusCode.Unauthorized,  // 401 - brak autoryzacji
-                KeyNotFoundException => HttpStatusCode.NotFound,             // 404 - nie znaleziono
-                ArgumentException => HttpStatusCode.BadRequest,              // 400 - złe żądanie
-                NotImplementedException => HttpStatusCode.NotImplemented,    // 501 - nie zaimplementowano
-                _ => HttpStatusCode.InternalServerError                      // 500 - błąd serwera
-            };
+            // Domyslne wartosci
+            var statusCode = HttpStatusCode.InternalServerError;
+            string? errorCode = null;
+            string message = "Wystąpił nieoczekiwany błąd serwera";
 
-            // Przygotuj odpowiedź w standardowym formacie API
-            var response = ApiResponse.ErrorResponse(
-                statusCode == HttpStatusCode.InternalServerError
-                    ? "Wystąpił nieoczekiwany błąd serwera"
-                    : exception.Message
-            );
+            switch(exception)
+            {
+                case AppException appEx:
+                    statusCode = HttpStatusCode.BadRequest;
+                    errorCode = appEx.ErrorCode;
+                    message = appEx.Message;
+                    break;
+                case UnauthorizedAccessException:
+                    statusCode = HttpStatusCode.Unauthorized;
+                    message = exception.Message;
+                    break;
+                case KeyNotFoundException:
+                    statusCode = HttpStatusCode.NotFound;
+                    message = exception.Message;
+                    break;
+                case ArgumentException:
+                    statusCode = HttpStatusCode.BadRequest;
+                    message = exception.Message;
+                    break;
+                default:
+                    // Dla pozostałych błędów zachowujemy 500 i domyślną wiadomość
+                    break;
+            }
+            ;
+
+            // Przygotuj odpowiedź w zaktualizowanym ApiResponse
+            var response = ApiResponse.ErrorResponse(message, errorCode);
 
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = (int)statusCode;

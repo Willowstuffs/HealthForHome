@@ -1,4 +1,6 @@
-﻿namespace H4H_API.DTOs.Common
+﻿using H4H.Core.Helpers;
+
+namespace H4H_API.DTOs.Common
 {
     /// <summary>
     /// Generyczna klasa odpowiedzi API dla endpointów które zwracają dane
@@ -8,6 +10,7 @@
     {
         public bool Success { get; set; }
         public string Message { get; set; } = string.Empty;
+        public string? ErrorCode { get; set; } //Opcjonalny kod błędu
         public T? Data { get; set; } // Dane zwracane przez endpoint
         public List<string>? Errors { get; set; } // Lista błędów (jeśli success=false)
         public DateTime Timestamp { get; set; } = DateTime.Now; // Znacznik czasu odpowiedzi
@@ -31,13 +34,14 @@
         /// </summary>
         /// <param name="message">Wiadomość błędu</param>
         /// <param name="errors">Opcjonalna lista szczegółów błędów</param>
-        public static ApiResponse<T> ErrorResponse(string message, List<string>? errors = null)
+        public static ApiResponse<T> ErrorResponse(string message, string? errorCode = null, List<string>? errors = null)
         {
             return new ApiResponse<T>
             {
                 Success = false,
                 Message = message,
-                Errors = errors ?? new List<string>()
+                ErrorCode = errorCode,
+                Errors = errors
             };
         }
     }
@@ -49,6 +53,7 @@
     {
         public bool Success { get; set; }
         public string Message { get; set; } = string.Empty;
+        public string? ErrorCode { get; set; }
         public List<string>? Errors { get; set; }
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 
@@ -57,13 +62,14 @@
             return new ApiResponse { Success = true, Message = message };
         }
 
-        public static ApiResponse ErrorResponse(string message, List<string>? errors = null)
+        public static ApiResponse ErrorResponse(string message, string? errorCode = null, List<string>? errors = null)
         {
             return new ApiResponse
             {
                 Success = false,
                 Message = message,
-                Errors = errors ?? new List<string>()
+                ErrorCode = errorCode,
+                Errors = errors
             };
         }
     }

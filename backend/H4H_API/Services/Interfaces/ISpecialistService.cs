@@ -20,5 +20,21 @@ namespace H4H_API.Services.Interfaces
         Task<List<InquiryListItemDto>> GetInquiriesAsync(Guid userId, InquiryFilterDto filters);
         /// <summary>Update numeru pozwolenia wykonywania zawodu specjalisty</summary>
         Task UpdateLicenseNumberAsync(Guid userId, string licenseNumber);
+        /// <summary>Pobiera informacje o numerze PWZ do autoryzacji specjalisty</summary>
+        Task<string?> GetLicenseNumberAsync(Guid userId);
+
+        /// <summary>Dodaje usluge specjalisty</summary>
+        /// <param name="dto">Obiekt DTO z danymi usługi do dodania</param>
+        Task AddServiceAsync(Guid userId, SpecialistServiceManageDto dto);
+        /// <summary>Aktualizuje usluge specjalisty</summary>
+        Task UpdateServiceAsync(Guid userId, Guid serviceId, SpecialistServiceManageDto dto);
+        /// <summary>Usuwa usluge specjalisty</summary>
+        Task DeleteServiceAsync(Guid userId, Guid serviceId);
+        /// <summary>
+        /// Zmienia zasieg uslug specjalisty
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="dto">Obiekt DTO z danymi zasiegu do ustawienia</param>
+        Task UpdateServiceAreaAsync(Guid userId, ServiceAreaManageDto dto);
     }
 }
