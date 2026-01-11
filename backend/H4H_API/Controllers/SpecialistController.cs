@@ -104,9 +104,6 @@ namespace H4H_API.Controllers
         public async Task<ActionResult<ApiResponse<List<ServiceTypeDto>>>> GetServiceTypes()
         {
             var types = await _specialistService.GetServiceTypesAsync();
-            Console.WriteLine("aaa");
-            Console.WriteLine(types);
-            Console.WriteLine("aaa");
             return Ok(ApiResponse<List<ServiceTypeDto>>.SuccessResponse(types, "Pobrano listę typów usług."));
         }
 
