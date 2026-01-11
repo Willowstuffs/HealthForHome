@@ -85,6 +85,31 @@ namespace H4H_API.Controllers
             // Zwracamy null success, jeśli nie ma licencji (to nie błąd, po prostu jeszcze nie dodał)
             return Ok(ApiResponse<string?>.SuccessResponse(license, "Pobrano numer licencji."));
         }
+        /// <summary>Pobiera listę usług wykonywanych przez specjalistę</summary>
+        [HttpGet("services")]
+        public async Task<ActionResult<ApiResponse<List<SpecialistServiceDto>>>> GetServices()
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            var services = await _specialistService.GetServicesAsync(userId);
+
+            return Ok(ApiResponse<List<SpecialistServiceDto>>
+                .SuccessResponse(services, "Pobrano usługi specjalisty."));
+        }
+        /// <summary>
+        /// Pobiera listę wszystkich typów usług (słownikowych)
+        /// </summary>
+        [HttpGet("service-types")]
+        [ProducesResponseType(typeof(ApiResponse<List<ServiceTypeDto>>), 200)]
+        public async Task<ActionResult<ApiResponse<List<ServiceTypeDto>>>> GetServiceTypes()
+        {
+            var types = await _specialistService.GetServiceTypesAsync();
+            Console.WriteLine("aaa");
+            Console.WriteLine(types);
+            Console.WriteLine("aaa");
+            return Ok(ApiResponse<List<ServiceTypeDto>>.SuccessResponse(types, "Pobrano listę typów usług."));
+        }
+
         /// <summary>Dodaje nową usługę do oferty specjalisty</summary>
         /// <param name="dto">Parametr DTO zawierający dane usługi do dodania</param>
         [HttpPost("services")]

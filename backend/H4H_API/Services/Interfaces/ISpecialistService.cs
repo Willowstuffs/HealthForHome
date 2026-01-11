@@ -36,5 +36,17 @@ namespace H4H_API.Services.Interfaces
         /// <param name="userId"></param>
         /// <param name="dto">Obiekt DTO z danymi zasiegu do ustawienia</param>
         Task UpdateServiceAreaAsync(Guid userId, ServiceAreaManageDto dto);
+        /// <summary>
+        /// Pobiera listę usług specjalisty
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        Task<List<SpecialistServiceDto>> GetServicesAsync(Guid userId);
+        /// <summary>
+        /// pobieranie listy typów-usług
+        /// </summary>
+        /// <returns></returns>
+        Task<List<ServiceTypeDto>> GetServiceTypesAsync();
+
     }
 }

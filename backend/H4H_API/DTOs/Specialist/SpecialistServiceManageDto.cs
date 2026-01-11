@@ -22,4 +22,12 @@ namespace H4H_API.DTOs.Specialist
         [MaxLength(500)]
         public string? Description { get; set; }
     }
+    public class ServiceTypeDto
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;
+        public int DefaultDuration { get; set; } // w minutach
+        public string? Description { get; set; }
+    }
 }

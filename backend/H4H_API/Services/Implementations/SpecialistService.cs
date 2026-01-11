@@ -146,6 +146,42 @@ namespace H4H_API.Services.Implementations
             var qualification = specialist.Qualifications.FirstOrDefault();
             return qualification?.LicenseNumber;
         }
+        public async Task<List<SpecialistServiceDto>> GetServicesAsync(Guid userId)
+        {
+            var specialist = await _context.specialists
+                .Include(s => s.Services)
+                    .ThenInclude(ss => ss.ServiceType)
+                .FirstOrDefaultAsync(s => s.UserId == userId)
+                ?? throw new KeyNotFoundException("Profil specjalisty nie istnieje.");
+
+            return specialist.Services
+                .Where(s => s.IsActive)
+                .Select(s => new SpecialistServiceDto
+                {
+                    Id = s.Id,
+                    ServiceName = s.ServiceType.Name,
+                    Category = s.ServiceType.Category ?? "",
+                    DurationMinutes = s.DurationMinutes,
+                    Price = s.Price,
+                    Description = s.Description
+                })
+                .ToList();
+        }
+        public async Task<List<ServiceTypeDto>> GetServiceTypesAsync()
+        {
+            var types = await _context.service_types
+                .Select(st => new ServiceTypeDto
+                {
+                    Id = st.Id,
+                    Name = st.Name,
+                    Category = st.Category ?? string.Empty,
+                    DefaultDuration = st.DefaultDuration ?? 0,
+                    Description = st.Description
+                })
+                .ToListAsync();
+
+            return types;
+        }
         public async Task AddServiceAsync(Guid userId, SpecialistServiceManageDto dto)
         {
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
@@ -167,7 +203,8 @@ namespace H4H_API.Services.Implementations
                 DurationMinutes = dto.DurationMinutes,
                 Description = dto.Description,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                //CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
             };
 
             _context.specialist_services.Add(newService);
