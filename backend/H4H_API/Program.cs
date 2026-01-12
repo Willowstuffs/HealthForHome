@@ -1,27 +1,17 @@
-using Microsoft.EntityFrameworkCore;
-using H4H.Data;
 using H4H.Core.Interfaces;
+using H4H.Data;
 using H4H.Data.Repositories;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using H4H_API.Middleware;
-using H4H_API.Services.Interfaces;
-using H4H_API.Services.Implementations;
 using H4H_API.Helpers;
-using Microsoft.OpenApi.Models;
-using Microsoft.AspNetCore.Authorization;
-using Swashbuckle.AspNetCore.SwaggerGen;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
 using H4H_API.Middleware;
-using H4H_API.Services.Interfaces;
 using H4H_API.Services.Implementations;
-using H4H_API.Helpers;
-using Microsoft.OpenApi.Models;
+using H4H_API.Services.Interfaces;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,40 +19,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-
-builder.Services.AddSwaggerGen(options =>
-{
-    // DODANA KONFIGURACJA AUTORYZACJI W SWAGGERZE (przez Bearer token)
-    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        Description = "Wprowad� token JWT w formacie: Bearer {tw�j_token}",
-        Name = "Authorization",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer",
-        BearerFormat = "JWT"
-    });
-
-    // Wymagaj tokena dla wszystkich endpoint�w
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            Array.Empty<string>() // Pusta lista - token wymagany
-        }
-    });
-
-    options.OperationFilter<SecurityRequirementsOperationFilter>();
-});
-
-builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 builder.Services.AddSwaggerGen(options =>
 {
@@ -135,7 +91,6 @@ builder.Services.AddScoped<ISpecialistService, SpecialistService>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFlutter",
-    options.AddPolicy("AllowFlutter",
         policy => policy
             .AllowAnyOrigin()  // Ka�de �r�d�o
             .AllowAnyMethod()
@@ -169,38 +124,6 @@ app.MapControllers();
 
 app.Run();
 
-
-
-public class SecurityRequirementsOperationFilter : IOperationFilter
-{
-    public void Apply(OpenApiOperation operation, OperationFilterContext context)
-    {
-        var authAttributes = context.MethodInfo.DeclaringType.GetCustomAttributes(true)
-            .Union(context.MethodInfo.GetCustomAttributes(true))
-            .OfType<AuthorizeAttribute>();
-
-        if (authAttributes.Any())
-        {
-            operation.Security = new List<OpenApiSecurityRequirement>
-            {
-                new OpenApiSecurityRequirement
-                {
-                    {
-                        new OpenApiSecurityScheme
-                        {
-                            Reference = new OpenApiReference
-                            {
-                                Type = ReferenceType.SecurityScheme,
-                                Id = "Bearer"
-                            }
-                        },
-                        Array.Empty<string>()
-                    }
-                }
-            };
-        }
-    }
-}
 
 
 public class SecurityRequirementsOperationFilter : IOperationFilter
