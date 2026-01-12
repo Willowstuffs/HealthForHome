@@ -1,12 +1,12 @@
 ﻿using AutoMapper;
-using H4H.Data;
-using H4H_API.Dtos.Client;
 using H4H_API.DTOs.Appointments;
-using H4H_API.DTOs.Client;
 using H4H_API.DTOs.Common;
 using H4H_API.DTOs.Specialist;
+using H4H.Core.Models;
+using H4H.Data;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using H4H_API.DTOs.Client;
 
 namespace H4H_API.Services.Implementations
 {
@@ -97,7 +97,7 @@ namespace H4H_API.Services.Implementations
                     client.DateOfBirth = dto.DateOfBirth.Value;
 
                 if (!string.IsNullOrEmpty(dto.Address))
-                    client.User.UpdatedAt = DateTime.UtcNow;
+              client.User.UpdatedAt = DateTime.UtcNow;      
                 client.Address = dto.Address;
 
                 if (!string.IsNullOrEmpty(dto.EmergencyContact))

@@ -1,5 +1,4 @@
 ﻿using H4H_API.DTOs.Appointments;
-using H4H_API.Dtos.Client;
 using H4H_API.DTOs.Client;
 using H4H_API.DTOs.Common;
 using H4H_API.DTOs.Specialist;

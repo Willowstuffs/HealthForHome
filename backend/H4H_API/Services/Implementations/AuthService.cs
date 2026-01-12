@@ -1,10 +1,10 @@
+﻿using H4H_API.DTOs.Auth;
 using H4H.Core.Models;
-using H4H.Data;
-using H4H_API.Dtos.Auth;
-using H4H_API.DTOs.Auth;
-using H4H_API.DTOs.Client;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using H4H.Data;
+using H4H_API.DTOs.Client;
+using H4H_API.DTOs.Specialist;
 
 namespace H4H_API.Services.Implementations
 {
@@ -169,48 +169,66 @@ namespace H4H_API.Services.Implementations
         /// <exception cref="ArgumentException">Thrown if a user with the specified email address already exists.</exception>
         public async Task<RegisterResponse> RegisterSpecialistAsync(SpecialistRegisterDto request)
         {
-            // PODSTAWOWA IMPLEMENTACJA - DRUGA OSOBA ROZWINIE
+            //sprawdzenie czy email jest wolny
             if (await _context.users.AnyAsync(u => u.Email == request.Email))
-                throw new ArgumentException("Użytkownik o podanym emailu już istnieje");
+                throw new ArgumentException("Użytkownik o podanym adresie email już istnieje");
 
-            // Utwórz użytkownika
-            var user = new User
+            // Oba musza sie powiesc albo zaden
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                Id = Guid.NewGuid(),
-                Email = request.Email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                UserType = "specialist",
-                IsActive = true,
-                CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now
-            };
+                // Utwórz użytkownika w tabeli users
+                var user = new User
+                {
+                    Id = Guid.NewGuid(),
+                    Email = request.Email,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                    UserType = "specialist",
+                    IsActive = true, //logowanie mozliwe, ale profil specjalisty wymaga weryfikacji
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now
+                };
 
-            _context.users.Add(user);
+                _context.users.Add(user);
+                await _context.SaveChangesAsync();
 
-            // Utwórz specjalistę (tylko podstawowe dane)
-            var specialist = new Specialist
+                // Tworzenie profilu specjalisty w tabeli specialists
+                var specialist = new Specialist
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = user.Id,
+                    FirstName = request.FirstName,
+                    LastName = request.LastName,
+                    ProfessionalTitle = request.Specialization,
+                    
+                    //DEFAULTOWE dla nowej rejestracji
+                    IsVerified = false,
+                    VerificationStatus = "pending",
+                    HourlyRate = null,
+                    Bio = string.Empty,
+                    AverageRating = 0,
+                    TotalReviews = 0,
+                    CreatedAt = DateTime.Now
+                };
+
+                _context.specialists.Add(specialist);
+
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync(); //jesli sie powiodlo, zatwierdz transakcje
+
+                return new RegisterResponse
+                {
+                    Message = "Rejestracja specjalisty rozpoczęta. Wymagana weryfikacja dokumentów.",
+                    UserId = user.Id,
+                    RequiresEmailVerification = true, //tylko dla funkcji usera!
+                };
+
+            } catch (Exception)
             {
-                Id = Guid.NewGuid(),
-                UserId = user.Id,
-                FirstName = request.FirstName,
-                LastName = request.LastName,
-                IsVerified = false,
-                VerificationStatus = "pending",
-                AverageRating = 0,
-                TotalReviews = 0,
-                CreatedAt = DateTime.Now
-            };
-
-            _context.specialists.Add(specialist);
-
-            await _context.SaveChangesAsync();
-
-            return new RegisterResponse
-            {
-                Message = "Rejestracja specjalisty rozpoczęta. Wymagana weryfikacja dokumentów.",
-                UserId = user.Id,
-                RequiresEmailVerification = true
-            };
+                await transaction.RollbackAsync(); //w przypadku bledu, wycofaj zmiany
+                throw; //przekaz dalej wyjatek do middleware error handling
+            }
         }
 
         /// <summary>
@@ -284,10 +302,7 @@ namespace H4H_API.Services.Implementations
         /// <exception cref="UnauthorizedAccessException">Thrown if the current password provided does not match the user's existing password.</exception>
         public async Task<bool> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword)
         {
-            var user = await _context.users.FindAsync(userId);
-            if (user == null)
-                throw new ArgumentException("Użytkownik nie istnieje");
-
+            var user = await _context.users.FindAsync(userId) ?? throw new ArgumentException("Użytkownik nie istnieje");
             if (!BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
                 throw new UnauthorizedAccessException("Bieżące hasło jest nieprawidłowe");
 

@@ -1,17 +1,17 @@
-using H4H.Core.Interfaces;
-using H4H.Data;
-using H4H.Data.Repositories;
-using H4H_API.Helpers;
-using H4H_API.Middleware;
-using H4H_API.Services.Implementations;
-using H4H_API.Services.Interfaces;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using H4H.Data;
+using H4H.Core.Interfaces;
+using H4H.Data.Repositories;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
-using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text;
+using H4H_API.Middleware;
+using H4H_API.Services.Interfaces;
+using H4H_API.Services.Implementations;
+using H4H_API.Helpers;
+using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Authorization;
+using Swashbuckle.AspNetCore.SwaggerGen;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,7 +25,7 @@ builder.Services.AddSwaggerGen(options =>
     // DODANA KONFIGURACJA AUTORYZACJI W SWAGGERZE (przez Bearer token)
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "Wprowadï¿½ token JWT w formacie: Bearer {twï¿½j_token}",
+        Description = "WprowadŸ token JWT w formacie: Bearer {twój_token}",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.ApiKey,
@@ -33,7 +33,7 @@ builder.Services.AddSwaggerGen(options =>
         BearerFormat = "JWT"
     });
 
-    // Wymagaj tokena dla wszystkich endpointï¿½w
+    // Wymagaj tokena dla wszystkich endpointów
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -58,8 +58,11 @@ builder.Services.AddAutoMapper(typeof(MappingProfile));
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
-        b => b.MigrationsAssembly("H4H.Data")
-    ));
+        npgsqlOptions =>
+        {
+            npgsqlOptions.UseNetTopologySuite(); // do geo
+            npgsqlOptions.MigrationsAssembly("H4H.Data");
+        }));
 
 // Add logging
 builder.Services.AddLogging();
@@ -72,7 +75,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             ValidateIssuer = true,
             ValidateAudience = true,
-            ValidateLifetime = true, // Sprawdzaj czy token nie wygasï¿½
+            ValidateLifetime = true, // Sprawdzaj czy token nie wygas³
             ValidateIssuerSigningKey = true, // Weryfikuj klucz podpisu
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
@@ -81,18 +84,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// Rejestracja serwisï¿½w
+// Rejestracja serwisów
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<ISpecialistService, SpecialistService>();
+builder.Services.AddScoped<IGeocoder, Geocoder>();
+builder.Services.AddHttpClient();
 
-// CORS dla frontendu jeï¿½li Flutter debuguje przez przeglï¿½darkï¿½
+
+// CORS dla frontendu jeœli Flutter debuguje przez przegl¹darkê
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFlutter",
         policy => policy
-            .AllowAnyOrigin()  // Kaï¿½de ï¿½rï¿½dï¿½o
+            .AllowAnyOrigin()  // Ka¿de Ÿród³o
             .AllowAnyMethod()
             .AllowAnyHeader());
 });
@@ -112,12 +118,8 @@ if (app.Environment.IsDevelopment())
 // Middleware 
 app.UseMiddleware<ErrorHandlingMiddleware>();
 
-// Middleware 
-app.UseMiddleware<ErrorHandlingMiddleware>();
-
 app.UseHttpsRedirection();
 app.UseCors("AllowFlutter");
-app.UseAuthentication();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

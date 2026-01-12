@@ -1,6 +1,7 @@
-using H4H_API.DTOs.Auth;
-using H4H_API.DTOs.Client;
+﻿using H4H_API.DTOs.Auth;
 using H4H_API.DTOs.Common;
+using H4H_API.DTOs.Client;
+using H4H_API.DTOs.Specialist;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

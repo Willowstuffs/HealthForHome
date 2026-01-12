@@ -1,4 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.Drawing;
+using NetTopologySuite.Geometries;
 
 namespace H4H.Core.Models
 {
@@ -28,6 +30,22 @@ namespace H4H.Core.Models
 
         [Column("created_at", TypeName = "timestamp without time zone")]
         public DateTime CreatedAt { get; set; } = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified);
+
+        // ====== NOWE POLA DLA GEOLOKALIZACJI ======
+
+        /// <summary>
+        /// Punkt geograficzny adresu klienta
+        /// </summary>
+        [Column("address_point", TypeName = "geography(Point, 4326)")]
+        public NetTopologySuite.Geometries.Point? AddressPoint { get; set; }
+
+        /// <summary>
+        /// Kiedy zgeokodowano adres klienta
+        /// </summary>
+        [Column("address_geocoded_at", TypeName = "timestamp without time zone")]
+        public DateTime? AddressGeocodedAt { get; set; }
+
+        // ==========================================
 
         public virtual User User { get; set; } = null!;
         public virtual ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();

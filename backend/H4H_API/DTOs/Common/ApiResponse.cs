@@ -1,4 +1,6 @@
-﻿namespace H4H_API.DTOs.Common
+﻿using H4H.Core.Helpers;
+
+namespace H4H_API.DTOs.Common
 {
     /// <summary>
     /// Represents a standardized response returned by an API operation, including status, message, data, and error
@@ -12,6 +14,7 @@
     {
         public bool Success { get; set; }
         public string Message { get; set; } = string.Empty;
+        public string? ErrorCode { get; set; } //Opcjonalny kod błędu
         public T? Data { get; set; } // Dane zwracane przez endpoint
         public List<string>? Errors { get; set; } // Lista błędów (jeśli success=false)
         public DateTime Timestamp { get; set; } = DateTime.Now; // Znacznik czasu odpowiedzi
@@ -33,7 +36,6 @@
                 Data = data
             };
         }
-
         /// <summary>
         /// Creates an error response with the specified message and optional list of error details.
         /// </summary>
@@ -47,7 +49,8 @@
             {
                 Success = false,
                 Message = message,
-                Errors = errors ?? new List<string>()
+                ErrorCode = errorCode,
+                Errors = errors
             };
         }
     }
@@ -62,6 +65,7 @@
     {
         public bool Success { get; set; }
         public string Message { get; set; } = string.Empty;
+        public string? ErrorCode { get; set; }
         public List<string>? Errors { get; set; }
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 
@@ -88,7 +92,8 @@
             {
                 Success = false,
                 Message = message,
-                Errors = errors ?? new List<string>()
+                ErrorCode = errorCode,
+                Errors = errors
             };
         }
     }

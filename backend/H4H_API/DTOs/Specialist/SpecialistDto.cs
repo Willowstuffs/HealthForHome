@@ -15,10 +15,11 @@
         public string? Bio { get; set; }
         public decimal? HourlyRate { get; set; }
         public bool IsVerified { get; set; }
+        /// <summary>Średnia ocen z tabeli reviews</summary>
         public decimal AverageRating { get; set; }
         public int TotalReviews { get; set; }
-        public List<SpecialistServiceDto> Services { get; set; } = new();
-        public List<ServiceAreaDto> ServiceAreas { get; set; } = new();
+        public List<SpecialistServiceDto> Services { get; set; } = [];
+        public List<ServiceAreaDto> ServiceAreas { get; set; } = [];
     }
 
     /// <summary>
@@ -49,34 +50,14 @@
         public string City { get; set; } = string.Empty;
         public string? PostalCode { get; set; }
         public int MaxDistanceKm { get; set; }
+        /// <summary>Czy to główny obszar działalności?</summary>
         public bool IsPrimary { get; set; }
     }
 }
 
-namespace H4H_API.Dtos.Auth
+namespace H4H_API.DTOs.Specialist
 {
-    /// <summary>
-    /// Represents the data required to register a new specialist user.
-    /// </summary>
-    public class SpecialistRegisterDto
-    {
-        // To tutaj moj kierownik zrobi pełną wersję
-        public string Email { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
-        public string FirstName { get; set; } = string.Empty;
-        public string LastName { get; set; } = string.Empty;
-    }
-}
-
-namespace H4H_API.Dtos.Client
-{
-    /// <summary>
-    /// Represents the criteria used to search for specialists, including location, profession, service type, rating,
-    /// price, and availability filters.
-    /// </summary>
-    /// <remarks>Use this data transfer object to specify search parameters when querying for specialists. All
-    /// properties are optional; only set the fields relevant to your search. Properties such as profession and service
-    /// type may be subject to predefined values depending on the application's domain.</remarks>
+    // DTO do wyszukiwania specjalistów
     public class SearchSpecialistsDto
     {
         public string? City { get; set; }
