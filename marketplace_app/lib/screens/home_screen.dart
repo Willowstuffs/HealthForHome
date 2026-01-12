@@ -9,6 +9,7 @@ import '../../widgets/appointment_card.dart';
 import '../../data/mock_data.dart';
 import '../../models/client_profile.dart'; // Import ClientProfile
 import '../../theme/app_theme.dart';
+import '../../screens/map_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -126,7 +127,7 @@ class HomeScreenState extends State<HomeScreen> {
         );
         break;
       case 2:
-        bodyContent = const Center(child: Text("Mapa (Wkrótce)"));
+        bodyContent = const MapScreen();
         break;
       case 3:
         bodyContent = const Center(child: Text("Kalendarz (Wkrótce)"));

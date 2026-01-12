@@ -11,6 +11,8 @@ dependencies:
     sdk: flutter
   flutter_osm_plugin: ^1.4.3
   dio: ^5.9.0
+  flutter_map: ^8.2.2
+  latlong2: ^0.9.1
 
 dev_dependencies:
   flutter_test:
