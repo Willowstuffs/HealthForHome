@@ -163,6 +163,7 @@ namespace H4H_API.Services.Implementations
                     Category = s.ServiceType.Category ?? "",
                     DurationMinutes = s.DurationMinutes,
                     Price = s.Price,
+                    ServiceTypeId = s.ServiceTypeId,
                     Description = s.Description
                 })
                 .ToList();

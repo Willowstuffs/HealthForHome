@@ -27,6 +27,7 @@
         public string ServiceName { get; set; } = string.Empty;
         public string Category { get; set; } = string.Empty;
         public int DurationMinutes { get; set; }
+        public Guid ServiceTypeId { get; set; }
         public decimal Price { get; set; }
         public string? Description { get; set; }
     }
