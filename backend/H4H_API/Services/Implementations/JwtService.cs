@@ -1,4 +1,4 @@
-﻿using H4H.Core.Models;
+using H4H.Core.Models;
 using H4H.Data;
 using H4H_API.Services.Interfaces;
 using Microsoft.IdentityModel.Tokens;

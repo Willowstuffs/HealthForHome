@@ -12,6 +12,16 @@ using H4H_API.Helpers;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.Authorization;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using H4H_API.Middleware;
+using H4H_API.Services.Interfaces;
+using H4H_API.Services.Implementations;
+using H4H_API.Helpers;
+using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Authorization;
+using Swashbuckle.AspNetCore.SwaggerGen;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,7 +35,7 @@ builder.Services.AddSwaggerGen(options =>
     // DODANA KONFIGURACJA AUTORYZACJI W SWAGGERZE (przez Bearer token)
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "WprowadŸ token JWT w formacie: Bearer {twój_token}",
+        Description = "Wprowadï¿½ token JWT w formacie: Bearer {twï¿½j_token}",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.ApiKey,
@@ -33,7 +43,41 @@ builder.Services.AddSwaggerGen(options =>
         BearerFormat = "JWT"
     });
 
-    // Wymagaj tokena dla wszystkich endpointów
+    // Wymagaj tokena dla wszystkich endpointï¿½w
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>() // Pusta lista - token wymagany
+        }
+    });
+
+    options.OperationFilter<SecurityRequirementsOperationFilter>();
+});
+
+builder.Services.AddAutoMapper(typeof(MappingProfile));
+
+builder.Services.AddSwaggerGen(options =>
+{
+    // DODANA KONFIGURACJA AUTORYZACJI W SWAGGERZE (przez Bearer token)
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "Wprowadï¿½ token JWT w formacie: Bearer {twï¿½j_token}",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer",
+        BearerFormat = "JWT"
+    });
+
+    // Wymagaj tokena dla wszystkich endpointï¿½w
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -72,7 +116,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             ValidateIssuer = true,
             ValidateAudience = true,
-            ValidateLifetime = true, // Sprawdzaj czy token nie wygas³
+            ValidateLifetime = true, // Sprawdzaj czy token nie wygasï¿½
             ValidateIssuerSigningKey = true, // Weryfikuj klucz podpisu
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
@@ -81,17 +125,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// Rejestracja serwisów
+// Rejestracja serwisï¿½w
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IClientService, ClientService>();
+builder.Services.AddScoped<ISpecialistService, SpecialistService>();
 
-// CORS dla frontendu jeœli Flutter debuguje przez przegl¹darkê
+// CORS dla frontendu jeï¿½li Flutter debuguje przez przeglï¿½darkï¿½
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFlutter",
+    options.AddPolicy("AllowFlutter",
         policy => policy
-            .AllowAnyOrigin()  // Ka¿de Ÿród³o
+            .AllowAnyOrigin()  // Kaï¿½de ï¿½rï¿½dï¿½o
             .AllowAnyMethod()
             .AllowAnyHeader());
 });
@@ -111,14 +157,50 @@ if (app.Environment.IsDevelopment())
 // Middleware 
 app.UseMiddleware<ErrorHandlingMiddleware>();
 
+// Middleware 
+app.UseMiddleware<ErrorHandlingMiddleware>();
+
 app.UseHttpsRedirection();
 app.UseCors("AllowFlutter");
+app.UseAuthentication();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
 
+
+
+public class SecurityRequirementsOperationFilter : IOperationFilter
+{
+    public void Apply(OpenApiOperation operation, OperationFilterContext context)
+    {
+        var authAttributes = context.MethodInfo.DeclaringType.GetCustomAttributes(true)
+            .Union(context.MethodInfo.GetCustomAttributes(true))
+            .OfType<AuthorizeAttribute>();
+
+        if (authAttributes.Any())
+        {
+            operation.Security = new List<OpenApiSecurityRequirement>
+            {
+                new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        Array.Empty<string>()
+                    }
+                }
+            };
+        }
+    }
+}
 
 
 public class SecurityRequirementsOperationFilter : IOperationFilter

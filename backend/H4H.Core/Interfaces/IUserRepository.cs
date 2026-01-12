@@ -3,6 +3,7 @@
 namespace H4H.Core.Interfaces
 {
     // Interfejs repozytorium użytkowników - definiuje kontrakt dla dostępu do danych
+    // Interfejs repozytorium użytkowników - definiuje kontrakt dla dostępu do danych
     public interface IUserRepository
     {
         /// <summary>

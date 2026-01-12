@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using H4H_API.DTOs.Client;
+using H4H_API.DTOs.Specialist;
 using H4H.Core.Models;
 
 namespace H4H_API.Helpers
@@ -22,6 +23,11 @@ namespace H4H_API.Helpers
 
             // Mapowanie dla aktualizacji - ClientUpdateDto na User
             CreateMap<ClientUpdateDto, User>();
+
+            //Mapowanie z modelu Specialist na SpecialistDto
+            CreateMap<Specialist, SpecialistDto>()
+                .ForMember(dest => dest.IsVerified, opt => opt.MapFrom(src => src.VerificationStatus == "verified"))
+                .ForMember(dest => dest.AverageRating, opt => opt.MapFrom(src => (decimal)src.AverageRating));
         }
     }
 }

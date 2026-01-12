@@ -1,4 +1,4 @@
-﻿using H4H_API.DTOs.Common;
+using H4H_API.DTOs.Common;
 using System.Net;
 using System.Text.Json;
 
