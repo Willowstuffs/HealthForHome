@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:specjalist_app/screens/login_screen.dart';
 import '../theme/app_theme.dart';
+import '../screens/maintoolbar_screen.dart';
 
 
 
@@ -35,7 +35,7 @@ class _WaitingScreenState extends State<WaitingScreen> {
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        MaterialPageRoute(builder: (_) => const MainScreen()),
       );
 
     } catch (e) {
@@ -91,7 +91,7 @@ Widget build(BuildContext context) {
     return Column(
       children: [
         Image.asset(
-          'lib/images/kot.jpg',
+          'lib/images/aaa.png',
           width: 150,
           height: 150,
           ),

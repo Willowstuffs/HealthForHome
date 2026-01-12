@@ -48,22 +48,21 @@ class _LoginScreenState extends State<LoginScreen> {
       final String specialization = (profile['professionalTitle'] ?? profile['ProfessionalTitle'] ?? '').toString().toLowerCase();
 
       final bool isVerified = profile['isVerified'] == true || profile['IsVerified'] == true;
-      // 4️⃣ VERIFIED → MAIN
-      if (isVerified) {
+      
+       if (isVerified) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const MainScreen()),
         );
-        return;
-      }
+         return;
+       }
 
-      final qualification = await apiService.getQualification();
+       final String? license = await apiService.getLicense();
 
-      final hasLicense = qualification != null && 
-                   (qualification['licenseNumber'] ?? qualification['LicenseNumber']) != null &&
-                   (qualification['licenseNumber'] ?? qualification['LicenseNumber']).toString().isNotEmpty;
+      final bool hasLicense =
+        license != null && license.trim().isNotEmpty;
 
-      if (!hasLicense) {
+       if (!hasLicense) {
         if (specialization == 'nurse') {
           Navigator.pushReplacement(
             context,

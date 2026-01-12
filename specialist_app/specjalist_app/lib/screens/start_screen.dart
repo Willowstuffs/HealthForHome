@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../services/api_service.dart';
 
 class StartScreen extends StatefulWidget {
   const StartScreen({super.key});
@@ -10,25 +11,10 @@ class StartScreen extends StatefulWidget {
 
 class _StartScreenState extends State<StartScreen> {
 
+  List<Map<String, dynamic>> inquiries = [];
   bool isLoading = true;
 
-  // przykładowe dane z API
-  final inquiries = [
-    {
-      'name': 'Zbyszek',
-      'startDate': '18.09.2020',
-      'endDate': '20.09.2020',
-      'service': 'Zmiana opatrunku',
-      'distance': '2 km',
-    },
-    {
-      'name': 'Anna',
-      'startDate': '21.09.2020',
-      'endDate': '23.09.2020',
-      'service': 'Pobranie krwi',
-      'distance': '5 km',
-    },
-  ];
+
 
   final upcomingVisits = [
     {
@@ -43,12 +29,30 @@ class _StartScreenState extends State<StartScreen> {
     super.initState();
     _fetchData();
   }
-
+final now = DateTime.now();
   Future<void> _fetchData() async {
-    // symulacja pobrania danych
-    await Future.delayed(const Duration(seconds: 1));
+  try {
+    final fetchedInquiries = await ApiService().getInquiries(
+      patientName: "", // przykładowy filtr
+      dateFrom: DateTime(now.year, now.month, now.day), // dziś od 00:00
+      dateTo: DateTime(now.year, now.month, now.day).add(const Duration(days: 30)),
+    );
+
+    setState(() {
+  inquiries = fetchedInquiries.map((i) => {
+  'name': i['patientName']?.toString() ?? '',
+  'startDate': i['scheduledStart']?.toString() ?? '',
+  'endDate': i['scheduledEnd']?.toString() ?? '',
+  'service': i['serviceName']?.toString() ?? '',
+  'distance': i['patientAddress']?.toString() ?? '',
+}).toList();
+  isLoading = false;
+});
+  } catch (e) {
+    print('Błąd pobierania zapytań: $e');
     setState(() => isLoading = false);
   }
+}
   
 @override
 Widget build(BuildContext context) {
@@ -120,8 +124,7 @@ Widget build(BuildContext context) {
     );
   }
 
-  Widget _buildSection(String title, List<Map<String, String>> items,
-    {bool isZapytania = false}) {
+  Widget _buildSection(String title, List<Map<String, dynamic>> items, {bool isZapytania = false}) {
   return ConstrainedBox(
     constraints: const BoxConstraints(maxWidth: 400), // maksymalna szerokość
     child: Column(
@@ -138,6 +141,16 @@ Widget build(BuildContext context) {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 16),
+         // Jeżeli lista jest pusta
+        if (items.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Text(
+              isZapytania ? 'Brak zgłoszeń' : 'Brak nadchodzących wizyt',
+              style: const TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+          )
+        else
         Column(
           children: items.map((item) {
             return Padding(
