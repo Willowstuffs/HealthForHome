@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/specialist.dart';
+import '../models/appointment.dart';
 
 class Category {
   final String title;
@@ -60,6 +61,35 @@ class MockData {
       Category(title: 'Rehabilitacja', icon: Icons.healing_outlined),
       Category(title: 'Masaż', icon: Icons.spa_outlined),
       Category(title: 'Konsultacje', icon: Icons.chat_bubble_outline),
+    ];
+  }
+
+  static List<Appointment> getAppointments() {
+    return [
+      Appointment(
+        id: '1',
+        clientId: 'client_1',
+        specialistId: '1',
+        specialistName: 'Dr. Anna Kowalska',
+        serviceName: 'Masaż leczniczy',
+        appointmentStatus: 'confirmed',
+        scheduledStart: DateTime.now().add(const Duration(days: 1, hours: 2)),
+        scheduledEnd: DateTime.now().add(const Duration(days: 1, hours: 3)),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+      Appointment(
+        id: '2',
+        clientId: 'client_1',
+        specialistId: '2',
+        specialistName: 'Marek Nowak',
+        serviceName: 'Konsultacja',
+        appointmentStatus: 'pending',
+        scheduledStart: DateTime.now().add(const Duration(days: 3, hours: 5)),
+        scheduledEnd: DateTime.now().add(const Duration(days: 3, hours: 6)),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
     ];
   }
 }

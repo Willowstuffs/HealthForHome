@@ -2,7 +2,14 @@
 
 namespace H4H_API.DTOs.Appointments
 {
-    // DTO z informacjami o wizycie
+    /// <summary>
+    /// Represents the data transfer object for an appointment, including scheduling, participant, and status
+    /// information.
+    /// </summary>
+    /// <remarks>This DTO is typically used to transfer appointment data between application layers or over
+    /// service boundaries. It contains identifiers for the client, specialist, and optionally the service, as well as
+    /// scheduling details, status, pricing, and related notes. Navigation properties such as names are included for
+    /// convenience in presentation scenarios.</remarks>
     public class AppointmentDto
     {
         public Guid Id { get; set; }
@@ -27,7 +34,12 @@ namespace H4H_API.DTOs.Appointments
         public string? ServiceName { get; set; }
     }
 
-    // DTO do tworzenia nowej wizyty
+    /// <summary>
+    /// Represents the data required to create a new appointment.
+    /// </summary>
+    /// <remarks>This data transfer object is typically used when submitting appointment creation requests
+    /// from a client application. All required fields must be provided for the appointment to be created
+    /// successfully.</remarks>
     public class CreateAppointmentDto
     {
         [Required]
@@ -49,7 +61,10 @@ namespace H4H_API.DTOs.Appointments
         public string? ClientNotes { get; set; }  // Dodatkowe uwagi klienta
     }
 
-    // DTO do aktualizacji wizyty
+    /// <summary>
+    /// Represents the data required to update an existing appointment, including optional client notes and address
+    /// information.
+    /// </summary>
     public class UpdateAppointmentDto
     {
         [MaxLength(1000)]

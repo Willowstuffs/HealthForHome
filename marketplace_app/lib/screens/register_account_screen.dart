@@ -17,6 +17,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController repeatPasswordController =
       TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController addressController = TextEditingController();
+  final TextEditingController emergencyContactController =
+      TextEditingController();
+  DateTime? dateOfBirth;
 
   bool isLoading = false;
 
@@ -33,6 +38,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
         password: passwordController.text,
         firstName: firstNameController.text.trim(),
         lastName: lastNameController.text.trim(),
+        phoneNumber: phoneController.text.isNotEmpty
+            ? phoneController.text.trim()
+            : null,
+        dateOfBirth: dateOfBirth,
+        address: addressController.text.isNotEmpty
+            ? addressController.text.trim()
+            : null,
+        emergencyContact: emergencyContactController.text.isNotEmpty
+            ? emergencyContactController.text.trim()
+            : null,
       );
 
       if (!mounted) return;
@@ -50,6 +65,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
     } finally {
       if (mounted) setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _selectDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(2000),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() => dateOfBirth = picked);
     }
   }
 
@@ -75,6 +102,46 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 label: 'Nazwisko',
                 validator: (v) =>
                     v == null || v.isEmpty ? 'Podaj nazwisko' : null,
+              ),
+              const SizedBox(height: 12),
+
+              _buildTextField(
+                controller: phoneController,
+                label: 'Telefon (opcjonalnie)',
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 12),
+
+              InkWell(
+                onTap: _selectDate,
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: 'Data urodzenia (opcjonalnie)',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    suffixIcon: const Icon(Icons.calendar_today),
+                  ),
+                  child: Text(
+                    dateOfBirth != null
+                        ? "${dateOfBirth!.day.toString().padLeft(2, '0')}.${dateOfBirth!.month.toString().padLeft(2, '0')}.${dateOfBirth!.year}"
+                        : 'Wybierz datę',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              _buildTextField(
+                controller: addressController,
+                label: 'Adres (opcjonalnie)',
+                maxLines: 2,
+              ),
+              const SizedBox(height: 12),
+
+              _buildTextField(
+                controller: emergencyContactController,
+                label: 'Kontakt awaryjny (opcjonalnie)',
+                maxLines: 2,
               ),
               const SizedBox(height: 12),
 
@@ -153,15 +220,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
     bool obscureText = false,
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
+    int maxLines = 1,
   }) {
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
+      maxLines: maxLines,
       validator: validator,
       decoration: InputDecoration(
         labelText: label,
         filled: true,
+        alignLabelWithHint: maxLines > 1,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );

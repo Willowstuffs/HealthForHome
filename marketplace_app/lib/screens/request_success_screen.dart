@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:marketplace_app/screens/login_register_screen.dart';
 import '../../screens/register_account_screen.dart';
 import '../../theme/app_theme.dart';
 
@@ -72,7 +73,7 @@ class RequestSuccessScreen extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(builder: (_) => RegisterScreen()),
-                          ); 
+                          );
                         },
                         child: Text('Zarejestruj się'),
                       ),
@@ -93,7 +94,12 @@ class RequestSuccessScreen extends StatelessWidget {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          // TODO: nawigacja do ekranu logowania
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => LoginRegisterScreen(),
+                            ),
+                          );
                         },
                         child: Text('Zaloguj się'),
                       ),

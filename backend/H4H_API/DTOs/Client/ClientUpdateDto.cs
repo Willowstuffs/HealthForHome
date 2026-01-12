@@ -2,7 +2,12 @@
 
 namespace H4H_API.DTOs.Client
 {
-    // DTO do aktualizacji profilu klienta (wszystkie pola opcjonalne)
+    /// <summary>
+    /// Represents the data required to update an existing client record.
+    /// </summary>
+    /// <remarks>This data transfer object is typically used in update operations to modify client
+    /// information. All properties are optional; only the fields to be updated need to be provided. Property values may
+    /// be subject to validation constraints such as maximum length or format requirements.</remarks>
     public class ClientUpdateDto
     {
         [MaxLength(100, ErrorMessage = "Imię nie może przekraczać 100 znaków")]

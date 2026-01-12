@@ -77,6 +77,10 @@ class ApiService {
     required String password,
     required String firstName,
     required String lastName,
+    String? phoneNumber,
+    DateTime? dateOfBirth,
+    String? address,
+    String? emergencyContact,
   }) async {
     try {
       await _dio.post(
@@ -86,6 +90,11 @@ class ApiService {
           "password": password,
           "firstName": firstName,
           "lastName": lastName,
+          if (phoneNumber != null) "phoneNumber": phoneNumber,
+          if (dateOfBirth != null)
+            "dateOfBirth": dateOfBirth.toIso8601String().split('T')[0],
+          if (address != null) "address": address,
+          if (emergencyContact != null) "emergencyContact": emergencyContact,
         },
       );
     } on DioException catch (e) {

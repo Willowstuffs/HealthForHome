@@ -1,5 +1,11 @@
 ﻿namespace H4H_API.DTOs.Specialist
 {
+    /// <summary>
+    /// Represents a data transfer object containing profile and service information for a specialist.
+    /// </summary>
+    /// <remarks>This class is typically used to transfer specialist data between application layers or over
+    /// service boundaries. It includes personal details, professional credentials, service offerings, and review
+    /// statistics relevant to the specialist's public profile.</remarks>
     public class SpecialistDto
     {
         public Guid Id { get; set; }
@@ -15,6 +21,13 @@
         public List<ServiceAreaDto> ServiceAreas { get; set; } = new();
     }
 
+    /// <summary>
+    /// Represents a data transfer object for a specialist service, including details such as service name, category,
+    /// duration, price, and description.
+    /// </summary>
+    /// <remarks>This class is typically used to transfer specialist service information between application
+    /// layers or over network boundaries. It encapsulates the essential properties required to describe a service
+    /// offered by a specialist, such as in scheduling or catalog scenarios.</remarks>
     public class SpecialistServiceDto
     {
         public Guid Id { get; set; }
@@ -25,6 +38,12 @@
         public string? Description { get; set; }
     }
 
+    /// <summary>
+    /// Represents a data transfer object that defines a service area, including city, postal code, maximum distance,
+    /// and primary status.
+    /// </summary>
+    /// <remarks>Use this type to specify or retrieve information about a geographic area where a service is
+    /// available. This DTO is typically used for data exchange between application layers or services.</remarks>
     public class ServiceAreaDto
     {
         public string City { get; set; } = string.Empty;
@@ -36,7 +55,9 @@
 
 namespace H4H_API.Dtos.Auth
 {
-    // TYMCZASOWY DTO dla rejestracji specjalisty
+    /// <summary>
+    /// Represents the data required to register a new specialist user.
+    /// </summary>
     public class SpecialistRegisterDto
     {
         // To tutaj moj kierownik zrobi pełną wersję
@@ -49,7 +70,13 @@ namespace H4H_API.Dtos.Auth
 
 namespace H4H_API.Dtos.Client
 {
-    // DTO do wyszukiwania specjalistów
+    /// <summary>
+    /// Represents the criteria used to search for specialists, including location, profession, service type, rating,
+    /// price, and availability filters.
+    /// </summary>
+    /// <remarks>Use this data transfer object to specify search parameters when querying for specialists. All
+    /// properties are optional; only set the fields relevant to your search. Properties such as profession and service
+    /// type may be subject to predefined values depending on the application's domain.</remarks>
     public class SearchSpecialistsDto
     {
         public string? City { get; set; }
