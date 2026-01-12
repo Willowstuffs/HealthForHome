@@ -1,11 +1,10 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
-using H4H.Core.Models;
+﻿using H4H.Core.Models;
 using H4H.Data;
 using H4H_API.Services.Interfaces;
-using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace H4H_API.Services.Implementations
 {
