@@ -1,8 +1,9 @@
 # HealthForHome
 Repozytorium na projekt z przedmiotu Programowanie Zespołowe 2025/2026
 
-Luźne notatki ze zmianami:
-Commit 1:
+Luźne notatki z szerszymi opisami zmian:
+
+COMMIT 1:
 
 Ogarnięto wstępnie SpecialistDto, z przygotowanego wczesniej przez Justynę template'u.
 
@@ -19,7 +20,7 @@ Po stworzeniu "profilu" przeszedłem do rejestracji, dla specjalisty, która utw
 
 Wypchnięto na backend nadpisując wszystko
 
-Commit 2:
+COMMIT 2:
 
 Stworzono SpecialistRegisterDto.cs, todo: ogarnąć fragmenty 
 
@@ -35,7 +36,7 @@ Dodano oba endpointy do kontrolera, usunięto stare try-catche które były niep
 
 Wypchnięto na Wiktor, nowy branch by utrzymać konsensus nazw.
 
-Commit 3: 10.01.2026
+COMMIT 3: 10.01.2026
 
 Stworzono SpecialistServiceManageDto.cs do dodawania/edycji usługi. W tej chwili nałożyłem range na DurationMinutes, od 5 minut do 12 godzin. Jeśli niepotrzebne lub potrzebna zmiana, mogę to zrobić.
 
@@ -56,3 +57,7 @@ Utworzono H4H.Api/Exceptions/AppException.cs z własnym wyjątkiem
 Napisano na nowo ErrorHandlingMiddleware.cs uwzględniając leksykon
 
 Dodano nowe metody do SpecialistController.
+
+COMMIT 4: 14.01.2026
+(I)SpecialistService(Controller): Dodano sygnature i logike metody od zatwierdzania statusu wizyty. Dodano do kontrolera.
+Dodano E-mail i nr telefonu do SpecialistDto
