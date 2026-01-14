@@ -11,6 +11,8 @@
         public string LastName { get; set; } = string.Empty;
         public string? ProfessionalTitle { get; set; }
         public string? Bio { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public string? PhoneNumber { get; set; }
         public decimal? HourlyRate { get; set; }
         public bool IsVerified { get; set; }
         /// <summary>Średnia ocen z tabeli reviews</summary>

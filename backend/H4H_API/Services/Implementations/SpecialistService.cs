@@ -6,6 +6,7 @@ using H4H_API.Exceptions;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using SpecialistServiceEntity = H4H.Core.Models.SpecialistService;
+using H4H_API.Helpers;
 
 namespace H4H_API.Services.Implementations
 {
@@ -35,6 +36,8 @@ namespace H4H_API.Services.Implementations
                 Id = spec.Id,
                 FirstName = spec.FirstName,
                 LastName = spec.LastName,
+                Email = spec.User.Email,
+                PhoneNumber = spec.User.PhoneNumber,
                 ProfessionalTitle = spec.ProfessionalTitle,
                 Bio = spec.Bio,
                 HourlyRate = spec.HourlyRate,
@@ -277,6 +280,27 @@ namespace H4H_API.Services.Implementations
                  area.Longitude = dto.Longitude.Value;
             }
             */
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId)
+        {
+            var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
+                ?? throw new AppException("Profil nie istnieje.", ErrorCodes.SpecialistNotFound);
+
+            // Szukamy wizyty, która należy do tego specjalisty i ma status pending
+            var appointment = await _context.appointments
+                .FirstOrDefaultAsync(a => a.Id == appointmentId && a.SpecialistId == specialist.Id);
+
+            if (appointment == null)
+                throw new AppException("Wizyta nie znaleziona.", ErrorCodes.AppointmentNotFound);
+
+            if (appointment.AppointmentStatus != "pending")
+                throw new AppException("Można potwierdzić tylko wizyty oczekujące.", ErrorCodes.AppointmentStatusNotPending);
+
+            appointment.AppointmentStatus = "confirmed";
+            appointment.UpdatedAt = DateTime.UtcNow;
+
             await _context.SaveChangesAsync();
         }
 

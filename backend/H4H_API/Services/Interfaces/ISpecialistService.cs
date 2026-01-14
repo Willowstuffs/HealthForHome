@@ -30,10 +30,7 @@ namespace H4H_API.Services.Interfaces
         Task UpdateServiceAsync(Guid userId, Guid serviceId, SpecialistServiceManageDto dto);
         /// <summary>Usuwa usluge specjalisty</summary>
         Task DeleteServiceAsync(Guid userId, Guid serviceId);
-        /// <summary>
-        /// Zmienia zasieg uslug specjalisty
-        /// </summary>
-        /// <param name="userId"></param>
+        /// <summary>Zmienia zasieg uslug specjalisty</summary>
         /// <param name="dto">Obiekt DTO z danymi zasiegu do ustawienia</param>
         Task UpdateServiceAreaAsync(Guid userId, ServiceAreaManageDto dto);
         /// <summary>
@@ -47,6 +44,7 @@ namespace H4H_API.Services.Interfaces
         /// </summary>
         /// <returns></returns>
         Task<List<ServiceTypeDto>> GetServiceTypesAsync();
-
+        /// <summary>Zmienia status wizyty u specjalisty na potwierdzony (confirmed)</summary>
+        Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId);
     }
 }
