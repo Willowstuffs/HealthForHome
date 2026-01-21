@@ -47,11 +47,16 @@ namespace H4H.Core.Models
         [Column("cancelled_at", TypeName = "timestamp without time zone")]
         public DateTime? CancelledAt { get; set; }
 
+        [Column("selected_specialist_id")]
+        public Guid? SelectedSpecialistId { get; set; }
+
+
         public virtual Client Client { get; set; } = null!;
         public virtual Specialist Specialist { get; set; } = null!;
         public virtual SpecialistService? SpecialistService { get; set; }
         public virtual Payment? Payment { get; set; }
         public virtual Review? Review { get; set; }
         public virtual ICollection<Message> Messages { get; set; } = new List<Message>();
+        public virtual ICollection<AppointmentSpecialist> AppointmentSpecialists { get; set; } = new List<AppointmentSpecialist>();
     }
 }

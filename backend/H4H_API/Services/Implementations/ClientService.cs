@@ -7,6 +7,8 @@ using H4H.Data;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using H4H_API.DTOs.Client;
+using H4H_API.Exceptions;
+using H4H_API.Helpers;
 
 namespace H4H_API.Services.Implementations
 {
@@ -22,6 +24,7 @@ namespace H4H_API.Services.Implementations
     {
         private readonly ApplicationDbContext _context;
         private readonly IMapper _mapper;
+        private readonly IGeocoder _geocoder;
 
         /// <summary>
         /// Initializes a new instance of the ClientService class using the specified database context and object
@@ -29,10 +32,12 @@ namespace H4H_API.Services.Implementations
         /// </summary>
         /// <param name="context">The database context used to access and manage client data within the application. Cannot be null.</param>
         /// <param name="mapper">The object mapper used to map between domain entities and data transfer objects. Cannot be null.</param>
-        public ClientService(ApplicationDbContext context, IMapper mapper)
+        /// <param name="geocoder">The geocoding service for address geolocation. Cannot be null.</param>
+        public ClientService(ApplicationDbContext context, IMapper mapper, IGeocoder geocoder)
         {
             _context = context;
             _mapper = mapper;
+            _geocoder = geocoder;
         }
 
         /// <summary>
@@ -64,6 +69,7 @@ namespace H4H_API.Services.Implementations
         /// <returns>A <see cref="ClientProfileDto"/> representing the updated client profile.</returns>
         /// <exception cref="KeyNotFoundException">Thrown if no client profile is found for the specified <paramref name="userId"/>.</exception>
         /// <exception cref="InvalidOperationException">Thrown if the user associated with the client profile cannot be found.</exception>
+        /// <exception cref="AppException">Thrown if address geocoding fails.</exception>
         public async Task<ClientProfileDto> UpdateProfileAsync(Guid userId, ClientUpdateDto dto)
         {
             try
@@ -96,9 +102,19 @@ namespace H4H_API.Services.Implementations
                 if (dto.DateOfBirth.HasValue)
                     client.DateOfBirth = dto.DateOfBirth.Value;
 
+                // AKTUALIZACJA ADRESU Z GEOKODOWANIEM
                 if (!string.IsNullOrEmpty(dto.Address))
-              client.User.UpdatedAt = DateTime.UtcNow;      
-                client.Address = dto.Address;
+                {
+                    var oldAddress = client.Address;
+                    client.Address = dto.Address;
+                    client.User.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
+
+                    // Automatyczna geolokalizacja adresu (tylko jeśli adres się zmienił)
+                    if (oldAddress != dto.Address)
+                    {
+                        await GeocodeClientAddressAsync(client);
+                    }
+                }
 
                 if (!string.IsNullOrEmpty(dto.EmergencyContact))
                     client.EmergencyContact = dto.EmergencyContact;
@@ -140,6 +156,104 @@ namespace H4H_API.Services.Implementations
         }
 
         /// <summary>
+        /// Geokoduje adres klienta i zapisuje współrzędne
+        /// </summary>
+        private async Task<bool> GeocodeClientAddressAsync(Client client)
+        {
+            if (string.IsNullOrEmpty(client.Address))
+                return false;
+
+            try
+            {
+                var geocoded = await _geocoder.GeocodeAddressAsync(client.Address);
+                if (geocoded != null)
+                {
+                    client.AddressPoint = _geocoder.CreatePoint(
+                        geocoded.Longitude,
+                        geocoded.Latitude
+                    );
+                    client.AddressGeocodedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
+
+                    // Zaktualizuj sformatowany adres jeśli dostępny
+                    if (!string.IsNullOrEmpty(geocoded.FormattedAddress))
+                    {
+                        client.Address = geocoded.FormattedAddress;
+                    }
+
+                    Console.WriteLine($"DEBUG: Address geocoded successfully: {geocoded.Latitude}, {geocoded.Longitude}");
+                    return true;
+                }
+                else
+                {
+                    Console.WriteLine($"DEBUG: Geocoding returned no results for address: {client.Address}");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"DEBUG: Geocoding error: {ex.Message}");
+                // Nie rzucamy wyjątku - geokodowanie nie jest krytyczne dla aktualizacji profilu
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Ręcznie geokoduje adres klienta (do użycia z endpointu API)
+        /// </summary>
+        public async Task<bool> GeocodeClientAddressAsync(Guid userId)
+        {
+            var client = await _context.clients
+                .FirstOrDefaultAsync(c => c.UserId == userId);
+
+            if (client == null)
+                throw new KeyNotFoundException($"Nie znaleziono klienta dla użytkownika {userId}");
+
+            if (string.IsNullOrEmpty(client.Address))
+                throw new AppException("Klient nie ma adresu do geokodowania", ErrorCodes.GeocodingFailed);
+
+            var success = await GeocodeClientAddressAsync(client);
+
+            if (success)
+            {
+                await _context.SaveChangesAsync();
+            }
+
+            return success;
+        }
+
+        /// <summary>
+        /// Pobiera współrzędne geograficzne klienta
+        /// </summary>
+        public async Task<(double Latitude, double Longitude)?> GetClientCoordinatesAsync(Guid userId)
+        {
+            var client = await _context.clients
+                .FirstOrDefaultAsync(c => c.UserId == userId);
+
+            if (client == null || client.AddressPoint == null)
+                return null;
+
+            return (client.AddressPoint.Y, client.AddressPoint.X); // Y = latitude, X = longitude
+        }
+
+        /// <summary>
+        /// Sprawdza czy klient jest w zasięgu specjalisty
+        /// </summary>
+        public async Task<bool> IsClientWithinSpecialistRangeAsync(Guid clientUserId, Guid specialistId)
+        {
+            try
+            {
+                return await _geocoder.IsWithinServiceAreaAsync(
+                    await GetClientIdFromUserId(clientUserId),
+                    specialistId
+                );
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Attempts to change the password for the specified user using the provided current and new passwords.
         /// </summary>
         /// <param name="userId">The unique identifier of the user whose password is to be changed.</param>
@@ -159,7 +273,7 @@ namespace H4H_API.Services.Implementations
                 return false;
 
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
-            user.UpdatedAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
 
             await _context.SaveChangesAsync();
             return true;
@@ -186,7 +300,7 @@ namespace H4H_API.Services.Implementations
 
         public async Task<AppointmentDto> CreateAppointmentAsync(Guid userId, CreateAppointmentDto dto)
         {
-            // TODO: Zaimplementować
+            // TODO: Zaimplementować z walidacją odległości
             throw new NotImplementedException("CreateAppointmentAsync not implemented yet");
         }
 
@@ -198,7 +312,7 @@ namespace H4H_API.Services.Implementations
 
         public async Task<PagedResponse<SpecialistDto>> SearchSpecialistsAsync(SearchSpecialistsDto filters, PagedRequest request)
         {
-            // TODO: Zaimplementować
+            // TODO: Zaimplementować z filtrowaniem po odległości
             // Na razie zwróć pustą listę
             return new PagedResponse<SpecialistDto>
             {
@@ -207,6 +321,20 @@ namespace H4H_API.Services.Implementations
                 PageSize = request.PageSize,
                 TotalCount = 0
             };
+        }
+
+        /// <summary>
+        /// Pobiera ID klienta na podstawie ID użytkownika
+        /// </summary>
+        private async Task<Guid> GetClientIdFromUserId(Guid userId)
+        {
+            var client = await _context.clients
+                .FirstOrDefaultAsync(c => c.UserId == userId);
+
+            if (client == null)
+                throw new KeyNotFoundException($"Klient nie znaleziony dla użytkownika {userId}");
+
+            return client.Id;
         }
     }
 }

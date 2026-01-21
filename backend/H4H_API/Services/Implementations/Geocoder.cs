@@ -1,219 +1,268 @@
-﻿using System.Security.Cryptography;
-using System.Text;
-using H4H.Core.Helpers;
-using H4H.Core.Models;
+﻿using System.Globalization; 
+using System.Text.Json;
 using H4H.Data;
+using H4H_API.DTOs.Geolocation;
+using H4H_API.Exceptions;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
+using NetTopologySuite;
 using NetTopologySuite.Geometries;
+using NetTopologySuite.IO;
 
 namespace H4H_API.Services.Implementations
 {
-    /// <summary>
-    /// Implementacja serwisu geokodującego wykorzystująca OpenStreetMap Nominatim
-    /// Zapisuje wyniki do cache'u w bazie danych (tabela address_geocache)
-    /// </summary>
-    /// <remarks>
-    /// UWAGA: Nominatim ma ograniczenia rate (1 req/s). Dla produkcji rozważ Google Maps API.
-    /// Wymaga atrybucji: © OpenStreetMap contributors
-    /// </remarks>
     public class Geocoder : IGeocoder
     {
         private readonly ApplicationDbContext _context;
-        private readonly IHttpClientFactory _httpClientFactory;
         private readonly IConfiguration _configuration;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly GeometryFactory _geometryFactory;
         private readonly ILogger<Geocoder> _logger;
 
-        /// <summary>
-        /// Konstruktor serwisu geokodującego
-        /// </summary>
-        /// <param name="context">DbContext dla dostępu do cache'u</param>
-        /// <param name="httpClientFactory">Factory do tworzenia klientów HTTP</param>
-        /// <param name="configuration">Konfiguracja aplikacji</param>
-        /// <param name="logger">Logger dla diagnostyki</param>
+        // Użyj invariant culture dla parsowania liczb (kropka zamiast przecinka)
+        private readonly CultureInfo _invariantCulture = CultureInfo.InvariantCulture;
+
         public Geocoder(
             ApplicationDbContext context,
-            IHttpClientFactory httpClientFactory,
             IConfiguration configuration,
+            IHttpClientFactory httpClientFactory,
             ILogger<Geocoder> logger)
         {
             _context = context;
-            _httpClientFactory = httpClientFactory;
             _configuration = configuration;
+            _httpClientFactory = httpClientFactory;
             _logger = logger;
+
+            _geometryFactory = NtsGeometryServices.Instance.CreateGeometryFactory(4326);
         }
 
-        /// <inheritdoc/>
-        public async Task<Point?> GeocodeAddressAsync(string address)
+        public async Task<GeocodingResultDto?> GeocodeAddressAsync(string address)
         {
             if (string.IsNullOrWhiteSpace(address))
-            {
-                _logger.LogWarning("Próba geokodowania pustego adresu");
                 return null;
-            }
-
-            // 1. Sprawdź czy mamy w cache'u
-            var cached = await CheckCacheAsync(address);
-            if (cached != null)
-            {
-                _logger.LogDebug("Użyto cache'owanego adresu: {Address}", address);
-                return new Point((double)cached.Longitude, (double)cached.Latitude) { SRID = 4326 };
-            }
 
             try
             {
-                // 2. Geokoduj przez API
-                var point = await GeocodeWithNominatimAsync(address);
-                if (point != null)
+                // 1. Sprawdź cache
+                var cacheKey = HashAddress(address);
+                var cached = await _context.address_geocache
+                    .FirstOrDefaultAsync(c => c.AddressHash == cacheKey);
+
+                if (cached != null)
                 {
-                    // 3. Zapisz do cache'u dla przyszłych zapytań
-                    await SaveToCacheAsync(address, point.Y, point.X, $"Geokodowane: {address}");
+                    _logger.LogInformation($"Address found in cache: {address}");
+                    return new GeocodingResultDto
+                    {
+                        Address = address,
+                        Latitude = (double)cached.Latitude,
+                        Longitude = (double)cached.Longitude,
+                        FormattedAddress = cached.FormattedAddress,
+                        FromCache = true
+                    };
                 }
 
-                return point;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Błąd geokodowania adresu: {Address}", address);
-                return null;
-            }
-        }
+                _logger.LogInformation($"Geocoding address: {address}");
 
-        /// <inheritdoc/>
-        public async Task<Point?> GeocodeCityAsync(string city, string? postalCode = null)
-        {
-            var address = postalCode != null ? $"{postalCode} {city}" : city;
-            return await GeocodeAddressAsync(address);
-        }
-
-        /// <summary>
-        /// Sprawdza cache geokodowania w bazie danych
-        /// </summary>
-        /// <param name="address">Adres do sprawdzenia</param>
-        /// <returns>Rekord cache lub null jeśli nie znaleziono</returns>
-        private async Task<AddressGeocache?> CheckCacheAsync(string address)
-        {
-            var hash = ComputeSha256Hash(address);
-            return await _context.address_geocache
-                .AsNoTracking()
-                .FirstOrDefaultAsync(c => c.AddressHash == hash);
-        }
-
-        /// <summary>
-        /// Geokoduje adres przy użyciu Nominatim (OpenStreetMap)
-        /// </summary>
-        /// <param name="address">Adres do geokodowania</param>
-        /// <returns>Punkt geograficzny lub null</returns>
-        private async Task<Point?> GeocodeWithNominatimAsync(string address)
-        {
-            try
-            {
-                var client = _httpClientFactory.CreateClient();
-                var encodedAddress = Uri.EscapeDataString(address);
-
-                // POPRAWIONY URL - dodaj &countrycodes=pl dla Polski
-                var url = $"https://nominatim.openstreetmap.org/search?format=json&q={encodedAddress}&countrycodes=pl&limit=1";
-
-                // BARDZIEJ SZCZEGÓŁOWY User-Agent (wymagany!)
-                client.DefaultRequestHeaders.Clear();
-                client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; Health4Home/1.0; +contact@health4home.pl)");
-                client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
-
-                _logger.LogInformation("Geokodowanie: {Address}", address);
-
-                // Dodaj timeout i retry
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                var response = await client.GetAsync(url, cts.Token);
-
-                if (response.IsSuccessStatusCode)
+                // 2. Użyj OpenStreetMap Nominatim
+                var result = await GeocodeWithNominatimAsync(address);
+                if (result != null)
                 {
-                    var json = await response.Content.ReadAsStringAsync();
-                    var results = System.Text.Json.JsonSerializer.Deserialize<List<NominatimResult>>(json);
-
-                    if (results?.Count > 0)
-                    {
-                        var result = results[0];
-                        _logger.LogDebug("Znaleziono: {Lat}, {Lon} dla {Address}",
-                            result.lat, result.lon, address);
-
-                        return new Point(double.Parse(result.lon), double.Parse(result.lat))
-                        {
-                            SRID = 4326
-                        };
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Brak wyników dla: {Address}", address);
-                    }
+                    // Zapisz w cache
+                    await CacheGeocodingResultAsync(address, result);
+                    _logger.LogInformation($"Address geocoded successfully: {result.Latitude}, {result.Longitude}");
+                    return result;
                 }
                 else
                 {
-                    _logger.LogError("Nominatim error {StatusCode}: {Reason}",
-                        response.StatusCode, response.ReasonPhrase);
+                    _logger.LogWarning($"Geocoding returned no results for address: {address}");
+                    return null;
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Błąd geokodowania: {Address}", address);
+                _logger.LogError(ex, $"Geocoding error for address: {address}");
+                throw new AppException($"Błąd geokodowania: {ex.Message}", H4H_API.Helpers.ErrorCodes.GeocodingFailed);
             }
-
-            return null;
         }
 
-        /// <summary>
-        /// Zapisuje wynik geokodowania do cache'u w bazie danych
-        /// </summary>
-        private async Task SaveToCacheAsync(string address, double latitude, double longitude, string formattedAddress)
+        public async Task<string?> ReverseGeocodeAsync(double latitude, double longitude)
         {
             try
             {
-                var hash = ComputeSha256Hash(address);
+                _logger.LogInformation($"Reverse geocoding coordinates: {latitude}, {longitude}");
 
-                var cache = new AddressGeocache
+                var httpClient = _httpClientFactory.CreateClient("Nominatim");
+
+                // UŻYJ KROPEK zamiast przecinków! To ważne!
+                var url = $"https://nominatim.openstreetmap.org/reverse?format=json" +
+                         $"&lat={latitude.ToString(_invariantCulture)}" +
+                         $"&lon={longitude.ToString(_invariantCulture)}" +
+                         $"&zoom=18&addressdetails=1";
+
+                // Rate limiting
+                await Task.Delay(1000);
+
+                var response = await httpClient.GetStringAsync(url);
+                var json = JsonDocument.Parse(response);
+
+                if (json.RootElement.TryGetProperty("error", out _))
                 {
-                    Id = Guid.NewGuid(),
-                    AddressHash = hash,
-                    Address = address,
-                    Latitude = (decimal)latitude,
-                    Longitude = (decimal)longitude,
-                    FormattedAddress = formattedAddress,
-                    CreatedAt = DateTimeHelper.NowUnspecified
-                };
+                    _logger.LogWarning($"Reverse geocoding error for coordinates {latitude}, {longitude}");
+                    return null;
+                }
 
-                _context.address_geocache.Add(cache);
-                await _context.SaveChangesAsync();
+                var displayName = json.RootElement.GetProperty("display_name").GetString();
+                _logger.LogInformation($"Reverse geocoding result: {displayName}");
 
-                _logger.LogDebug("Zapisano do cache'u: {Address} -> {Lat}, {Lon}",
-                    address, latitude, longitude);
+                return displayName;
             }
             catch (Exception ex)
             {
-                // Logujemy ale nie przerywamy - cache to optymalizacja
-                _logger.LogWarning(ex, "Błąd zapisywania do cache'u geokodowania");
+                _logger.LogError(ex, $"Reverse geocoding error for coordinates: {latitude}, {longitude}");
+                return null;
             }
         }
 
-        /// <summary>
-        /// Oblicza hash SHA256 adresu dla indeksowania cache'u
-        /// </summary>
-        private static string ComputeSha256Hash(string input)
+        public Point CreatePoint(double longitude, double latitude)
         {
-            using var sha256 = SHA256.Create();
-            var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(input.Trim().ToLower()));
-            return BitConverter.ToString(bytes).Replace("-", "").ToLower();
+            return _geometryFactory.CreatePoint(new Coordinate(longitude, latitude));
         }
 
-        /// <summary>
-        /// Model odpowiedzi Nominatim API
-        /// </summary>
-        private class NominatimResult
+        public double CalculateDistance(Point point1, Point point2)
         {
-            public string lat { get; set; } = string.Empty;
-            public string lon { get; set; } = string.Empty;
-            public string display_name { get; set; } = string.Empty;
-            public string type { get; set; } = string.Empty;
+            if (point1 == null || point2 == null)
+                return double.MaxValue;
+
+            // Oblicz odległość w metrach używając formuły haversine
+            var distanceInMeters = point1.Distance(point2) * 111319.9;
+
+            return distanceInMeters / 1000; // km
         }
+
+        public async Task<bool> IsWithinServiceAreaAsync(Guid clientId, Guid specialistId)
+        {
+            try
+            {
+                var client = await _context.clients
+                    .FirstOrDefaultAsync(c => c.Id == clientId);
+
+                var serviceArea = await _context.service_areas
+                    .FirstOrDefaultAsync(sa => sa.SpecialistId == specialistId && sa.IsPrimary);
+
+                if (client?.AddressPoint == null || serviceArea?.Location == null)
+                {
+                    _logger.LogWarning($"Missing coordinates for distance calculation. Client: {clientId}, Specialist: {specialistId}");
+                    return false;
+                }
+
+                var distance = CalculateDistance(client.AddressPoint, serviceArea.Location);
+                var isWithinRange = distance <= serviceArea.MaxDistanceKm;
+
+                _logger.LogInformation($"Distance calculation: {distance:F2} km, Max: {serviceArea.MaxDistanceKm} km, Within range: {isWithinRange}");
+
+                return isWithinRange;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error checking service area for client {clientId} and specialist {specialistId}");
+                return false;
+            }
+        }
+
+        #region Private Methods
+
+        private string HashAddress(string address)
+        {
+            using var sha256 = System.Security.Cryptography.SHA256.Create();
+            var hash = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(address.ToLower()));
+            return Convert.ToHexString(hash);
+        }
+
+        private async Task<GeocodingResultDto?> GeocodeWithNominatimAsync(string address)
+        {
+            try
+            {
+                var httpClient = _httpClientFactory.CreateClient("Nominatim");
+                var encodedAddress = Uri.EscapeDataString(address);
+                var url = $"https://nominatim.openstreetmap.org/search?format=json&q={encodedAddress}&limit=1&addressdetails=1";
+
+                // Rate limiting dla Nominatim (1 request na sekundę)
+                await Task.Delay(1000);
+
+                var response = await httpClient.GetStringAsync(url);
+                var json = JsonDocument.Parse(response);
+
+                if (json.RootElement.GetArrayLength() == 0)
+                {
+                    _logger.LogWarning($"No results found for address: {address}");
+
+                    // Spróbuj z prostszym adresem (tylko miasto)
+                    if (address.Contains(','))
+                    {
+                        var cityOnly = address.Split(',')[0].Trim();
+                        _logger.LogInformation($"Trying simpler address: {cityOnly}");
+                        return await GeocodeWithNominatimAsync(cityOnly);
+                    }
+
+                    return null;
+                }
+
+                var firstResult = json.RootElement[0];
+
+                // PARSOWANIE Z KULTURĄ INVARIANT (kropka zamiast przecinka!)
+                var latString = firstResult.GetProperty("lat").GetString();
+                var lonString = firstResult.GetProperty("lon").GetString();
+
+                if (!double.TryParse(latString, _invariantCulture, out double latitude) ||
+                    !double.TryParse(lonString, _invariantCulture, out double longitude))
+                {
+                    _logger.LogError($"Failed to parse coordinates: lat={latString}, lon={lonString}");
+                    return null;
+                }
+
+                return new GeocodingResultDto
+                {
+                    Address = address,
+                    Latitude = latitude,
+                    Longitude = longitude,
+                    FormattedAddress = firstResult.GetProperty("display_name").GetString(),
+                    FromCache = false
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Nominatim geocoding error for address: {address}");
+                return null;
+            }
+        }
+
+        private async Task CacheGeocodingResultAsync(string address, GeocodingResultDto result)
+        {
+            try
+            {
+                var cacheEntry = new H4H.Core.Models.AddressGeocache
+                {
+                    Id = Guid.NewGuid(),
+                    AddressHash = HashAddress(address),
+                    Address = address,
+                    Latitude = (decimal)result.Latitude,
+                    Longitude = (decimal)result.Longitude,
+                    FormattedAddress = result.FormattedAddress,
+                    CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
+                };
+
+                _context.address_geocache.Add(cacheEntry);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Cached geocoding result for address: {address}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error caching geocoding result for address: {address}");
+            }
+        }
+
+        #endregion
     }
 }

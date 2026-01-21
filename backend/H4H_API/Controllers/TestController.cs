@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using H4H.Data;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace H4H_API.Controllers
 {
@@ -268,6 +269,45 @@ namespace H4H_API.Controllers
             catch (Exception ex)
             {
                 return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Tests connectivity to the Nominatim geocoding service by performing a sample address lookup.
+        /// </summary>
+        /// <returns> </returns>
+        [HttpGet("test-nominatim")]
+        public async Task<IActionResult> TestNominatim()
+        {
+            try
+            {
+                // Test bezpośrednio HTTP
+                var httpClient = new HttpClient();
+                httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Health4Home/1.0");
+
+                // Test 1: Prosty adres (miasto)
+                var testAddress = "Warszawa";
+                var encodedAddress = Uri.EscapeDataString(testAddress);
+                var url = $"https://nominatim.openstreetmap.org/search?format=json&q={encodedAddress}&limit=1";
+
+                Console.WriteLine($"Testing Nominatim with: {url}");
+                var response = await httpClient.GetStringAsync(url);
+                var json = JsonDocument.Parse(response);
+
+                return Ok(new
+                {
+                    Test = "Nominatim Connection Test",
+                    Url = url,
+                    ResponseLength = response.Length,
+                    HasResults = json.RootElement.GetArrayLength() > 0,
+                    FirstResult = json.RootElement.GetArrayLength() > 0 ?
+                        json.RootElement[0].GetProperty("display_name").GetString() :
+                        "No results"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message, StackTrace = ex.StackTrace });
             }
         }
     }

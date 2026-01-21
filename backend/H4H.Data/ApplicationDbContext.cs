@@ -30,6 +30,7 @@ namespace H4H.Data
         public DbSet<Notification> notifications { get; set; }
         public DbSet<VerificationCode> verification_codes { get; set; }
         public DbSet<AddressGeocache> address_geocache { get; set; }
+        public DbSet<AppointmentSpecialist> appointments_specialists { get; set; }
 
         // dla PostGIS i NetTopologySuite
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -88,9 +89,6 @@ namespace H4H.Data
                 entity.Property(e => e.LocationUpdatedAt)
                     .HasColumnType("timestamp without time zone");
             });
-
-            // AddressGeocache jest nową tabelą
-            // Ta tabela NIE ma ExcludeFromMigrations
 
 
 
@@ -380,6 +378,25 @@ namespace H4H.Data
 
                 entity.Property(e => e.CreatedAt)
                     .HasColumnType("timestamp without time zone");
+            });
+
+            // Konfiguracja tabeli łączącej Appointment i Specialist (wiele-do-wielu)
+            modelBuilder.Entity<AppointmentSpecialist>(entity =>
+            {
+                // Relacja z Appointment
+                entity.HasOne(a => a.Appointment)
+                    .WithMany(a => a.AppointmentSpecialists)
+                    .HasForeignKey(a => a.AppointmentId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Relacja ze Specialist
+                entity.HasOne(a => a.Specialist)
+                    .WithMany()
+                    .HasForeignKey(a => a.SpecialistId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Unikalna para appointment + specialist
+                entity.HasIndex(a => new { a.AppointmentId, a.SpecialistId }).IsUnique();
             });
         }
     }

@@ -1,5 +1,4 @@
-﻿// H4H.Core/Models/AddressGeocache.cs
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace H4H.Core.Models

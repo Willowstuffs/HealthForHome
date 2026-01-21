@@ -20,5 +20,15 @@ namespace H4H_API.Helpers
 
         // Walidacja danych
         public const string ValidationError = "VAL_001";
+
+        // Geokodowanie
+        public const string GeocodingFailed = "GEO_001";
+        public const string InvalidCoordinates = "GEO_002";
+        public const string AddressNotFound = "GEO_003";
+        public const string DistanceCalculationFailed = "GEO_004";
+
+        // Klienci
+        public const string ClientNotFound = "CLIENT_001";
+        public const string AddressUpdateFailed = "CLIENT_002";
     }
 }
