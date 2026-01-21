@@ -8,17 +8,42 @@ using H4H_API.DTOs.Specialist;
 
 namespace H4H_API.Services.Implementations
 {
+    /// <summary>
+    /// Provides authentication and user account management services, including login, registration, token handling,
+    /// password changes, and password reset operations for clients and specialists.
+    /// </summary>
+    /// <remarks>AuthService implements core authentication workflows for the application, such as issuing and
+    /// refreshing JWT tokens, registering new users, and managing password changes and resets. It supports both client
+    /// and specialist user types, handling their specific registration and verification requirements. All operations
+    /// are performed asynchronously and require a valid database context and JWT service. This service should be used
+    /// as the primary entry point for authentication-related functionality within the application.</remarks>
     public class AuthService : IAuthService
     {
         private readonly ApplicationDbContext _context;
         private readonly IJwtService _jwtService;
 
+        /// <summary>
+        /// Initializes a new instance of the AuthService class using the specified database context and JWT service.
+        /// </summary>
+        /// <param name="context">The database context used to access application data for authentication operations. Cannot be null.</param>
+        /// <param name="jwtService">The JWT service used to generate and validate JSON Web Tokens for authentication. Cannot be null.</param>
         public AuthService(ApplicationDbContext context, IJwtService jwtService)
         {
             _context = context;
             _jwtService = jwtService;
         }
 
+        /// <summary>
+        /// Authenticates a user using the provided login credentials and returns access and refresh tokens along with
+        /// user information.
+        /// </summary>
+        /// <remarks>The access token is valid for 15 minutes, while the refresh token is valid for 7
+        /// days. The returned user information includes details specific to the user's type (client or
+        /// specialist).</remarks>
+        /// <param name="request">The login request containing the user's email and password. Cannot be null.</param>
+        /// <returns>A <see cref="LoginResponse"/> containing the access token, refresh token, their expiration times, and user
+        /// details if authentication is successful.</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the email or password is invalid, or the user account is inactive.</exception>
         public async Task<LoginResponse> LoginAsync(LoginRequest request)
         {
             // Pobierz użytkownika z bazy danych wraz z powiązanymi danymi klienta/specjalisty
@@ -74,6 +99,17 @@ namespace H4H_API.Services.Implementations
             };
         }
 
+        /// <summary>
+        /// Asynchronously registers a new client user with the provided registration details.
+        /// </summary>
+        /// <remarks>The method creates both a user and a client record in the system. Upon successful
+        /// registration, the client will need to verify their email address before accessing certain
+        /// features.</remarks>
+        /// <param name="request">An object containing the client's registration information, including email, password, personal details, and
+        /// contact information. All required fields must be populated; the email must be unique.</param>
+        /// <returns>A <see cref="RegisterResponse"/> containing the result of the registration, including a message, the newly
+        /// created user ID, and a flag indicating whether email verification is required.</returns>
+        /// <exception cref="ArgumentException">Thrown if a user with the specified email address already exists.</exception>
         public async Task<RegisterResponse> RegisterClientAsync(ClientRegisterDto request)
         {
             // Sprawdź czy email już istnieje
@@ -120,6 +156,17 @@ namespace H4H_API.Services.Implementations
             };
         }
 
+        /// <summary>
+        /// Registers a new specialist user account and initiates the verification process asynchronously.
+        /// </summary>
+        /// <remarks>The specialist account is created in an unverified state. The caller should prompt
+        /// the user to complete any required document verification and email confirmation steps before the account can
+        /// be fully activated.</remarks>
+        /// <param name="request">An object containing the specialist's registration details, including email, password, and personal
+        /// information. All required fields must be provided and valid.</param>
+        /// <returns>A RegisterResponse containing information about the registration outcome, the newly created user ID, and
+        /// whether email verification is required.</returns>
+        /// <exception cref="ArgumentException">Thrown if a user with the specified email address already exists.</exception>
         public async Task<RegisterResponse> RegisterSpecialistAsync(SpecialistRegisterDto request)
         {
             //sprawdzenie czy email jest wolny
@@ -184,6 +231,14 @@ namespace H4H_API.Services.Implementations
             }
         }
 
+        /// <summary>
+        /// Refreshes the access and refresh tokens for an authenticated user using the provided refresh token request.
+        /// </summary>
+        /// <param name="request">The refresh token request containing the current access token and refresh token. The access token must be
+        /// valid and associated with an active user.</param>
+        /// <returns>A <see cref="LoginResponse"/> containing new access and refresh tokens, their expiration times, and user
+        /// information.</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown if the access token is invalid, the user does not exist, or the user is inactive.</exception>
         public async Task<LoginResponse> RefreshTokenAsync(RefreshTokenRequest request)
         {
             var userId = _jwtService.ValidateToken(request.AccessToken);
@@ -218,12 +273,33 @@ namespace H4H_API.Services.Implementations
             };
         }
 
+        /// <summary>
+        /// Revokes the specified access token, logging the user out asynchronously.
+        /// </summary>
+        /// <param name="accessToken">The access token to revoke. Cannot be null or empty.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result is <see langword="true"/> if the logout
+        /// operation was initiated successfully.</returns>
         public async Task<bool> LogoutAsync(string accessToken)
         {
             await _jwtService.RevokeToken(accessToken);
             return true;
         }
 
+        /// <summary>
+        /// Attempts to change the password for the specified user, verifying the current password before updating to
+        /// the new password.
+        /// </summary>
+        /// <remarks>This method performs password verification using a secure hash comparison. The
+        /// password change is persisted immediately. Ensure that the new password meets any application-specific
+        /// security requirements before calling this method.</remarks>
+        /// <param name="userId">The unique identifier of the user whose password is to be changed.</param>
+        /// <param name="currentPassword">The user's current password, used to verify their identity before allowing the password change.</param>
+        /// <param name="newPassword">The new password to set for the user. This should meet any password policy requirements enforced by the
+        /// system.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result is <see langword="true"/> if the password
+        /// was successfully changed; otherwise, <see langword="false"/>.</returns>
+        /// <exception cref="ArgumentException">Thrown if the specified user does not exist.</exception>
+        /// <exception cref="UnauthorizedAccessException">Thrown if the current password provided does not match the user's existing password.</exception>
         public async Task<bool> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword)
         {
             var user = await _context.users.FindAsync(userId) ?? throw new ArgumentException("Użytkownik nie istnieje");
@@ -237,12 +313,25 @@ namespace H4H_API.Services.Implementations
             return true;
         }
 
+        /// <summary>
+        /// Initiates a password reset request for the user associated with the specified email address.
+        /// </summary>
+        /// <param name="email">The email address of the user for whom the password reset is requested. Cannot be null or empty.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result is <see langword="true"/> if the password
+        /// reset request was successfully initiated; otherwise, <see langword="false"/>.</returns>
         public async Task<bool> RequestPasswordResetAsync(string email)
         {
             // Implementacja resetu hasła
             return await Task.FromResult(true);
         }
 
+        /// <summary>
+        /// Resets the user's password using the specified reset token and new password.
+        /// </summary>
+        /// <param name="token">The password reset token that authorizes the password change. Cannot be null or empty.</param>
+        /// <param name="newPassword">The new password to set for the user. Cannot be null or empty. Must meet any password policy requirements.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result is <see langword="true"/> if the password
+        /// was reset successfully; otherwise, <see langword="false"/>.</returns>
         public async Task<bool> ResetPasswordAsync(string token, string newPassword)
         {
             // Implementacja resetu hasła

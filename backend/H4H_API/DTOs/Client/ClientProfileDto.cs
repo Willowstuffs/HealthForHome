@@ -1,6 +1,11 @@
 ﻿namespace H4H_API.DTOs.Client
 {
-    // DTO z pełnymi informacjami o profilu klienta
+    /// <summary>
+    /// Represents a data transfer object containing profile information for a client.
+    /// </summary>
+    /// <remarks>This class is typically used to transfer client profile data between application layers or
+    /// services. It includes personal details, contact information, and metadata about the profile's creation and last
+    /// update.</remarks>
     public class ClientProfileDto
     {
         public Guid Id { get; set; }     // ID klienta

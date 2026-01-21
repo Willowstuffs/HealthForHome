@@ -1,6 +1,8 @@
 ﻿namespace H4H_API.DTOs.Auth
 {
-    // Klasa odpowiedzi po udanej rejestracji
+    /// <summary>
+    /// Represents the result of a user registration operation, including status information and user details.
+    /// </summary>
     public class RegisterResponse
     {
         public string Message { get; set; } = string.Empty;

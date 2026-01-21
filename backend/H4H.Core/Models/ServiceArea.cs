@@ -1,4 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.Drawing;
+using NetTopologySuite.Geometries;
+
 
 namespace H4H.Core.Models
 {
@@ -25,6 +28,25 @@ namespace H4H.Core.Models
 
         [Column("created_at", TypeName = "timestamp without time zone")]
         public DateTime CreatedAt { get; set; } = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified);
+
+        // ====== NOWE POLA DLA GEOLOKALIZACJI ======
+
+        /// <summary>
+        /// Punkt geograficzny (PostGIS Point) z współrzędnymi
+        /// X = longitude (długość geograficzna)
+        /// Y = latitude (szerokość geograficzna)
+        /// SRID 4326 = standard WGS84 (używany przez GPS)
+        /// </summary>
+        [Column("location", TypeName = "geography(Point, 4326)")]
+        public NetTopologySuite.Geometries.Point? Location { get; set; }
+
+        /// <summary>
+        /// Kiedy ostatnio zaktualizowano współrzędne
+        /// </summary>
+        [Column("location_updated_at", TypeName = "timestamp without time zone")]
+        public DateTime? LocationUpdatedAt { get; set; }
+
+        // ==========================================
 
         public virtual Specialist Specialist { get; set; } = null!;
     }

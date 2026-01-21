@@ -3,6 +3,7 @@ using System;
 using H4H.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NetTopologySuite.Geometries;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace H4H.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260112142621_AddPostGISAndGeolocationColumns")]
+    partial class AddPostGISAndGeolocationColumns
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -162,10 +165,6 @@ namespace H4H.Data.Migrations
                         .HasColumnType("timestamp without time zone")
                         .HasColumnName("scheduled_start");
 
-                    b.Property<Guid?>("SelectedSpecialistId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("selected_specialist_id");
-
                     b.Property<Guid>("SpecialistId")
                         .HasColumnType("uuid")
                         .HasColumnName("specialist_id");
@@ -202,35 +201,6 @@ namespace H4H.Data.Migrations
                         {
                             t.ExcludeFromMigrations();
                         });
-                });
-
-            modelBuilder.Entity("H4H.Core.Models.AppointmentSpecialist", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("AppointmentId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("appointment_id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid>("SpecialistId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("specialist_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SpecialistId");
-
-                    b.HasIndex("AppointmentId", "SpecialistId")
-                        .IsUnique();
-
-                    b.ToTable("appointments_specialists");
                 });
 
             modelBuilder.Entity("H4H.Core.Models.BookedSlot", b =>
@@ -1040,25 +1010,6 @@ namespace H4H.Data.Migrations
                     b.Navigation("SpecialistService");
                 });
 
-            modelBuilder.Entity("H4H.Core.Models.AppointmentSpecialist", b =>
-                {
-                    b.HasOne("H4H.Core.Models.Appointment", "Appointment")
-                        .WithMany("AppointmentSpecialists")
-                        .HasForeignKey("AppointmentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("H4H.Core.Models.Specialist", "Specialist")
-                        .WithMany()
-                        .HasForeignKey("SpecialistId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Appointment");
-
-                    b.Navigation("Specialist");
-                });
-
             modelBuilder.Entity("H4H.Core.Models.BookedSlot", b =>
                 {
                     b.HasOne("H4H.Core.Models.Specialist", "Specialist")
@@ -1263,8 +1214,6 @@ namespace H4H.Data.Migrations
 
             modelBuilder.Entity("H4H.Core.Models.Appointment", b =>
                 {
-                    b.Navigation("AppointmentSpecialists");
-
                     b.Navigation("Messages");
 
                     b.Navigation("Payment");

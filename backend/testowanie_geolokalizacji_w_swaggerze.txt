@@ -1,0 +1,271 @@
+Testowanie geolokalizacji w swaggerze
+
+1. Utwórz testowego klienta (przez Auth/register):
+POST /api/Auth/register/client
+{
+  "email": "testklient@health4home.pl",
+  "password": "Test123!",
+  "firstName": "Jan",
+  "lastName": "Kowalski",
+  "address": "Warszawa, Marszałkowska 1"
+}
+
+2. Utwórz testowego specjalistę, ja u siebie w swaggerze nie mialam opcji rejestracji specjalisty wiec jak nie macie żadnego w bazie to ja sobie wygenerowalam takim skrypcikiem w pg adminie
+-- ============================================
+-- TWORZENIE TESTOWEGO SPECJALISTY DO GEOLOKALIZACJI
+-- ============================================
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_specialist_id UUID;
+    v_service_type_id UUID;
+    v_service_area_id UUID;
+BEGIN
+    -- 1. USUŃ ISTNIEJĄCEGO TESTOWEGO SPECJALISTĘ (jeśli istnieje)
+    DELETE FROM specialist_services WHERE specialist_id IN (
+        SELECT id FROM specialists WHERE user_id IN (
+            SELECT id FROM users WHERE email = 'specjalista@test.pl'
+        )
+    );
+    
+    DELETE FROM service_areas WHERE specialist_id IN (
+        SELECT id FROM specialists WHERE user_id IN (
+            SELECT id FROM users WHERE email = 'specjalista@test.pl'
+        )
+    );
+    
+    DELETE FROM specialists WHERE user_id IN (
+        SELECT id FROM users WHERE email = 'specjalista@test.pl'
+    );
+    
+    DELETE FROM users WHERE email = 'specjalista@test.pl';
+    
+    RAISE NOTICE 'Usunięto istniejącego testowego specjalistę (jeśli istniał)';
+    
+    -- 2. UTWÓRZ UŻYTKOWNIKA
+    INSERT INTO users (
+        id, 
+        email, 
+        password_hash, 
+        user_type, 
+        phone_number,
+        is_active, 
+        created_at, 
+        updated_at
+    ) VALUES (
+        gen_random_uuid(),
+        'specjalista@test.pl',
+        -- HASŁO: "Test123!" (zahaszowane BCrypt)
+        '$2a$12$4V5Q6n7X8Y9Z0A1B2C3D4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3',
+        'specialist',
+        '+48123456789',
+        true,
+        NOW(),
+        NOW()
+    ) RETURNING id INTO v_user_id;
+    
+    RAISE NOTICE 'Utworzono użytkownika z ID: %', v_user_id;
+    
+    -- 3. UTWÓRZ SPECJALISTĘ
+    INSERT INTO specialists (
+        id, 
+        user_id, 
+        first_name, 
+        last_name, 
+        professional_title,
+        bio,
+        hourly_rate,
+        is_verified,
+        verification_status,
+        average_rating,
+        total_reviews,
+        created_at
+    ) VALUES (
+        gen_random_uuid(),
+        v_user_id,
+        'Jan',
+        'Kowalski',
+        'Fizjoterapeuta',
+        'Doświadczony fizjoterapeuta z 10-letnim stażem. Specjalizuję się w rehabilitacji pourazowej.',
+        150.00,
+        true,
+        'approved',
+        4.75,
+        28,
+        NOW()
+    ) RETURNING id INTO v_specialist_id;
+    
+    RAISE NOTICE 'Utworzono specjalistę z ID: %', v_specialist_id;
+    
+    -- 4. UTWÓRZ OBSZAR DZIAŁANIA Z GEOLOKALIZACJĄ!
+    INSERT INTO service_areas (
+        id,
+        specialist_id,
+        city,
+        postal_code,
+        max_distance_km,
+        is_primary,
+        location,  -- GEOGRAFICZNY PUNKT!
+        location_updated_at,
+        created_at
+    ) VALUES (
+        gen_random_uuid(),
+        v_specialist_id,
+        'Warszawa',
+        '00-001',
+        25,
+        true,
+        -- WSPÓŁRZĘDNE CENTRUM WARSZAWY: 52.2297° N, 21.0122° E
+        ST_SetSRID(ST_MakePoint(21.0122, 52.2297), 4326)::geography,
+        NOW(),
+        NOW()
+    ) RETURNING id INTO v_service_area_id;
+    
+    RAISE NOTICE 'Utworzono obszar działania z lokalizacją (Warszawa)';
+    
+    -- 5. DODAJ TYP USŁUGI (jeśli nie istnieje)
+    INSERT INTO service_types (id, name, category, default_duration, description, created_at)
+    SELECT 
+        gen_random_uuid(),
+        'Masaż leczniczy',
+        'physiotherapy',
+        60,
+        'Masaż leczniczy dla pacjentów z problemami kręgosłupa',
+        NOW()
+    WHERE NOT EXISTS (
+        SELECT 1 FROM service_types WHERE name = 'Masaż leczniczy'
+    ) RETURNING id INTO v_service_type_id;
+    
+    -- Jeśli typ usługi już istniał, pobierz jego ID
+    IF v_service_type_id IS NULL THEN
+        SELECT id INTO v_service_type_id 
+        FROM service_types 
+        WHERE name = 'Masaż leczniczy' 
+        LIMIT 1;
+    END IF;
+    
+    -- 6. DODAJ USŁUGĘ SPECJALISTY
+    INSERT INTO specialist_services (
+        id,
+        specialist_id,
+        service_type_id,
+        duration_minutes,
+        price,
+        description,
+        is_active,
+        created_at
+    ) VALUES (
+        gen_random_uuid(),
+        v_specialist_id,
+        v_service_type_id,
+        60,
+        180.00,
+        'Masaż leczniczy z elementami terapii manualnej',
+        true,
+        NOW()
+    );
+    
+    RAISE NOTICE 'Dodano usługę specjalisty';
+    
+    -- 7. DODAJ KWALIFIKACJE
+    INSERT INTO specialist_qualifications (
+        id,
+        specialist_id,
+        profession,
+        license_number,
+        license_photo_url,
+        is_active,
+        created_at
+    ) VALUES (
+        gen_random_uuid(),
+        v_specialist_id,
+        'physiotherapist',
+        'PWZ/123456/2023',
+        'https://example.com/license.jpg',
+        true,
+        NOW()
+    );
+    
+    RAISE NOTICE 'Dodano kwalifikacje';
+    
+    -- 8. DODAJ DOSTĘPNOŚĆ (przykładowe sloty)
+    INSERT INTO specialist_availability (
+        id,
+        specialist_id,
+        date,
+        start_time,
+        end_time,
+        is_available,
+        created_at
+    ) VALUES 
+    (gen_random_uuid(), v_specialist_id, CURRENT_DATE + INTERVAL '1 day', '09:00', '12:00', true, NOW()),
+    (gen_random_uuid(), v_specialist_id, CURRENT_DATE + INTERVAL '1 day', '14:00', '18:00', true, NOW()),
+    (gen_random_uuid(), v_specialist_id, CURRENT_DATE + INTERVAL '2 days', '10:00', '16:00', true, NOW());
+    
+    RAISE NOTICE 'Dodano dostępność';
+    
+    -- 9. POKAŻ REZULTAT
+    RAISE NOTICE '============================================';
+    RAISE NOTICE 'SPECJALISTA UTWORZONY POMYŚLNIE!';
+    RAISE NOTICE '============================================';
+    RAISE NOTICE 'Dane logowania:';
+    RAISE NOTICE '  Email: specjalista@test.pl';
+    RAISE NOTICE '  Hasło: Test123!';
+    RAISE NOTICE '';
+    RAISE NOTICE 'Geolokalizacja:';
+    RAISE NOTICE '  Miasto: Warszawa';
+    RAISE NOTICE '  Współrzędne: 52.2297° N, 21.0122° E';
+    RAISE NOTICE '  Zasięg: 25 km';
+    RAISE NOTICE '';
+    RAISE NOTICE 'ID do testów:';
+    RAISE NOTICE '  User ID: %', v_user_id;
+    RAISE NOTICE '  Specialist ID: %', v_specialist_id;
+    RAISE NOTICE '============================================';
+    
+END $$;
+
+
+3. Zaloguj się jako klient:
+POST /api/Auth/login
+{
+  "email": "testklient@health4home.pl",
+  "password": "Test123!"
+}
+Skopiuj token z odpowiedzi.
+
+4. W Swaggerze kliknij "Authorize" i wklej token:
+Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+5. Przetestuj geolokalizację:
+- Możeemy zaktualizowac sobie profil klienta (automatyczne geokodowanie):
+PUT /api/Client/profile
+{
+  "address": "Kraków, Rynek Główny 1"
+}
+
+- Ręczne geokodowanie:
+POST /api/Geolocation/geocode-my-address
+
+- Sprawdź swoje współrzędne:
+GET /api/Geolocation/my-coordinates
+z tego otrzymujemy sobie koordynaty dla podanego wyzej adresu zwraca nam sie tu
+"latitude": 50.0614859,
+"longitude": 19.9364149
+
+- Dalej mozemy sprawdzic czy ta wartosc jest poprawna, wstawiamy sobie w 
+POST /api/Geolocation/reverse-geocode
+{
+  "latitude": 50.0614859,
+  "longitude": 19.9364149
+}
+i otrzymujemy: "data": "Rynek Główny, Stare Miasto, Kraków, województwo małopolskie, 31-008, Polska",
+
+-mozemy tez przetestowac odleglosc od specjalisty, podajac jego id
+GET /api/Geolocation/distance/{specialistId}
+u mnie specjalista stworzony skryptem ma takie id 5375746b-af80-40b0-841e-4f55fa7c48fe wpisujemy i dostajemy
+jakas tam odleglosc ale to jeszcze nie jest do konca poprawne vo mi tu pokazuje  "distanceKm": 25.7, a z krakowa do warszawy to chyba nie do konca tyle jest wiecie ;-;
+
+- mamy jeszcze jeden endpoint
+POST /api/Geolocation/geocode
+tutaj mozemy sobie wpisywac dowolne adresy, albo samo miasto albo z ulicą (ale jak z ulicą to bez ul. tylko sama nazwa bo cos tam nie do konca wtedy sie zgadza jak jest ul.) no i mozemy sobie sprawdzic na jakiejs prawdziwej mapie czy sie zgadza wynik

@@ -2,7 +2,9 @@
 
 namespace H4H_API.DTOs.Auth
 {
-    // DTO dla żądania logowania z walidacją danych
+    /// <summary>
+    /// Represents a request to authenticate a user using an email address and password.
+    /// </summary>
     public class LoginRequest
     {
         [Required(ErrorMessage = "Email jest wymagany")]

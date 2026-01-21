@@ -3,6 +3,14 @@
 namespace H4H_API.DTOs.Auth
 {
     // Starsze/generyczne DTO rejestracji (może być używane alternatywnie)
+    /// <summary>
+    /// Represents a request to register a new user, including credentials and personal information required for account
+    /// creation.
+    /// </summary>
+    /// <remarks>This data transfer object is used to collect user registration details such as email,
+    /// password, name, and optional contact information. Validation attributes ensure that required fields are provided
+    /// and meet format and length requirements. The UserType property allows specifying the type of user to be
+    /// registered, with a default value of "client".</remarks>
     public class RegisterRequest
     {
         [Required(ErrorMessage = "Email jest wymagany")]

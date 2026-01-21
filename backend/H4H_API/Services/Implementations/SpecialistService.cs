@@ -1,8 +1,11 @@
-﻿using H4H.Core.Models;
+﻿using H4H.Core.Helpers;
+using H4H.Core.Models;
 using H4H.Data;
 using H4H_API.DTOs.Specialist;
+using H4H_API.Exceptions;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using SpecialistServiceEntity = H4H.Core.Models.SpecialistService;
 
 namespace H4H_API.Services.Implementations
 {
@@ -130,5 +133,151 @@ namespace H4H_API.Services.Implementations
 
             await _context.SaveChangesAsync();
         }
+        public async Task<string?> GetLicenseNumberAsync(Guid userId)
+        {
+            //sieganie do tabeli specialist_qualifications poprzez specjaliste
+            var specialist = await _context.specialists
+                .Include(s => s.Qualifications) //relacja do kwalifikacji
+                .FirstOrDefaultAsync(s => s.UserId == userId);
+
+            if(specialist == null)
+                throw new KeyNotFoundException($"Nie znaleziono profilu specjalisty dla użytkownika {userId}");
+
+            var qualification = specialist.Qualifications.FirstOrDefault();
+            return qualification?.LicenseNumber;
+        }
+        public async Task<List<SpecialistServiceDto>> GetServicesAsync(Guid userId)
+        {
+            var specialist = await _context.specialists
+                .Include(s => s.Services)
+                    .ThenInclude(ss => ss.ServiceType)
+                .FirstOrDefaultAsync(s => s.UserId == userId)
+                ?? throw new KeyNotFoundException("Profil specjalisty nie istnieje.");
+
+            return specialist.Services
+                .Where(s => s.IsActive)
+                .Select(s => new SpecialistServiceDto
+                {
+                    Id = s.Id,
+                    ServiceName = s.ServiceType.Name,
+                    Category = s.ServiceType.Category ?? "",
+                    DurationMinutes = s.DurationMinutes,
+                    Price = s.Price,
+                    Description = s.Description
+                })
+                .ToList();
+        }
+        public async Task<List<ServiceTypeDto>> GetServiceTypesAsync()
+        {
+            var types = await _context.service_types
+                .Select(st => new ServiceTypeDto
+                {
+                    Id = st.Id,
+                    Name = st.Name,
+                    Category = st.Category ?? string.Empty,
+                    DefaultDuration = st.DefaultDuration ?? 0,
+                    Description = st.Description
+                })
+                .ToListAsync();
+
+            return types;
+        }
+        public async Task AddServiceAsync(Guid userId, SpecialistServiceManageDto dto)
+        {
+            var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
+                 ?? throw new KeyNotFoundException("Profil nie istnieje."); // ErrorCode: SPEC_001
+
+            // Duplikaty
+            var exists = await _context.specialist_services
+                .AnyAsync(ss => ss.SpecialistId == specialist.Id && ss.ServiceTypeId == dto.ServiceTypeId);
+            // Wlasny wyjatek z kodem bledu dla duplikatu
+            if (exists) throw new AppException("Masz już tę usługę.", ErrorCodes.ServiceAlreadyExists);
+
+            // Nowa encja z bazy danych
+            var newService = new SpecialistServiceEntity
+            {
+                Id = Guid.NewGuid(),
+                SpecialistId = specialist.Id,
+                ServiceTypeId = dto.ServiceTypeId,
+                Price = dto.Price,
+                DurationMinutes = dto.DurationMinutes,
+                Description = dto.Description,
+                IsActive = true,
+                //CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
+            };
+
+            _context.specialist_services.Add(newService);
+            await _context.SaveChangesAsync();
+        }
+        public async Task UpdateServiceAsync(Guid userId, Guid serviceId, SpecialistServiceManageDto dto)
+        {
+            var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
+                ?? throw new KeyNotFoundException("Profil nie istnieje.");
+
+            // Pobieranie konkretnej uslugi
+            var service = await _context.specialist_services
+                .FirstOrDefaultAsync(ss => ss.Id == serviceId && ss.SpecialistId == specialist.Id);
+
+            if (service == null) throw new KeyNotFoundException("Usługa nie znaleziona.");
+
+            // Aktualizacja pól
+            service.Price = dto.Price;
+            service.DurationMinutes = dto.DurationMinutes;
+            service.Description = dto.Description;
+            service.ServiceTypeId = dto.ServiceTypeId; 
+
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteServiceAsync(Guid userId, Guid serviceId)
+        {
+            var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId);
+
+            var service = await _context.specialist_services
+                .FirstOrDefaultAsync(ss => ss.Id == serviceId && ss.SpecialistId == specialist!.Id);
+
+            if (service == null) throw new KeyNotFoundException("Usługa nie znaleziona.");
+
+            _context.specialist_services.Remove(service);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UpdateServiceAreaAsync(Guid userId, ServiceAreaManageDto dto)
+        {
+            var specialist = await _context.specialists
+                .Include(s => s.ServiceAreas)
+                .FirstOrDefaultAsync(s => s.UserId == userId)
+                ?? throw new KeyNotFoundException("Profil nie istnieje.");
+            // Zakladamy ze specjalista ma jeden obszar dzialania.
+
+            var area = specialist.ServiceAreas.FirstOrDefault();
+
+            if (area == null)
+            {
+                area = new ServiceArea
+                {
+                    Id = Guid.NewGuid(),
+                    SpecialistId = specialist.Id,
+                    IsPrimary = true
+                };
+                _context.service_areas.Add(area);
+            }
+
+            area.City = dto.City;
+            area.PostalCode = dto.PostalCode;
+            area.MaxDistanceKm = dto.MaxDistanceKm;
+
+            // --- PRZYSZŁA IMPLEMENTACJA GEOLOKALIZACJI ---
+            /*
+            if (dto.Latitude.HasValue && dto.Longitude.HasValue)
+            {
+                 area.Latitude = dto.Latitude.Value;
+                 area.Longitude = dto.Longitude.Value;
+            }
+            */
+            await _context.SaveChangesAsync();
+        }
+
     }
 }
