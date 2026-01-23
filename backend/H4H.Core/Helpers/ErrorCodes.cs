@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace H4H_API.Helpers
+namespace H4H.Core.Helpers
 {
     public static class ErrorCodes
     {
@@ -15,19 +15,6 @@ namespace H4H_API.Helpers
 
         // Specjalista
         public const string SpecialistNotFound = "SPEC_001";
-<<<<<<< HEAD
-
-        // Uslugi specjalisty
-        public const string ServiceAlreadyExists = "SERV_001";
-        public const string ServiceNotFound = "SERV_002";
-
-        // Wizyty
-        public const string AppointmentNotFound = "APPT_001";
-        public const string AppointmentStatusNotPending = "APPT_002";
-
-        // Walidacja danych
-        public const string ValidationError = "VAL_001";
-=======
         public const string ServiceAlreadyExists = "SERV_001";
         public const string ServiceNotFound = "SERV_002";
 
@@ -43,6 +30,5 @@ namespace H4H_API.Helpers
         // Klienci
         public const string ClientNotFound = "CLIENT_001";
         public const string AddressUpdateFailed = "CLIENT_002";
->>>>>>> origin/client_app
     }
 }

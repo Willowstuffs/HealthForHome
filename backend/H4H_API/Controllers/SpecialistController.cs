@@ -146,6 +146,7 @@ namespace H4H_API.Controllers
             return Ok(ApiResponse<object?>.SuccessResponse(null, "Zasięg został zaktualizowany."));
         }
 
+
         /// <summary>Potwierdza oczekującą wizytę przez specjalistę.</summary>
         [HttpPatch("appointments/{id}/confirm")]
         public async Task<ActionResult<ApiResponse<object?>>> ConfirmAppointment(Guid id)
@@ -154,5 +155,6 @@ namespace H4H_API.Controllers
             await _specialistService.ConfirmAppointmentAsync(userId, id);
             return Ok(ApiResponse<object?>.SuccessResponse(null, "Wizyta została potwierdzona."));
         }
+
     }
 }

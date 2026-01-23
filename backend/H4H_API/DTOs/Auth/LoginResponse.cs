@@ -1,6 +1,12 @@
 ﻿namespace H4H_API.DTOs.Auth
 {
-    // Klasa odpowiedzi po udanym logowaniu
+    /// <summary>
+    /// Represents the response returned after a successful user login, including authentication tokens and user
+    /// information.
+    /// </summary>
+    /// <remarks>This class contains the access and refresh tokens required for authenticated API requests,
+    /// along with their expiration times and details about the authenticated user. The tokens should be securely stored
+    /// and used according to best practices for authentication and session management.</remarks>
     public class LoginResponse
     {
         public string AccessToken { get; set; } = string.Empty;     // Token JWT do autoryzacji
@@ -10,7 +16,13 @@
         public UserInfoDto User { get; set; } = null!;              // Informacje o zalogowanym użytkowniku
     }
 
-    // DTO z informacjami o użytkowniku
+    /// <summary>
+    /// Represents user profile information for data transfer between application layers or services.
+    /// </summary>
+    /// <remarks>This data transfer object (DTO) is typically used to encapsulate user details such as
+    /// identifiers, contact information, and user type for operations like authentication, authorization, or user
+    /// management. The class is intended for use in scenarios where exposing only essential user data is required,
+    /// rather than the full domain model.</remarks>
     public class UserInfoDto
     {
         public Guid Id { get; set; }

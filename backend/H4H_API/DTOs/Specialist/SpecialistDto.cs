@@ -1,9 +1,11 @@
 ﻿namespace H4H_API.DTOs.Specialist
 {
     /// <summary>
-    /// Główny obiekt transferu danych reprezentujący profil specjalisty.
-    /// Zawiera podstatowe informacje oraz listy usług i obszarów.
+    /// Represents a data transfer object containing profile and service information for a specialist.
     /// </summary>
+    /// <remarks>This class is typically used to transfer specialist data between application layers or over
+    /// service boundaries. It includes personal details, professional credentials, service offerings, and review
+    /// statistics relevant to the specialist's public profile.</remarks>
     public class SpecialistDto
     {
         public Guid Id { get; set; }
@@ -22,7 +24,13 @@
         public List<ServiceAreaDto> ServiceAreas { get; set; } = [];
     }
 
-    /// <summary>Reprezentuje pojedynczą usługę przypisaną do specjalisty</summary>
+    /// <summary>
+    /// Represents a data transfer object for a specialist service, including details such as service name, category,
+    /// duration, price, and description.
+    /// </summary>
+    /// <remarks>This class is typically used to transfer specialist service information between application
+    /// layers or over network boundaries. It encapsulates the essential properties required to describe a service
+    /// offered by a specialist, such as in scheduling or catalog scenarios.</remarks>
     public class SpecialistServiceDto
     {
         public Guid Id { get; set; }
@@ -34,7 +42,12 @@
         public string? Description { get; set; }
     }
 
-    /// <summary>Obszar w którym specjalista przyjmuje lub dojeżdża.</summary>
+    /// <summary>
+    /// Represents a data transfer object that defines a service area, including city, postal code, maximum distance,
+    /// and primary status.
+    /// </summary>
+    /// <remarks>Use this type to specify or retrieve information about a geographic area where a service is
+    /// available. This DTO is typically used for data exchange between application layers or services.</remarks>
     public class ServiceAreaDto
     {
         public string City { get; set; } = string.Empty;

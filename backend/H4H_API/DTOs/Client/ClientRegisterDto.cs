@@ -2,7 +2,12 @@
 
 namespace H4H_API.DTOs.Client
 {
-    // DTO dla rejestracji klienta z walidacją
+    /// <summary>
+    /// Represents the data required to register a new client account.
+    /// </summary>
+    /// <remarks>This data transfer object is typically used to collect and validate user input during the
+    /// client registration process. All required fields must be provided and meet the specified validation criteria for
+    /// successful registration.</remarks>
     public class ClientRegisterDto
     {
         [Required(ErrorMessage = "Email jest wymagany")]

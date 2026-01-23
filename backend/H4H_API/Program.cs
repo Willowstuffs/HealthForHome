@@ -54,15 +54,20 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
+
 // Database context
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
-        b => b.MigrationsAssembly("H4H.Data")
-    ));
+        npgsqlOptions =>
+        {
+            npgsqlOptions.UseNetTopologySuite(); // do geo
+            npgsqlOptions.MigrationsAssembly("H4H.Data");
+        }));
 
 // Add logging
 builder.Services.AddLogging();
+
 
 // JWT Authentication 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -86,6 +91,9 @@ builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<ISpecialistService, SpecialistService>();
+builder.Services.AddScoped<IGeocoder, Geocoder>();
+builder.Services.AddHttpClient();
+
 
 // CORS dla frontendu jeœli Flutter debuguje przez przegl¹darkê
 builder.Services.AddCors(options =>
@@ -95,10 +103,24 @@ builder.Services.AddCors(options =>
             .AllowAnyOrigin()  // Ka¿de Ÿród³o
             .AllowAnyMethod()
             .AllowAnyHeader());
+
 });
 
 // Dependency Injection dla Repository
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+
+// konfiguracja httpclient dla nominatim
+builder.Services.AddHttpClient("Nominatim", client =>
+{
+    client.BaseAddress = new Uri("https://nominatim.openstreetmap.org/");
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Health4Home/1.0 (contact@health4home.pl)");
+    client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
+// Rate limiting dla Nominatim (max 1 request na sekundê)
+builder.Services.AddSingleton<GeocodingRateLimiter>();
+
 
 var app = builder.Build();
 
@@ -109,16 +131,19 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+
 // Middleware 
 app.UseMiddleware<ErrorHandlingMiddleware>();
 
 app.UseHttpsRedirection();
 app.UseCors("AllowFlutter");
 app.UseAuthentication();
+
 app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
 
 
 

@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using H4H.Core.Models;
+using NetTopologySuite;
 
 namespace H4H.Data
 {
@@ -17,7 +18,7 @@ namespace H4H.Data
         public DbSet<ServiceType> service_types { get; set; }
         public DbSet<SpecialistService> specialist_services { get; set; }
         public DbSet<ServiceArea> service_areas { get; set; }
-        public DbSet<SpecialistAvailability> specialist_availabilities { get; set; }
+        public DbSet<SpecialistAvailability> specialist_availability { get; set; }
         public DbSet<BookedSlot> booked_slots { get; set; }
         public DbSet<Appointment> appointments { get; set; }
         public DbSet<Payment> payments { get; set; }
@@ -28,10 +29,69 @@ namespace H4H.Data
         public DbSet<Message> messages { get; set; }
         public DbSet<Notification> notifications { get; set; }
         public DbSet<VerificationCode> verification_codes { get; set; }
+        public DbSet<AddressGeocache> address_geocache { get; set; }
+        public DbSet<AppointmentSpecialist> appointments_specialists { get; set; }
 
+        // dla PostGIS i NetTopologySuite
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            if (!optionsBuilder.IsConfigured)
+            {
+                // upewnaieamy sie ze UseNetTopologySuite jest włączone
+                optionsBuilder.UseNpgsql(
+                    "ConnectionString", 
+                    options => options.UseNetTopologySuite() // TO JEST NAJWAŻNIEJSZE (podobno)
+                );
+            }
+        }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // Włącz rozszerzenie PostGIS
+            modelBuilder.HasPostgresExtension("postgis");
+
+
+            // NOWA MIGRACJA IGNORUJEMY ISTNIEJĄCE TABELE
+            modelBuilder.Entity<User>().ToTable("users", t => t.ExcludeFromMigrations());
+            modelBuilder.Entity<Client>().ToTable("clients", t => t.ExcludeFromMigrations());
+            modelBuilder.Entity<Specialist>().ToTable("specialists", t => t.ExcludeFromMigrations());
+            modelBuilder.Entity<ServiceType>().ToTable("service_types", t => t.ExcludeFromMigrations());
+            modelBuilder.Entity<SpecialistService>().ToTable("specialist_services", t => t.ExcludeFromMigrations());
+            modelBuilder.Entity<ServiceArea>().ToTable("service_areas", t => t.ExcludeFromMigrations());
+            modelBuilder.Entity<SpecialistAvailability>().ToTable("specialist_availability", t => t.ExcludeFromMigrations());
+            modelBuilder.Entity<BookedSlot>().ToTable("booked_slots", t => t.ExcludeFromMigrations());
+            modelBuilder.Entity<Appointment>().ToTable("appointments", t => t.ExcludeFromMigrations());
+            modelBuilder.Entity<Payment>().ToTable("payments", t => t.ExcludeFromMigrations());
+            modelBuilder.Entity<Review>().ToTable("reviews", t => t.ExcludeFromMigrations());
+            modelBuilder.Entity<SpecialistQualification>().ToTable("specialist_qualifications", t => t.ExcludeFromMigrations());
+            modelBuilder.Entity<Admin>().ToTable("admins", t => t.ExcludeFromMigrations());
+            modelBuilder.Entity<VerificationLog>().ToTable("verification_logs", t => t.ExcludeFromMigrations());
+            modelBuilder.Entity<Message>().ToTable("messages", t => t.ExcludeFromMigrations());
+            modelBuilder.Entity<Notification>().ToTable("notifications", t => t.ExcludeFromMigrations());
+            modelBuilder.Entity<VerificationCode>().ToTable("verification_codes", t => t.ExcludeFromMigrations());
+
+            // SKONFIGURUJEMY TYLKO NOWE KOLUMNY
+            modelBuilder.Entity<Client>(entity =>
+            {
+                entity.Property(e => e.AddressPoint)
+                    .HasColumnType("geography(Point, 4326)");
+
+                entity.Property(e => e.AddressGeocodedAt)
+                    .HasColumnType("timestamp without time zone");
+            });
+
+            modelBuilder.Entity<ServiceArea>(entity =>
+            {
+                entity.Property(e => e.Location)
+                    .HasColumnType("geography(Point, 4326)");
+
+                entity.Property(e => e.LocationUpdatedAt)
+                    .HasColumnType("timestamp without time zone");
+            });
+
+
+
 
             // Konfiguracja tabel
             modelBuilder.Entity<User>(entity =>
@@ -40,21 +100,30 @@ namespace H4H.Data
                 entity.Property(e => e.UserType).HasMaxLength(20);
             });
 
+
             // Relacja jeden-do-jednego User <=> Client z kaskadowym usuwaniem
+
             modelBuilder.Entity<Client>(entity =>
             {
                 entity.HasOne(c => c.User)
                     .WithOne(u => u.Client)
                     .HasForeignKey<Client>(c => c.UserId)
+
                     .OnDelete(DeleteBehavior.Cascade); // Usunięcie użytkownika usuwa klienta
+
+                // KONFIGURACJA POSTGIS DLA Client:
+                entity.Property(e => e.AddressPoint)
+                    .HasColumnType("geography(Point, 4326)");
             });
 
             // Relacja jeden-do-jednego User <=> Specialist z kaskadowym usuwaniem
+
             modelBuilder.Entity<Specialist>(entity =>
             {
                 entity.HasOne(s => s.User)
                     .WithOne(u => u.Specialist)
                     .HasForeignKey<Specialist>(s => s.UserId)
+
                     .OnDelete(DeleteBehavior.Cascade); // Usunięcie użytkownika usuwa specjalistę
 
                 entity.Property(s => s.VerificationStatus)
@@ -93,6 +162,10 @@ namespace H4H.Data
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasIndex(sa => sa.City); // Indeks na mieście dla szybkiego wyszukiwania
+
+                // KONFIGURACJA POSTGIS DLA ServiceArea:
+                entity.Property(e => e.Location)
+                    .HasColumnType("geography(Point, 4326)");
             });
 
             // Dostępność specjalistów (kalendarz)
@@ -142,9 +215,11 @@ namespace H4H.Data
                 entity.Property(a => a.AppointmentStatus)
                     .HasMaxLength(20); // Status wizyty (confirmed, cancelled, completed)
 
+
                 entity.HasIndex(a => a.ScheduledStart);
                 entity.HasIndex(a => a.AppointmentStatus);
             });
+
 
             // Płatności
             modelBuilder.Entity<Payment>(entity =>
@@ -152,6 +227,7 @@ namespace H4H.Data
                 // Relacja jeden-do-jednego z Wizytą
                 entity.HasOne(p => p.Appointment)
                     .WithOne(a => a.Payment) // Jedna wizyta ma jedną płatność
+
                     .HasForeignKey<Payment>(p => p.AppointmentId)
                     .OnDelete(DeleteBehavior.Cascade);
 
@@ -160,20 +236,24 @@ namespace H4H.Data
                 entity.Property(p => p.PaymentStatus).HasMaxLength(20);
             });
 
+
             // Recenzje
             modelBuilder.Entity<Review>(entity =>
             {
                 // Relacja z Wizytą
+
                 entity.HasOne(r => r.Appointment)
                     .WithOne(a => a.Review)
                     .HasForeignKey<Review>(r => r.AppointmentId)
                     .OnDelete(DeleteBehavior.Cascade);
 
                 // Relacja z Klientem
+
                 entity.HasOne(r => r.Client)
                     .WithMany(c => c.Reviews)
                     .HasForeignKey(r => r.ClientId)
                     .OnDelete(DeleteBehavior.Cascade);
+
 
                 // Relacja z Specialista
                 entity.HasOne(r => r.Specialist)
@@ -182,6 +262,8 @@ namespace H4H.Data
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasIndex(r => r.AppointmentId).IsUnique();
+
+
                 // Constraint w bazie: ocena musi być między 1 a 5
                 entity.ToTable(tb => tb.HasCheckConstraint("CK_Review_Rating", "\"Rating\" >= 1 AND \"Rating\" <= 5"));
             });
@@ -191,10 +273,12 @@ namespace H4H.Data
             {
                 entity.HasOne(sq => sq.Specialist)
                     .WithMany(s => s.Qualifications) // Jeden specjalista ma wiele kwalifikacji
+
                     .HasForeignKey(sq => sq.SpecialistId)
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasOne(sq => sq.VerifiedByAdmin)
+
                     .WithMany(a => a.VerifiedQualifications) // Jeden admin może zweryfikować wiele kwalifikacji
                     .HasForeignKey(sq => sq.VerifiedByAdminId)
                     .OnDelete(DeleteBehavior.SetNull); // Usunięcie admina ustawia NULL
@@ -203,9 +287,11 @@ namespace H4H.Data
             });
 
             // Administratorzy systemu
+
             modelBuilder.Entity<Admin>(entity =>
             {
                 entity.ToTable("admins");
+
 
                 entity.HasIndex(a => a.Email).IsUnique(); // Unikalny email admina
                 entity.Property(a => a.Role).HasMaxLength(20); // Rola admina (super_admin, support)
@@ -229,6 +315,7 @@ namespace H4H.Data
                     .HasColumnType("timestamp without time zone");
             });
 
+
             // Logi weryfikacji specjalistów
             modelBuilder.Entity<VerificationLog>(entity =>
             {
@@ -238,6 +325,7 @@ namespace H4H.Data
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasOne(vl => vl.Admin)
+
                     .WithMany(a => a.VerificationLogs) // Jeden admin ma wiele logów weryfikacji
                     .HasForeignKey(vl => vl.AdminId)
                     .OnDelete(DeleteBehavior.SetNull); // Usunięcie admina ustawia NULL
@@ -263,11 +351,13 @@ namespace H4H.Data
                 // Relacja z Wizytą (wiadomości mogą dotyczyć konkretnej wizyty)
                 entity.HasOne(m => m.Appointment)
                     .WithMany(a => a.Messages) // Jedna wizyta może mieć wiele wiadomości
+
                     .HasForeignKey(m => m.AppointmentId)
                     .OnDelete(DeleteBehavior.SetNull);
 
                 entity.HasIndex(m => m.CreatedAt);
             });
+
 
             // Powiadomienia
             modelBuilder.Entity<Notification>(entity =>
@@ -282,6 +372,7 @@ namespace H4H.Data
                 entity.HasIndex(n => n.CreatedAt);
             });
 
+
             // Kody weryfikacyjne 
             modelBuilder.Entity<VerificationCode>(entity =>
             {
@@ -291,8 +382,45 @@ namespace H4H.Data
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.Property(vc => vc.Purpose).HasMaxLength(50); // Cel kodu (email_verification)
+
                 entity.HasIndex(vc => new { vc.Email, vc.Code, vc.IsUsed });
                 entity.HasIndex(vc => vc.ExpiresAt);
+            });
+
+            // konfiguracja dla AddressGeocache 
+            modelBuilder.Entity<AddressGeocache>(entity =>
+            {
+                entity.ToTable("address_geocache");
+
+                entity.HasIndex(e => e.AddressHash).IsUnique();
+
+                entity.Property(e => e.Latitude)
+                    .HasColumnType("decimal(10, 8)");
+
+                entity.Property(e => e.Longitude)
+                    .HasColumnType("decimal(11, 8)");
+
+                entity.Property(e => e.CreatedAt)
+                    .HasColumnType("timestamp without time zone");
+            });
+
+            // Konfiguracja tabeli łączącej Appointment i Specialist (wiele-do-wielu)
+            modelBuilder.Entity<AppointmentSpecialist>(entity =>
+            {
+                // Relacja z Appointment
+                entity.HasOne(a => a.Appointment)
+                    .WithMany(a => a.AppointmentSpecialists)
+                    .HasForeignKey(a => a.AppointmentId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Relacja ze Specialist
+                entity.HasOne(a => a.Specialist)
+                    .WithMany()
+                    .HasForeignKey(a => a.SpecialistId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Unikalna para appointment + specialist
+                entity.HasIndex(a => new { a.AppointmentId, a.SpecialistId }).IsUnique();
             });
         }
     }

@@ -6,7 +6,9 @@ using H4H_API.Exceptions;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using SpecialistServiceEntity = H4H.Core.Models.SpecialistService;
+
 using H4H_API.Helpers;
+using ErrorCodes = H4H_API.Helpers.ErrorCodes;
 
 namespace H4H_API.Services.Implementations
 {

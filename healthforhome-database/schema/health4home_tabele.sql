@@ -294,3 +294,60 @@ JOIN information_schema.constraint_column_usage ccu
     ON ccu.constraint_name = tc.constraint_name
 WHERE tc.constraint_type = 'FOREIGN KEY'
 ORDER BY tc.table_name;
+
+
+
+-- DODANIE POSTGISA:
+
+CREATE EXTENSION IF NOT EXISTS postgis;
+SELECT PostGIS_Version();
+
+-- DODAJEMY KOLUMNY DO service_areas
+ALTER TABLE service_areas
+ADD COLUMN IF NOT EXISTS location geography(Point, 4326),
+ADD COLUMN IF NOT EXISTS location_updated_at TIMESTAMP;
+
+-- DODAJEMY KOLUMNY DO clients
+ALTER TABLE clients
+ADD COLUMN IF NOT EXISTS address_point geography(Point, 4326),
+ADD COLUMN IF NOT EXISTS address_geocoded_at TIMESTAMP;
+
+-- TABELA CACHE'U GEOKODOWANIA 
+CREATE TABLE IF NOT EXISTS address_geocache (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    address_hash VARCHAR(64) UNIQUE NOT NULL,
+    address TEXT NOT NULL,
+    latitude DECIMAL(10, 8),
+    longitude DECIMAL(11, 8),
+    formatted_address TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_service_areas_location ON service_areas USING GIST(location);
+CREATE INDEX idx_clients_address_point ON clients USING GIST(address_point);
+CREATE INDEX idx_address_geocache_hash ON address_geocache(address_hash);
+
+
+-- POPRAWKA W WIZYTACH:
+
+-- Tabelka od Kasi
+CREATE TABLE appointments_specialists (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    appointment_id UUID NOT NULL,
+    specialist_id UUID NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_appointments_specialists_appointment
+        FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE,
+
+    CONSTRAINT fk_appointments_specialists_specialist
+        FOREIGN KEY (specialist_id) REFERENCES specialists(id) ON DELETE CASCADE,
+
+    CONSTRAINT uq_appointments_specialists_unique
+        UNIQUE (appointment_id, specialist_id)
+);
+
+-- Kto ostatecznie wziął to zlecenie (PIERWSZY który zaakceptował)
+ALTER TABLE appointments ADD COLUMN selected_specialist_id UUID REFERENCES specialists(id);
+
+SELECT * FROM "__EFMigrationsHistory"
