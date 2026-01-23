@@ -24,16 +24,19 @@ Kompletny (prawie) schemat bazy danych PostgreSQL dla platformy HealthForHome.
 * <code>messages</code> - wiadomości na chacie między pacjentem a specjalistą
 * <code>notifications</code> - powiadomienia o wizytach/wiadomościach
 * <code>verification_codes</code> - 6-cyfrowe kody weryfikacyjne do zakładania konta
+* <code>address_geocache</code> - cache geokodowania adresów
+* <code>appointments_specialists</code> - relacja wiele-do-wielu między wizytami a specjalistami
+* <code>__EFMigrationsHistory</code> - tabelka z migracjami
 
 ## Diagram relacji
 * diagrams/schemat.png
 * diagrams/schemat.svg
-Diagramy nie są jeszcze zaktualizowane o 3 nowe tabele
 
 ## Jak uruchomić bazę danych
 ### Wymagania:
 * PostgreSQL 12+ (zalecane PostgreSQL 17)
 * Rozszerzenie uuid-ossp (zwykle domyślnie zainstalowane)
+* PostGIS (do geolokalizacji)
 
 ### Krok po kroku:
 <pre> <code>
@@ -45,7 +48,7 @@ psql -U postgres -d health4home -f schema/health4home_tabele.sql
 
 # 3. Sprawdź czy wszystkie tabele zostały utworzone
 SELECT COUNT(*) FROM information_schema.tables 
-WHERE table_schema = 'public';  -- powinno zwrócić 14
+WHERE table_schema = 'public';  -- powinno zwrócić 20
 </code> </pre>
 
 ### Używając pgAdmin:
@@ -91,31 +94,36 @@ healthforhome-database/
 * Możliwość wymiany wiadomości mięcy pacjentami a specjalistami
 * System powiadomień o nowych wiadomościach oraz nadchodzących wizytach
 
+### Geolokalizacja (PostGIS)
+* Przechowywanie współrzędnych geograficznych klientów i specjalistów
+* Cache geokodowania adresów dla wydajności
+* Obszary działania specjalistów z maksymalnym dystansem
+
 # Szczegóły techniczne
 ### Typy danych:
 * UUID jako klucze główne (bezpieczeństwo, skalowalność)
 * CHECK constraints - walidacja na poziomie bazy
 * TIMESTAMP z domyślną wartością CURRENT_TIMESTAMP
 * CASCADE usuwanie powiązanych rekordów
+* Typy geograficzne PostGIS (geography(Point, 4326))
 
 ### Relacje:
 * Jeden użytkownik może być klientem LUB specjalistą
 * Jeden specjalista może oferować wiele usług
 * Jeden klient może mieć wiele wizyt
 * Każda wizyta ma dokładnie jedną płatność i jedną recenzję
+* Każda wizyta może mieć wielu potencjalnych specjalistów (appointments_specialists)
+* Każda wizyta ma dokładnie jednego wybranego specjalistę (selected_specialist_id)
+* Administratorzy mogą weryfikować kwalifikacje specjalistów
 
 # Możliwe rozszerzenia
 ## Krótkoterminowe:
-* Dodanie indeksów dla często wyszukiwanych pól
-* Tabela locations dla geolokalizacji (po zainstalowaniu PostGIS bo jeszcze tego nie mamy)
-
+* ?
 ## Długoterminowe
 * ?
 
 # Znane ograniczenia
-* Brak indeksów (jeszcze ale będą)
-* Brak historii zmian statusów wizyt (mozna dodac mozna nie)
-
+* ?
 
 # Przykładowe zapytania:
 (będą kiedyś)

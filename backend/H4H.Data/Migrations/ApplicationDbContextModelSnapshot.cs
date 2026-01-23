@@ -4,6 +4,7 @@ using H4H.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using NetTopologySuite.Geometries;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
@@ -20,98 +21,170 @@ namespace H4H.Data.Migrations
                 .HasAnnotation("ProductVersion", "8.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "postgis");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("H4H.Core.Models.AddressGeocache", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("address");
+
+                    b.Property<string>("AddressHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("address_hash");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("FormattedAddress")
+                        .HasColumnType("text")
+                        .HasColumnName("formatted_address");
+
+                    b.Property<decimal>("Latitude")
+                        .HasColumnType("decimal(10, 8)")
+                        .HasColumnName("latitude");
+
+                    b.Property<decimal>("Longitude")
+                        .HasColumnType("decimal(11, 8)")
+                        .HasColumnName("longitude");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AddressHash")
+                        .IsUnique();
+
+                    b.ToTable("address_geocache", (string)null);
+                });
 
             modelBuilder.Entity("H4H.Core.Models.Admin", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<DateTime?>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("email");
 
                     b.Property<string>("FullName")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("full_name");
 
                     b.Property<bool?>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
-                        .HasDefaultValue(true);
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
 
                     b.Property<DateTime?>("LastLoginAt")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("last_login_at");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("password_hash");
 
                     b.Property<string>("Role")
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
-                        .HasDefaultValue("support");
+                        .HasDefaultValue("support")
+                        .HasColumnName("role");
 
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
                         .IsUnique();
 
-                    b.ToTable("admins", (string)null);
+                    b.ToTable("admins", null, t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
                 });
 
             modelBuilder.Entity("H4H.Core.Models.Appointment", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<string>("AppointmentStatus")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("appointment_status");
 
                     b.Property<DateTime?>("CancelledAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("cancelled_at");
 
                     b.Property<string>("ClientAddress")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("client_address");
 
                     b.Property<Guid>("ClientId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("client_id");
 
                     b.Property<string>("ClientNotes")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("client_notes");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<DateTime>("ScheduledEnd")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("scheduled_end");
 
                     b.Property<DateTime>("ScheduledStart")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("scheduled_start");
+
+                    b.Property<Guid?>("SelectedSpecialistId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("selected_specialist_id");
 
                     b.Property<Guid>("SpecialistId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("specialist_id");
 
                     b.Property<string>("SpecialistNotes")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("specialist_notes");
 
                     b.Property<Guid?>("SpecialistServiceId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("specialist_service_id");
 
                     b.Property<decimal?>("TotalPrice")
-                        .HasColumnType("numeric");
+                        .HasColumnType("numeric")
+                        .HasColumnName("total_price");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("updated_at");
 
                     b.HasKey("Id");
 
@@ -125,32 +198,71 @@ namespace H4H.Data.Migrations
 
                     b.HasIndex("SpecialistServiceId");
 
-                    b.ToTable("appointments");
+                    b.ToTable("appointments", null, t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
+                });
+
+            modelBuilder.Entity("H4H.Core.Models.AppointmentSpecialist", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AppointmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("appointment_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("SpecialistId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("specialist_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SpecialistId");
+
+                    b.HasIndex("AppointmentId", "SpecialistId")
+                        .IsUnique();
+
+                    b.ToTable("appointments_specialists");
                 });
 
             modelBuilder.Entity("H4H.Core.Models.BookedSlot", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<DateTime>("EndDateTime")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("end_datetime");
 
                     b.Property<bool>("IsBlocked")
-                        .HasColumnType("boolean");
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_blocked");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("notes");
 
                     b.Property<Guid>("SpecialistId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("specialist_id");
 
                     b.Property<DateTime>("StartDateTime")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("start_datetime");
 
                     b.HasKey("Id");
 
@@ -160,73 +272,103 @@ namespace H4H.Data.Migrations
 
                     b.HasIndex("StartDateTime");
 
-                    b.ToTable("booked_slots");
+                    b.ToTable("booked_slots", null, t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
                 });
 
             modelBuilder.Entity("H4H.Core.Models.Client", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<string>("Address")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("address");
+
+                    b.Property<DateTime?>("AddressGeocodedAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("address_geocoded_at");
+
+                    b.Property<Point>("AddressPoint")
+                        .HasColumnType("geography(Point, 4326)")
+                        .HasColumnName("address_point");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at");
 
-                    b.Property<DateTime?>("DateOfBirth")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<DateOnly?>("DateOfBirth")
+                        .HasColumnType("date")
+                        .HasColumnName("date_of_birth");
 
                     b.Property<string>("EmergencyContact")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("emergency_contact");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("first_name");
 
                     b.Property<string>("LastName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("last_name");
 
                     b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
 
                     b.HasKey("Id");
 
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("clients");
+                    b.ToTable("clients", null, t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
                 });
 
             modelBuilder.Entity("H4H.Core.Models.Message", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<Guid?>("AppointmentId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("appointment_id");
 
                     b.Property<string>("Content")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("content");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<bool>("IsRead")
-                        .HasColumnType("boolean");
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_read");
 
                     b.Property<Guid>("ReceiverId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("receiver_id");
 
                     b.Property<Guid>("SenderId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("sender_id");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("updated_at");
 
                     b.HasKey("Id");
 
@@ -238,38 +380,49 @@ namespace H4H.Data.Migrations
 
                     b.HasIndex("SenderId");
 
-                    b.ToTable("messages");
+                    b.ToTable("messages", null, t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
                 });
 
             modelBuilder.Entity("H4H.Core.Models.Notification", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<string>("Content")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("content");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<bool>("IsRead")
-                        .HasColumnType("boolean");
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_read");
 
                     b.Property<Guid?>("RelatedId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("related_id");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("title");
 
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("type");
 
                     b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
 
                     b.HasKey("Id");
 
@@ -279,77 +432,100 @@ namespace H4H.Data.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("notifications");
+                    b.ToTable("notifications", null, t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
                 });
 
             modelBuilder.Entity("H4H.Core.Models.Payment", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<Guid>("AppointmentId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("appointment_id");
 
                     b.Property<bool>("CashReceived")
-                        .HasColumnType("boolean");
+                        .HasColumnType("boolean")
+                        .HasColumnName("cash_received");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<string>("PaymentMethod")
                         .IsRequired()
                         .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("payment_method");
 
                     b.Property<string>("PaymentStatus")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("payment_status");
 
                     b.Property<DateTime?>("ReceivedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("received_at");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("updated_at");
 
                     b.HasKey("Id");
 
                     b.HasIndex("AppointmentId")
                         .IsUnique();
 
-                    b.ToTable("payments");
+                    b.ToTable("payments", null, t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
                 });
 
             modelBuilder.Entity("H4H.Core.Models.Review", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<Guid>("AppointmentId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("appointment_id");
 
                     b.Property<Guid>("ClientId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("client_id");
 
                     b.Property<string>("Comment")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("comment");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<bool>("IsVerified")
-                        .HasColumnType("boolean");
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_verified");
 
                     b.Property<int>("Rating")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("rating");
 
                     b.Property<Guid>("SpecialistId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("specialist_id");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("updated_at");
 
                     b.HasKey("Id");
 
@@ -360,8 +536,10 @@ namespace H4H.Data.Migrations
 
                     b.HasIndex("SpecialistId");
 
-                    b.ToTable("reviews", t =>
+                    b.ToTable("reviews", null, t =>
                         {
+                            t.ExcludeFromMigrations();
+
                             t.HasCheckConstraint("CK_Review_Rating", "\"Rating\" >= 1 AND \"Rating\" <= 5");
                         });
                 });
@@ -370,26 +548,41 @@ namespace H4H.Data.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<string>("City")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("city");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<bool>("IsPrimary")
-                        .HasColumnType("boolean");
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_primary");
+
+                    b.Property<Point>("Location")
+                        .HasColumnType("geography(Point, 4326)")
+                        .HasColumnName("location");
+
+                    b.Property<DateTime?>("LocationUpdatedAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("location_updated_at");
 
                     b.Property<int>("MaxDistanceKm")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("max_distance_km");
 
                     b.Property<string>("PostalCode")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("postal_code");
 
                     b.Property<Guid>("SpecialistId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("specialist_id");
 
                     b.HasKey("Id");
 
@@ -397,120 +590,156 @@ namespace H4H.Data.Migrations
 
                     b.HasIndex("SpecialistId");
 
-                    b.ToTable("service_areas");
+                    b.ToTable("service_areas", null, t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
                 });
 
             modelBuilder.Entity("H4H.Core.Models.ServiceType", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("category");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<int?>("DefaultDuration")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("default_duration");
 
                     b.Property<string>("Description")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("description");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("name");
 
                     b.HasKey("Id");
 
                     b.HasIndex("Name");
 
-                    b.ToTable("service_types");
+                    b.ToTable("service_types", null, t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
                 });
 
             modelBuilder.Entity("H4H.Core.Models.Specialist", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<decimal>("AverageRating")
-                        .HasColumnType("numeric");
+                        .HasColumnType("numeric")
+                        .HasColumnName("average_rating");
 
                     b.Property<string>("Bio")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("bio");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("first_name");
 
-                    b.Property<decimal>("HourlyRate")
-                        .HasColumnType("numeric");
+                    b.Property<decimal?>("HourlyRate")
+                        .HasColumnType("numeric")
+                        .HasColumnName("hourly_rate");
 
                     b.Property<bool>("IsVerified")
-                        .HasColumnType("boolean");
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_verified");
 
                     b.Property<string>("LastName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("last_name");
 
                     b.Property<string>("ProfessionalTitle")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("professional_title");
 
                     b.Property<int>("TotalReviews")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("total_reviews");
 
                     b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
 
                     b.Property<string>("VerificationStatus")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("verification_status");
 
                     b.Property<DateTime?>("VerifiedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("verified_at");
 
                     b.HasKey("Id");
 
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("specialists");
+                    b.ToTable("specialists", null, t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
                 });
 
             modelBuilder.Entity("H4H.Core.Models.SpecialistAvailability", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<DateOnly>("Date")
-                        .HasColumnType("date");
+                        .HasColumnType("date")
+                        .HasColumnName("date");
 
                     b.Property<TimeOnly>("EndTime")
-                        .HasColumnType("time without time zone");
+                        .HasColumnType("time")
+                        .HasColumnName("end_time");
 
                     b.Property<bool>("IsAvailable")
-                        .HasColumnType("boolean");
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_available");
 
                     b.Property<string>("RecurrencePattern")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("recurrence_pattern");
 
                     b.Property<Guid>("SpecialistId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("specialist_id");
 
                     b.Property<TimeOnly>("StartTime")
-                        .HasColumnType("time without time zone");
+                        .HasColumnType("time")
+                        .HasColumnName("start_time");
 
                     b.HasKey("Id");
 
@@ -518,47 +747,61 @@ namespace H4H.Data.Migrations
 
                     b.HasIndex("SpecialistId");
 
-                    b.ToTable("specialist_availabilities");
+                    b.ToTable("specialist_availability", null, t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
                 });
 
             modelBuilder.Entity("H4H.Core.Models.SpecialistQualification", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<string>("IdCardPhotoUrl")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("id_card_photo_url");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
 
                     b.Property<string>("LicenseNumber")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("license_number");
 
                     b.Property<string>("LicensePhotoUrl")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("license_photo_url");
 
                     b.Property<string>("Profession")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("profession");
 
                     b.Property<Guid>("SpecialistId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("specialist_id");
 
                     b.Property<string>("VerificationNotes")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("verification_notes");
 
                     b.Property<DateTime?>("VerifiedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("verified_at");
 
                     b.Property<Guid?>("VerifiedByAdminId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("verified_by_admin_id");
 
                     b.HasKey("Id");
 
@@ -566,35 +809,46 @@ namespace H4H.Data.Migrations
 
                     b.HasIndex("VerifiedByAdminId");
 
-                    b.ToTable("specialist_qualifications");
+                    b.ToTable("specialist_qualifications", null, t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
                 });
 
             modelBuilder.Entity("H4H.Core.Models.SpecialistService", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<string>("Description")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("description");
 
                     b.Property<int>("DurationMinutes")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("duration_minutes");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
 
                     b.Property<decimal>("Price")
-                        .HasColumnType("numeric");
+                        .HasColumnType("numeric")
+                        .HasColumnName("price");
 
                     b.Property<Guid>("ServiceTypeId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("service_type_id");
 
                     b.Property<Guid>("SpecialistId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("specialist_id");
 
                     b.HasKey("Id");
 
@@ -602,84 +856,108 @@ namespace H4H.Data.Migrations
 
                     b.HasIndex("SpecialistId");
 
-                    b.ToTable("specialist_services");
+                    b.ToTable("specialist_services", null, t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
                 });
 
             modelBuilder.Entity("H4H.Core.Models.User", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<string>("AvatarUrl")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("avatar_url");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("email");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
 
                     b.Property<DateTime?>("LastLoginAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("last_login_at");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("password_hash");
 
                     b.Property<string>("PhoneNumber")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("phone_number");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("updated_at");
 
                     b.Property<string>("UserType")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("user_type");
 
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
                         .IsUnique();
 
-                    b.ToTable("users");
+                    b.ToTable("users", null, t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
                 });
 
             modelBuilder.Entity("H4H.Core.Models.VerificationCode", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("code");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("email");
 
                     b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("expires_at");
 
                     b.Property<bool>("IsUsed")
-                        .HasColumnType("boolean");
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_used");
 
                     b.Property<string>("Purpose")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("purpose");
 
                     b.Property<Guid?>("UserId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
 
                     b.HasKey("Id");
 
@@ -689,31 +967,40 @@ namespace H4H.Data.Migrations
 
                     b.HasIndex("Email", "Code", "IsUsed");
 
-                    b.ToTable("verification_codes");
+                    b.ToTable("verification_codes", null, t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
                 });
 
             modelBuilder.Entity("H4H.Core.Models.VerificationLog", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<string>("Action")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("action");
 
                     b.Property<Guid?>("AdminId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("admin_id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("notes");
 
                     b.Property<Guid>("SpecialistId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("specialist_id");
 
                     b.HasKey("Id");
 
@@ -721,7 +1008,10 @@ namespace H4H.Data.Migrations
 
                     b.HasIndex("SpecialistId");
 
-                    b.ToTable("verification_logs");
+                    b.ToTable("verification_logs", null, t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
                 });
 
             modelBuilder.Entity("H4H.Core.Models.Appointment", b =>
@@ -748,6 +1038,25 @@ namespace H4H.Data.Migrations
                     b.Navigation("Specialist");
 
                     b.Navigation("SpecialistService");
+                });
+
+            modelBuilder.Entity("H4H.Core.Models.AppointmentSpecialist", b =>
+                {
+                    b.HasOne("H4H.Core.Models.Appointment", "Appointment")
+                        .WithMany("AppointmentSpecialists")
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("H4H.Core.Models.Specialist", "Specialist")
+                        .WithMany()
+                        .HasForeignKey("SpecialistId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Appointment");
+
+                    b.Navigation("Specialist");
                 });
 
             modelBuilder.Entity("H4H.Core.Models.BookedSlot", b =>
@@ -954,6 +1263,8 @@ namespace H4H.Data.Migrations
 
             modelBuilder.Entity("H4H.Core.Models.Appointment", b =>
                 {
+                    b.Navigation("AppointmentSpecialists");
+
                     b.Navigation("Messages");
 
                     b.Navigation("Payment");
