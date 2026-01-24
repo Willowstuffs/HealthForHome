@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:specjalist_app/services/user_profile.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
-
+import 'package:intl/intl.dart';
 class StartScreen extends StatefulWidget {
   const StartScreen({super.key});
 
@@ -28,17 +28,24 @@ final now = DateTime.now();
       dateFrom: DateTime(now.year, now.month, now.day), // dziś od 00:00
       dateTo: DateTime(now.year, now.month, now.day).add(const Duration(days: 30)),
     );
-
+  final displayFormatter = DateFormat('dd-MM-yyyy HH:mm');
     setState(() {
   inquiries = fetchedInquiries.map((i) {
     // Sprawdzamy oba warianty: małe 'a' i duże 'A'
     final id = i['appointmentId'] ?? i['AppointmentId'];
-    
+     DateTime? start = i['scheduledStart'] != null
+      ? DateTime.tryParse(i['scheduledStart'])
+      : (i['ScheduledStart'] != null ? DateTime.tryParse(i['ScheduledStart']) : null);
+
+  DateTime? end = i['scheduledEnd'] != null
+      ? DateTime.tryParse(i['scheduledEnd'])
+      : (i['ScheduledEnd'] != null ? DateTime.tryParse(i['ScheduledEnd']) : null);
+
     return {
       'id': id?.toString() ?? '', 
       'name': i['patientName'] ?? i['PatientName'] ?? '',
-      'startDate': i['scheduledStart'] ?? i['ScheduledStart'] ?? '',
-      'endDate': i['scheduledEnd'] ?? i['ScheduledEnd'] ?? '',
+      'startDate': start != null ? displayFormatter.format(start) : '',
+      'endDate': end != null ? displayFormatter.format(end) : '',
       'service': i['serviceName'] ?? i['ServiceName'] ?? '',
       'distance': i['patientAddress'] ?? i['PatientAddress'] ?? '',
     };
@@ -157,7 +164,11 @@ Widget build(BuildContext context) {
                         ),
                         const SizedBox(height: 8),
                         if (isZapytania) ...[
-                          Text('Od: ${item['startDate']}  Do: ${item['endDate']}',
+                          Text('Od: ${item['startDate']}',
+                          style: const TextStyle(
+                              fontSize: 15),
+                          ),
+                          Text('Od: ${item['endDate']}',
                           style: const TextStyle(
                               fontSize: 15),
                           ),
@@ -202,29 +213,56 @@ Widget build(BuildContext context) {
     );
   }
   Future<void> _showConfirmDialog({
-  required String appointmentId,
-  required String patientName,
-}) async {
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Potwierdzenie'),
-      content: Text(
-        'Czy na pewno chcesz przyjąć:\n\n$patientName?\n\n'
-        'W razie pomyłki można później zrezygnować.',
-      ),
-      actions: [
-        TextButton(
+    required String appointmentId,
+    required String patientName,
+  }) async {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.onPrimary,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        title: const Text(
+          'Potwierdzenie',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'Czy na pewno chcesz przyjąć:\n\n$patientName?\n\n'
+          'W razie pomyłki można później zrezygnować.',
+        ),
+        actionsAlignment: MainAxisAlignment.spaceBetween,
+        actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        actions: [
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.onSurface,
+            foregroundColor: Colors.white,
+            padding: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            fixedSize: const Size(125, 29),
+          ),
           onPressed: () => Navigator.pop(context),
           child: const Text('Zrezygnuj'),
-        ),
-        ElevatedButton(
+      ),
+      ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.onSurface,
+            foregroundColor: Colors.white,
+            padding: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            fixedSize: const Size(125, 29),
+          ),
           onPressed: () async {
             Navigator.pop(context);
 
             try {
               await ApiService().confirmAppointment(appointmentId);
-              _fetchData(); // 🔄 odśwież listę
+              _fetchData();
             } catch (e) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Błąd: $e')),

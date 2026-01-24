@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
+import '../../services/api_service.dart';
+import 'package:intl/intl.dart';
 
 class UpcomingScreen extends StatefulWidget {
   const UpcomingScreen({super.key});
@@ -10,47 +12,75 @@ class UpcomingScreen extends StatefulWidget {
 
 class _UpcomingScreenState extends State<UpcomingScreen> {
 
+  List<Map<String, dynamic>> upcoming = [];
+  List<Map<String, dynamic>> archive = [];
   bool isLoading = true;
-
-  // przykładowe dane z API
-  final upcoming = [
-    {
-      'name': 'Zbyszek',
-      'startDate': '18.09.2020',
-      'endDate': '20.09.2020',
-      'service': 'Zmiana opatrunku',
-      'costs': '20',
-      'adress': 'Koniuchy 1, Toruń',
-    },
-    {
-      'name': 'Anna',
-      'startDate': '21.09.2020',
-      'endDate': '23.09.2020',
-      'service': 'Pobranie krwi',
-      'costs': '20',
-      'adress': 'Koniuchy 1, Toruń',
-    },
-  ];
-
-  final archive = [
-    {
-      'name': 'Leon',
-      'service': 'Zmiana opatrunku',
-      'date': '10.11.2020',
-    },
-  ];
-
   @override
   void initState() {
     super.initState();
     _fetchData();
   }
-
+  final displayFormatter = DateFormat('dd-MM-yyyy HH:mm');
+  final now = DateTime.now();
   Future<void> _fetchData() async {
-    // symulacja pobrania danych
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final fetchedUpcoming = await ApiService().getCommingInquiries(
+        patientName: "", // przykładowy filtr
+        dateFrom: DateTime(now.year, now.month, now.day), // dziś od 00:00
+        dateTo: DateTime(now.year, now.month, now.day).add(const Duration(days: 30)),
+      );
+      final fetchedArchive = await ApiService().getArchiveInquiries();
+      setState(() {
+        upcoming = fetchedUpcoming.map((i) {
+        // Sprawdzamy oba warianty: małe 'a' i duże 'A'
+          final id = i['appointmentId'] ?? i['AppointmentId'];
+          DateTime? start = i['scheduledStart'] != null
+      ? DateTime.tryParse(i['scheduledStart'])
+      : (i['ScheduledStart'] != null ? DateTime.tryParse(i['ScheduledStart']) : null);
+
+  DateTime? end = i['scheduledEnd'] != null
+      ? DateTime.tryParse(i['scheduledEnd'])
+      : (i['ScheduledEnd'] != null ? DateTime.tryParse(i['ScheduledEnd']) : null);
+
+          return {
+            'id': id?.toString() ?? '', 
+           'name': i['patientName'] ?? i['PatientName'] ?? '',
+           'startDate': start != null ? displayFormatter.format(start) : '',
+    'endDate': end != null ? displayFormatter.format(end) : '',
+            'service': i['serviceName'] ?? i['ServiceName'] ?? '',
+            'distance': i['patientAddress'] ?? i['PatientAddress'] ?? '',
+            'price': i['price'] ?? i['Price'] ?? '',
+         };
+        }).toList();
+      });
+      setState(() {
+        archive = fetchedArchive.map((i) {
+          // Sprawdzamy oba warianty: małe 'a' i duże 'A'
+          final id = i['appointmentId'] ?? i['AppointmentId'];
+          DateTime? start = i['scheduledStart'] != null
+      ? DateTime.tryParse(i['scheduledStart'])
+      : (i['ScheduledStart'] != null ? DateTime.tryParse(i['ScheduledStart']) : null);
+
+  DateTime? end = i['scheduledEnd'] != null
+      ? DateTime.tryParse(i['scheduledEnd'])
+      : (i['ScheduledEnd'] != null ? DateTime.tryParse(i['ScheduledEnd']) : null);
+
+          return {
+            'id': id?.toString() ?? '', 
+            'name': i['patientName'] ?? i['PatientName'] ?? '',
+            'startDate': start != null ? displayFormatter.format(start) : '',
+    'endDate': end != null ? displayFormatter.format(end) : '',
+            'service': i['serviceName'] ?? i['ServiceName'] ?? '',
+          };
+        }).toList();
+        isLoading = false;
+      });
+
+  } catch (e) {
+    print('Błąd pobierania zapytań: $e');
     setState(() => isLoading = false);
   }
+}
   
 @override
 Widget build(BuildContext context) {
@@ -78,7 +108,7 @@ Widget build(BuildContext context) {
                             ),
                             borderRadius: BorderRadius.circular(12), // opcjonalnie zaokrąglone rogi
                           ),
-                          child: _buildSection('Nadchodzące(przykładowe dane)', upcoming, isUpcoming: true),
+                          child: _buildSection('Nadchodzące wizyty', upcoming, isUpcoming: true),
                         ),
                         const SizedBox(height: 16),
                         Container(
@@ -94,7 +124,7 @@ Widget build(BuildContext context) {
                             ),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: _buildSection('Archiwum(przykładowe dane)', archive),
+                          child: _buildSection('Archiwum', archive),
                         ),
                       ],
                     )
@@ -106,7 +136,7 @@ Widget build(BuildContext context) {
     );
   }
 
-  Widget _buildSection(String title, List<Map<String, String>> items,
+  Widget _buildSection(String title,  List<Map<String, dynamic>> items,
     {bool isUpcoming = false}) {
   return ConstrainedBox(
     constraints: const BoxConstraints(maxWidth: 400), // maksymalna szerokość
@@ -148,7 +178,11 @@ Widget build(BuildContext context) {
                         ),
                         const SizedBox(height: 8),
                         if (isUpcoming) ...[
-                          Text('Od: ${item['startDate']}  Do: ${item['endDate']}',
+                          Text('Od: ${item['startDate']}',
+                          style: const TextStyle(
+                              fontSize: 15),
+                        ),
+                        Text('do: ${item['endDate']}',
                           style: const TextStyle(
                               fontSize: 15),
                         ),
@@ -156,11 +190,11 @@ Widget build(BuildContext context) {
                           style: const TextStyle(
                               fontSize: 15),
                         ),
-                          Text('Koszt: ${item['costs']}',
+                          Text('Koszt: ${item['price']}',
                           style: const TextStyle(
                               fontSize: 15),
                         ),
-                          Text('adres: ${item['adress']}',
+                          Text('adres: ${item['distance']}',
                           style: const TextStyle(
                               fontSize: 15),
                         ),
@@ -199,16 +233,21 @@ Widget build(BuildContext context) {
                             ],
                           ),
                         ] else ...[
+                          
+                          Text('Od: ${item['startDate']}',
+                          style: const TextStyle(
+                              fontSize: 15),
+                        ),
+                        Text('do: ${item['endDate']}',
+                          style: const TextStyle(
+                              fontSize: 15),
+                        ),
                           Text('Usługa: ${item['service']}',
                           style: const TextStyle(
                               fontSize: 15),
                         ),
-                          Text('Data: ${item['date']}',
-                          style: const TextStyle(
-                              fontSize: 15 ),
-                        ),
-                          
                         ],
+                        
                       ],
                     ),
                   ),

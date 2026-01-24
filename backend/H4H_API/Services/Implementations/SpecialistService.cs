@@ -6,9 +6,7 @@ using H4H_API.Exceptions;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using SpecialistServiceEntity = H4H.Core.Models.SpecialistService;
-
 using H4H_API.Helpers;
-using ErrorCodes = H4H_API.Helpers.ErrorCodes;
 
 namespace H4H_API.Services.Implementations
 {
@@ -65,7 +63,7 @@ namespace H4H_API.Services.Implementations
         {
             var specialist = await _context.specialists
                 .FirstOrDefaultAsync(s => s.UserId == userId) ?? throw new KeyNotFoundException($"Nie znaleziono specjalisty dla użytkownika {userId}");
-
+            
             ///<summary>
             ///Query Builder do pobrania zapytan z zastosowaniem filtrow
             /// </summary>
@@ -73,8 +71,16 @@ namespace H4H_API.Services.Implementations
                 .Include(a => a.Client)
                 .Include(a => a.SpecialistService)
                     .ThenInclude(ss => ss!.ServiceType) //by dostac nazwe uslugi
-                .Where(a => a.SpecialistService!.SpecialistId == specialist.Id)
                 .AsQueryable();
+            ///<summary>
+            ///dadanie sprawdzenia czy dany specjalista już nie dodał ogłoszenia
+            /// </summary>>
+            var appointmentIds = query.Select(q => q.Id).ToList();
+
+            query = query.Where(a => !_context.appointments_specialists
+                            .Any(aspl => aspl.AppointmentId == a.Id && aspl.SpecialistId == specialist.Id));
+
+
             //Aplikowanie filtrow
             if (filters.DateFrom.HasValue) // od
                 query = query.Where(a => a.ScheduledStart >= filters.DateFrom.Value);
@@ -305,6 +311,140 @@ namespace H4H_API.Services.Implementations
 
             await _context.SaveChangesAsync();
         }
+        public async Task ShowConfirmAppointmentAsync(Guid userId, Guid appointmentId)
+        {
+            var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
+                ?? throw new AppException("Profil nie istnieje.", ErrorCodes.SpecialistNotFound);
 
+            // Szukamy wizyty, która należy do tego specjalisty i ma status pending
+            var appointment = await _context.appointments
+                .FirstOrDefaultAsync(a => a.Id == appointmentId && a.SpecialistId == specialist.Id);
+
+            if (appointment == null)
+                throw new AppException("Wizyta nie znaleziona.", ErrorCodes.AppointmentNotFound);
+
+            if (appointment.AppointmentStatus != "pending")
+                throw new AppException("Można potwierdzić tylko wizyty oczekujące.", ErrorCodes.AppointmentStatusNotPending);
+
+            appointment.AppointmentStatus = "confirmed";
+            appointment.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+        }
+        public async Task ShowArchiwumAsync(Guid userId, Guid appointmentId)
+        {
+            var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
+                ?? throw new AppException("Profil nie istnieje.", ErrorCodes.SpecialistNotFound);
+
+            // Szukamy wizyty, która należy do tego specjalisty i ma status pending
+            var appointment = await _context.appointments
+                .FirstOrDefaultAsync(a => a.Id == appointmentId && a.SpecialistId == specialist.Id);
+
+            if (appointment == null)
+                throw new AppException("Wizyta nie znaleziona.", ErrorCodes.AppointmentNotFound);
+
+            if (appointment.AppointmentStatus != "pending")
+                throw new AppException("Można potwierdzić tylko wizyty oczekujące.", ErrorCodes.AppointmentStatusNotPending);
+
+            appointment.AppointmentStatus = "confirmed";
+            appointment.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+        }
+        public async Task<List<InquiryListItemDto>> GetCommingInquiriesAsync(Guid userId, InquiryFilterDto filters)
+        {
+            var specialist = await _context.specialists
+                .FirstOrDefaultAsync(s => s.UserId == userId) ?? throw new KeyNotFoundException($"Nie znaleziono specjalisty dla użytkownika {userId}");
+
+            ///<summary>
+            ///Query Builder do pobrania zapytan z zastosowaniem filtrow
+            /// </summary>
+            var query = _context.appointments
+                .Include(a => a.Client)
+                .Include(a => a.SpecialistService)
+                    .ThenInclude(ss => ss!.ServiceType) //by dostac nazwe uslugi
+                .Where(a => a.SpecialistService!.SpecialistId == specialist.Id)
+                .AsQueryable();
+
+
+            //Aplikowanie filtrow
+            if (filters.DateFrom.HasValue) // od
+                query = query.Where(a => a.ScheduledStart >= filters.DateFrom.Value);
+            if (filters.DateTo.HasValue) // do
+                query = query.Where(a => a.ScheduledEnd <= filters.DateTo.Value);
+
+            if (!string.IsNullOrEmpty(filters.PatientName))
+            {
+                var search = filters.PatientName.ToLower();
+                query = query.Where(a =>
+                    (a.Client.FirstName != null && a.Client.FirstName.ToLower().Contains(search)) ||
+                    (a.Client.LastName != null && a.Client.LastName.ToLower().Contains(search))
+                );
+            }
+            //filtrowanie po statusie
+            query = query.Where(a => a.AppointmentStatus == "confirmed");
+
+            //Pobranie danych i mapowanie na DTO
+            var result = await query
+                .OrderByDescending(a => a.ScheduledStart)
+                .Select(a => new InquiryListItemDto
+                {
+                    AppointmentId = a.Id,
+                    ScheduledStart = a.ScheduledStart,
+                    ScheduledEnd = a.ScheduledEnd,
+                    PatientName = a.Client.FirstName + " " + a.Client.LastName,
+                    ServiceName = a.SpecialistService!.ServiceType.Name,
+                    Status = a.AppointmentStatus,
+                    PatientAddress = a.ClientAddress ?? a.Client.Address ?? "Brak adresu",
+                    Price = a.TotalPrice ?? 0
+                })
+                .ToListAsync();
+            return result;
+        }
+        public async Task<List<InquiryListItemDto>> GetArchiveInquiriesAsync(Guid userId, InquiryFilterDto filters)
+        {
+            var specialist = await _context.specialists
+                .FirstOrDefaultAsync(s => s.UserId == userId) ?? throw new KeyNotFoundException($"Nie znaleziono specjalisty dla użytkownika {userId}");
+
+            ///<summary>
+            ///Query Builder do pobrania zapytan z zastosowaniem filtrow
+            /// </summary>
+            var query = _context.appointments
+                .Include(a => a.Client)
+                .Include(a => a.SpecialistService)
+                    .ThenInclude(ss => ss!.ServiceType) //by dostac nazwe uslugi
+                .Where(a => a.SpecialistService!.SpecialistId == specialist.Id)
+                .AsQueryable();
+
+
+
+            if (!string.IsNullOrEmpty(filters.PatientName))
+            {
+                var search = filters.PatientName.ToLower();
+                query = query.Where(a =>
+                    (a.Client.FirstName != null && a.Client.FirstName.ToLower().Contains(search)) ||
+                    (a.Client.LastName != null && a.Client.LastName.ToLower().Contains(search))
+                );
+            }
+            //filtrowanie po statusie
+            query = query.Where(a => a.AppointmentStatus == "completed");
+
+            //Pobranie danych i mapowanie na DTO
+            var result = await query
+                .OrderByDescending(a => a.ScheduledStart)
+                .Select(a => new InquiryListItemDto
+                {
+                    AppointmentId = a.Id,
+                    ScheduledStart = a.ScheduledStart,
+                    ScheduledEnd = a.ScheduledEnd,
+                    PatientName = a.Client.FirstName + " " + a.Client.LastName,
+                    ServiceName = a.SpecialistService!.ServiceType.Name,
+                    Status = a.AppointmentStatus,
+                    PatientAddress = a.ClientAddress ?? a.Client.Address ?? "Brak adresu",
+                    Price = a.TotalPrice ?? 0
+                })
+                .ToListAsync();
+            return result;
+        }
     }
 }

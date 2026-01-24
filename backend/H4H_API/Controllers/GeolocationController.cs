@@ -3,9 +3,9 @@ using H4H_API.DTOs.Geolocation;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using H4H_API.Helpers;
 using H4H.Data;
 using Microsoft.EntityFrameworkCore;
+using H4H_API.Helpers;
 
 namespace H4H_API.Controllers
 {

@@ -37,10 +37,7 @@
   </ItemGroup>
 
   <ItemGroup>
-
-    <Folder Include="Entities\" />
     <Folder Include="Dtos\" />
-    <Folder Include="Data\" />
     <Folder Include="Services\" />
 
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.0" />

@@ -5,13 +5,13 @@ import '../services/login_response.dart';
 import '../services/token_storage.dart';
 import '../services/specjalist_service.dart';
 
+
 class ApiService {
   static const bool isEmulator = true;
   static const String _baseUrl = isEmulator
     ? 'https://10.0.2.2:7026'
     : 'https://192.168.100.24:7026';
   late final Dio _dio;
-
   ApiService() {
     _dio = Dio(
       BaseOptions(
@@ -209,6 +209,60 @@ Future<List<Map<String, dynamic>>> getInquiries({
       queryParameters: queryParams,
     );
     print("📦 Backend  zwrócił zapytania: ${response.data}");
+    final data = response.data['data'] as List<dynamic>;
+    return data.map((item) => Map<String, dynamic>.from(item)).toList();
+  } on DioException catch (e) {
+    throw _handleDioError(e);
+  }
+}
+Future<List<Map<String, dynamic>>> getCommingInquiries({
+  String? appointmentId,
+  String? patientName,
+  DateTime? dateFrom,
+  DateTime? dateTo,
+  String? serviceName,
+  String? patientAddress,
+  String? price,
+}) async {
+  try {
+    final queryParams = <String, dynamic>{};
+    if(appointmentId != null) queryParams['appointmentId'] = appointmentId;
+    if (patientName != null) queryParams['patientName'] = patientName;
+    if (dateFrom != null) queryParams['dateFrom'] = dateFrom.toIso8601String();
+    if (dateTo != null) queryParams['dateTo'] = dateTo.toIso8601String();
+    if (serviceName != null) queryParams['serviceName'] = serviceName;
+    if (patientAddress != null) queryParams['patientAddress'] = patientAddress;
+    if (price != null) queryParams['price'] = price;
+
+    final response = await _dio.get(
+      '/api/specialist/inquiries/comming',
+      queryParameters: queryParams,
+    );
+    final data = response.data['data'] as List<dynamic>;
+    return data.map((item) => Map<String, dynamic>.from(item)).toList();
+  } on DioException catch (e) {
+    throw _handleDioError(e);
+  }
+}
+Future<List<Map<String, dynamic>>> getArchiveInquiries({
+  String? appointmentId,
+  String? patientName,
+  DateTime? dateFrom,
+  DateTime? dateTo,
+  String? serviceName,
+}) async {
+  try {
+    final queryParams = <String, dynamic>{};
+    if(appointmentId != null) queryParams['appointmentId'] = appointmentId;
+    if (patientName != null) queryParams['patientName'] = patientName;
+    if (dateFrom != null) queryParams['dateFrom'] = dateFrom.toIso8601String();
+    if (dateTo != null) queryParams['dateTo'] = dateTo.toIso8601String();
+    if (serviceName != null) queryParams['serviceName'] = serviceName;
+    final response = await _dio.get(
+      '/api/specialist/inquiries/archive',
+      queryParameters: queryParams,
+    );
+     print("📦 Backend  zwrócił zapytania: ${response.data}");
     final data = response.data['data'] as List<dynamic>;
     return data.map((item) => Map<String, dynamic>.from(item)).toList();
   } on DioException catch (e) {

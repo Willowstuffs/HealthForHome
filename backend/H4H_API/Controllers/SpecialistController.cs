@@ -155,6 +155,31 @@ namespace H4H_API.Controllers
             await _specialistService.ConfirmAppointmentAsync(userId, id);
             return Ok(ApiResponse<object?>.SuccessResponse(null, "Wizyta została potwierdzona."));
         }
+        /// <summary>Pobiera listę nadchodzących wizyt dla zalogowanego specjalisty</summary>
+        [HttpGet("inquiries/comming")]
+        [ProducesResponseType(typeof(ApiResponse<List<InquiryListItemDto>>), 200)]
+        public async Task<ActionResult<ApiResponse<List<InquiryListItemDto>>>> GetCommingInquiries([FromQuery] InquiryFilterDto filters)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized(ApiResponse<object>.ErrorResponse("Błąd autoryzacji."));
 
+            var userId = Guid.Parse(userIdClaim);
+            var inquiries = await _specialistService.GetCommingInquiriesAsync(userId, filters);
+
+            return Ok(ApiResponse<List<InquiryListItemDto>>.SuccessResponse(inquiries, "Pobrano listę zapytań."));
+        }
+        /// <summary>Pobiera listę nadchodzących wizyt dla zalogowanego specjalisty</summary>
+        [HttpGet("inquiries/archive")]
+        [ProducesResponseType(typeof(ApiResponse<List<InquiryListItemDto>>), 200)]
+        public async Task<ActionResult<ApiResponse<List<InquiryListItemDto>>>> GetArchiveInquiries([FromQuery] InquiryFilterDto filters)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized(ApiResponse<object>.ErrorResponse("Błąd autoryzacji."));
+
+            var userId = Guid.Parse(userIdClaim);
+            var inquiries = await _specialistService.GetArchiveInquiriesAsync(userId, filters);
+
+            return Ok(ApiResponse<List<InquiryListItemDto>>.SuccessResponse(inquiries, "Pobrano listę zapytań."));
+        }
     }
 }

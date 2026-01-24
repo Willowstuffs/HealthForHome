@@ -51,6 +51,16 @@ namespace H4H_API.Services.Interfaces
 
         /// <summary>Zmienia status wizyty u specjalisty na potwierdzony (confirmed)</summary>
         Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId);
+        /// <summary>
+        /// Pobiera listę nadchodzących usług (inquiries) dla specjalisty z opcjonalnymi filtrami
+        /// </summary>
+        /// <param name="filters">Parametr tener zawiera opcjonalne filtry do zastosowania przy pobieraniu zapytań</param>
+        Task<List<InquiryListItemDto>> GetCommingInquiriesAsync(Guid userId, InquiryFilterDto filters);
+        /// <summary>
+        /// Pobiera listę zakończonych usług (inquiries) dla specjalisty z opcjonalnymi filtrami
+        /// </summary>
+        /// <param name="filters">Parametr tener zawiera opcjonalne filtry do zastosowania przy pobieraniu zapytań</param>
+        Task<List<InquiryListItemDto>> GetArchiveInquiriesAsync(Guid userId, InquiryFilterDto filters);
 
 
     }
