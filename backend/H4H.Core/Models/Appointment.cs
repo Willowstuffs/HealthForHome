@@ -12,7 +12,7 @@ namespace H4H.Core.Models
         public Guid ClientId { get; set; }
 
         [Column("specialist_id")]
-        public Guid SpecialistId { get; set; }
+        public Guid? SpecialistId { get; set; }
 
         [Column("specialist_service_id")]
         public Guid? SpecialistServiceId { get; set; }

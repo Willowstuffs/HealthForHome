@@ -9,8 +9,8 @@ import '../services/specjalist_service.dart';
 class ApiService {
   static const bool isEmulator = true;
   static const String _baseUrl = isEmulator
-    ? 'https://10.0.2.2:7026'
-    : 'https://192.168.100.24:7026';
+    ? 'https://192.168.100.24:7026'
+    : 'https://10.0.2.2:7026';
   late final Dio _dio;
   ApiService() {
     _dio = Dio(

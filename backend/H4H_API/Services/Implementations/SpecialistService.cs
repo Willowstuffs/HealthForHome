@@ -96,7 +96,7 @@ namespace H4H_API.Services.Implementations
                 );
             }
             //filtrowanie po statusie
-            query = query.Where(a => a.AppointmentStatus != "cancelled");
+            query = query.Where(a => a.AppointmentStatus == "pending");
 
             //Pobranie danych i mapowanie na DTO
             var result = await query
@@ -296,9 +296,8 @@ namespace H4H_API.Services.Implementations
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
                 ?? throw new AppException("Profil nie istnieje.", ErrorCodes.SpecialistNotFound);
 
-            // Szukamy wizyty, która należy do tego specjalisty i ma status pending
             var appointment = await _context.appointments
-                .FirstOrDefaultAsync(a => a.Id == appointmentId && a.SpecialistId == specialist.Id);
+                .FirstOrDefaultAsync(a => a.Id == appointmentId);
 
             if (appointment == null)
                 throw new AppException("Wizyta nie znaleziona.", ErrorCodes.AppointmentNotFound);
@@ -306,8 +305,17 @@ namespace H4H_API.Services.Implementations
             if (appointment.AppointmentStatus != "pending")
                 throw new AppException("Można potwierdzić tylko wizyty oczekujące.", ErrorCodes.AppointmentStatusNotPending);
 
+            
+            var appointmentSpecialist = new AppointmentSpecialist
+            {
+                Id = Guid.NewGuid(),
+                AppointmentId = appointment.Id,
+                SpecialistId = specialist.Id,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.appointments_specialists.Add(appointmentSpecialist);
+
             appointment.AppointmentStatus = "confirmed";
-            appointment.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
         }
@@ -327,7 +335,6 @@ namespace H4H_API.Services.Implementations
                 throw new AppException("Można potwierdzić tylko wizyty oczekujące.", ErrorCodes.AppointmentStatusNotPending);
 
             appointment.AppointmentStatus = "confirmed";
-            appointment.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
         }
