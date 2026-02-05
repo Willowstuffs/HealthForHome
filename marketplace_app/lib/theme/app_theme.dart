@@ -34,35 +34,74 @@ class AppTheme {
     cardTheme: CardThemeData(
       color: AppColors.surface,
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: AppColors.surface,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(color: AppColors.outline),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(color: AppColors.outline),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: AppColors.primary),
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: AppColors.primary, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.red),
       ),
       hintStyle: TextStyle(color: AppColors.secondary),
+      contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.onPrimary,
+        elevation: 0,
+        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        textStyle: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          fontFamily: 'Inter',
+        ),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.primary,
+        side: BorderSide(color: AppColors.primary),
+        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: AppColors.primary,
+        textStyle: TextStyle(fontWeight: FontWeight.w600),
+      ),
     ),
     textTheme: TextTheme(
       headlineLarge: TextStyle(
         color: AppColors.onBackground,
-        fontSize: 28,
+        fontSize: 32,
         fontWeight: FontWeight.bold,
       ),
       headlineMedium: TextStyle(
         color: AppColors.onBackground,
-        fontSize: 20,
+        fontSize: 24,
         fontWeight: FontWeight.bold,
+      ),
+      titleLarge: TextStyle(
+        color: AppColors.onBackground,
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
       ),
       bodyLarge: TextStyle(color: AppColors.onBackground, fontSize: 16),
       bodyMedium: TextStyle(color: AppColors.onSurface, fontSize: 14),
@@ -76,6 +115,8 @@ class AppTheme {
       onPrimary: AppColors.onPrimary,
       surface: AppColors.surface,
       onSurface: AppColors.onSurface,
+      secondary: AppColors.secondary,
+      outline: AppColors.outline,
     ),
   );
 }

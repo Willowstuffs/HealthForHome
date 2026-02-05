@@ -117,9 +117,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: InputDecorator(
                   decoration: InputDecoration(
                     labelText: 'Data urodzenia (opcjonalnie)',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
                     suffixIcon: const Icon(Icons.calendar_today),
                   ),
                   child: Text(
@@ -232,7 +229,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         labelText: label,
         filled: true,
         alignLabelWithHint: maxLines > 1,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }

@@ -175,9 +175,9 @@ class _AccountScreenState extends State<AccountScreen> {
               Center(
                 child: Text(
                   _profile?.email ?? '',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.secondary,
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -227,9 +227,6 @@ class _AccountScreenState extends State<AccountScreen> {
                 child: InputDecorator(
                   decoration: InputDecoration(
                     labelText: 'Data urodzenia',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
                     suffixIcon: const Icon(Icons.calendar_today),
                   ),
                   child: Text(
@@ -298,7 +295,6 @@ class _AccountScreenState extends State<AccountScreen> {
       decoration: InputDecoration(
         labelText: label,
         alignLabelWithHint: maxLines > 1,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }

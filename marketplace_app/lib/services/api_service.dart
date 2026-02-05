@@ -4,6 +4,8 @@ import 'package:dio/io.dart';
 import '../models/auth_models.dart';
 import '../models/client_profile.dart';
 import '../models/client_update_dto.dart';
+import '../models/appointment.dart';
+import '../models/specialist.dart';
 
 class ApiService {
   // 10.0.2.2 - bridge localhost dla emulatora Android
@@ -158,6 +160,49 @@ class ApiService {
       throw _handleDioError(e);
     } catch (_) {
       throw Exception('Błąd aktualizacji profilu');
+    }
+  }
+
+  // Specialists & Services
+
+  Future<List<Specialist>> searchSpecialists({String? category}) async {
+    try {
+      final queryParams = <String, dynamic>{};
+      if (category != null) {
+        queryParams['ServiceType'] = category;
+      }
+
+      final response = await _dio.get(
+        '/api/Client/specialists/search',
+        queryParameters: queryParams,
+      );
+
+      final List<dynamic> list = response.data['data']['items'];
+      return list.map((e) => Specialist.fromJson(e)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // Appointments
+
+  Future<List<Appointment>> getAppointments() async {
+    try {
+      final response = await _dio.get('/api/Client/appointments');
+      final List<dynamic> list = response.data['data']['items'];
+      return list.map((e) => Appointment.fromJson(e)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> createAppointment(CreateAppointmentDto dto) async {
+    try {
+      await _dio.post('/api/Client/appointments', data: dto.toJson());
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (_) {
+      throw Exception('Nieznany błąd podczas tworzenia wizyty');
     }
   }
 

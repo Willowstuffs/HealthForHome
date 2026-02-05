@@ -84,9 +84,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   if (v.length < 8) {
                     return 'Hasło musi mieć minimum 8 znaków';
                   }
-                  // Optional: Backend validation for password complexity on login isn't usually checked on frontend,
-                  // but we can add it if desired. For now, just length check to be safe.
-                  // If strict matching is needed, copy regex from register screen.
                   return null;
                 },
               ),
@@ -135,11 +132,7 @@ class _LoginScreenState extends State<LoginScreen> {
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,
-      decoration: InputDecoration(
-        labelText: label,
-        filled: true,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      ),
+      decoration: InputDecoration(labelText: label, filled: true),
     );
   }
 }

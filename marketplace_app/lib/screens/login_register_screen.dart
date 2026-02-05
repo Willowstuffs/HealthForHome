@@ -26,53 +26,54 @@ class LoginRegisterScreen extends StatelessWidget {
               _buildWelcomeSection(context),
 
               // CTA
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  children: [
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => RegisterScreen()),
-                          );
-                        },
-                        child: Text('Zarejestruj się'),
-                      ),
+              Column(
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => RegisterScreen()),
+                        );
+                      },
+                      child: Text('Zarejestruj się'),
                     ),
+                  ),
 
-                    SizedBox(height: 12),
+                  SizedBox(height: 16),
 
-                    Text(
-                      'lub',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppColors.primary,
+                  Row(
+                    children: [
+                      Expanded(child: Divider(color: AppColors.outline)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'lub',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: AppColors.secondary,
+                          ),
+                        ),
                       ),
-                    ),
+                      Expanded(child: Divider(color: AppColors.outline)),
+                    ],
+                  ),
 
-                    SizedBox(height: 12),
+                  SizedBox(height: 16),
 
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => LoginScreen()),
-                          );
-                        },
-                        child: Text('Zaloguj się'),
-                      ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => LoginScreen()),
+                        );
+                      },
+                      child: Text('Zaloguj się'),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
 
               const SizedBox(height: 32),

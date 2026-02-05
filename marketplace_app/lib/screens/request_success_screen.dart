@@ -45,70 +45,70 @@ class RequestSuccessScreen extends StatelessWidget {
 
               SizedBox(height: 96),
 
-              // CTA
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      'Załóż konto, by być na bieżąco!',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary,
-                      ),
+              Column(
+                children: [
+                  Text(
+                    'Załóż konto, by być na bieżąco!',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
                     ),
+                  ),
 
-                    SizedBox(height: 16),
+                  SizedBox(height: 16),
 
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => RegisterScreen()),
-                          );
-                        },
-                        child: Text('Zarejestruj się'),
-                      ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => RegisterScreen()),
+                        );
+                      },
+                      child: Text('Zarejestruj się'),
                     ),
+                  ),
 
-                    SizedBox(height: 12),
+                  SizedBox(height: 16),
 
-                    Text(
-                      'lub',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppColors.primary,
+                  Row(
+                    children: [
+                      Expanded(child: Divider(color: AppColors.outline)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'lub',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: AppColors.secondary,
+                          ),
+                        ),
                       ),
-                    ),
+                      Expanded(child: Divider(color: AppColors.outline)),
+                    ],
+                  ),
 
-                    SizedBox(height: 12),
+                  SizedBox(height: 16),
 
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => LoginRegisterScreen(),
-                            ),
-                          );
-                        },
-                        child: Text('Zaloguj się'),
-                      ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => LoginRegisterScreen(),
+                          ),
+                        );
+                      },
+                      child: Text('Zaloguj się'),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
 
-              const SizedBox(height: 32),
+              SizedBox(height: 32),
             ],
           ),
         ),

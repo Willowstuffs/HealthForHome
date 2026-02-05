@@ -22,19 +22,14 @@ class HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   ClientProfile? _clientProfile;
   bool _isLoadingProfile = false;
-  late PageController _specialistPageController;
-  int _currentSpecialistIndex = 0;
-
   @override
   void initState() {
     super.initState();
-    _specialistPageController = PageController(viewportFraction: 1);
     _checkLoginAndLoadProfile();
   }
 
   @override
   void dispose() {
-    _specialistPageController.dispose();
     super.dispose();
   }
 
@@ -149,8 +144,7 @@ class HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: Colors.grey,
+        // selectedItemColor and unselectedItemColor are now handled by the theme
         showUnselectedLabels: true,
         onTap: _onBottomNavTapped,
         items: const [
@@ -180,7 +174,7 @@ class HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 24),
 
           // Specialists Section
-          _buildSpecialistsHorizontalList(),
+          _buildSpecialistsList(),
           const SizedBox(height: 24),
 
           // Appointments Section
@@ -200,7 +194,7 @@ class HomeScreenState extends State<HomeScreen> {
             Text(
               'Witaj,',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Colors.grey[600],
+                color: Theme.of(context).colorScheme.secondary,
                 fontSize: 16,
               ),
             ),
@@ -211,7 +205,7 @@ class HomeScreenState extends State<HomeScreen> {
                   : (_clientProfile?.firstName ?? 'Użytkowniku'),
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ],
@@ -234,7 +228,7 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSpecialistsHorizontalList() {
+  Widget _buildSpecialistsList() {
     final specialists = MockData.getSpecialists();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,106 +240,68 @@ class HomeScreenState extends State<HomeScreen> {
           ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        SizedBox(
-          height: 180, // More space for the card to prevent overflow
-          child: PageView.builder(
-            controller: _specialistPageController,
-            itemCount: specialists.length,
-            padEnds: false, // Align first item to start
-            onPageChanged: (index) {
-              setState(() {
-                _currentSpecialistIndex = index;
-              });
-            },
-            itemBuilder: (context, index) {
-              final specialist = specialists[index];
-              return Padding(
-                padding: const EdgeInsets.only(
-                  right: 12.0,
-                ), // Spacing between pages
-                child: SpecialistCard(
-                  specialist: specialist,
-                  onTap: () {
-                    // Navigate to details
-                  },
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 2),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            IconButton(
-              icon: Icon(
-                Icons.arrow_back_ios,
-                color: _currentSpecialistIndex > 0
-                    ? AppColors.primary
-                    : Colors.grey.shade300,
-                size: 20,
-              ),
-              onPressed: _currentSpecialistIndex > 0
-                  ? () {
-                      _specialistPageController.previousPage(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                      );
-                    }
-                  : null,
-            ),
-            const SizedBox(width: 16),
-            IconButton(
-              icon: Icon(
-                Icons.arrow_forward_ios,
-                color: _currentSpecialistIndex < specialists.length - 1
-                    ? AppColors.primary
-                    : Colors.grey.shade300,
-                size: 20,
-              ),
-              onPressed: _currentSpecialistIndex < specialists.length - 1
-                  ? () {
-                      _specialistPageController.nextPage(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                      );
-                    }
-                  : null,
-            ),
-          ],
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: specialists.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 12),
+          itemBuilder: (context, index) {
+            final specialist = specialists[index];
+            return SpecialistCard(
+              specialist: specialist,
+              onTap: () {
+                // Navigate to details
+              },
+            );
+          },
         ),
       ],
     );
   }
 
   Widget _buildAppointmentsList() {
-    final appointments = MockData.getAppointments();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Nadchodzące wizyty',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        if (appointments.isEmpty) const Text('Brak nadchodzących wizyt'),
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: appointments.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            return AppointmentCard(
-              appointment: appointments[index],
-              onTap: () {
-                // Navigate to appointment details
+    return FutureBuilder<List<dynamic>>(
+      future: ApiService().getAppointments(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final appointments = snapshot.data ?? [];
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Nadchodzące wizyty',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            if (appointments.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(8.0),
+                child: Text('Brak nadchodzących wizyt'),
+              ),
+
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: appointments.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                return AppointmentCard(
+                  appointment: appointments[index],
+                  onTap: () {
+                    // TODO: nawigacja do szczegółów wizyty
+                  },
+                );
               },
-            );
-          },
-        ),
-      ],
+            ),
+          ],
+        );
+      },
     );
   }
 

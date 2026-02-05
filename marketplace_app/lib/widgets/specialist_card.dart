@@ -26,11 +26,8 @@ class SpecialistCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Avatar specjalisty
               _buildAvatar(),
-              SizedBox(width: 16),
-
-              // Informacje o specjaliście
+              const SizedBox(width: 16),
               Expanded(child: _buildSpecialistInfo()),
             ],
           ),
@@ -49,13 +46,16 @@ class SpecialistCard extends StatelessWidget {
             shape: BoxShape.circle,
             color: AppColors.background,
             border: Border.all(color: AppColors.outline, width: 2),
-            image: DecorationImage(
-              image: NetworkImage(specialist.imageUrl),
+            // Use placeholder as ImageUrl is not in DTO
+            image: const DecorationImage(
+              image: AssetImage('lib/images/logo.png'),
               fit: BoxFit.cover,
             ),
           ),
+          child: const Icon(Icons.person, size: 40, color: Colors.grey),
         ),
-        if (specialist.isAvailable)
+        if (specialist
+            .isVerified) // isAvailable replaced by isVerified or logic? MockData had isAvailable. DTO has IsVerified.
           Positioned(
             right: 0,
             bottom: 0,
@@ -63,10 +63,11 @@ class SpecialistCard extends StatelessWidget {
               width: 16,
               height: 16,
               decoration: BoxDecoration(
-                color: Colors.green,
+                color: Colors.blue, // Verified badge
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.surface, width: 2),
               ),
+              child: const Icon(Icons.check, size: 10, color: Colors.white),
             ),
           ),
       ],
@@ -82,8 +83,8 @@ class SpecialistCard extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                specialist.name,
-                style: TextStyle(
+                specialist.fullName,
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: AppColors.onSurface,
@@ -91,51 +92,61 @@ class SpecialistCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            Icon(Icons.favorite_border, color: AppColors.secondary),
+            const Icon(Icons.favorite_border, color: AppColors.secondary),
           ],
         ),
-        SizedBox(height: 4),
+        const SizedBox(height: 4),
         Text(
-          specialist.profession,
-          style: TextStyle(color: AppColors.secondary),
+          specialist.professionalTitle ?? 'Specjalista',
+          style: const TextStyle(color: AppColors.secondary),
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Row(
           children: [
-            Icon(Icons.star, color: Colors.amber, size: 16),
-            SizedBox(width: 4),
+            const Icon(Icons.star, color: Colors.amber, size: 16),
+            const SizedBox(width: 4),
             Text(
-              '${specialist.rating} (${specialist.reviews})',
-              style: TextStyle(
+              '${specialist.averageRating} (${specialist.totalReviews})',
+              style: const TextStyle(
                 fontWeight: FontWeight.w500,
                 color: AppColors.onSurface,
               ),
             ),
-            SizedBox(width: 16),
-            Icon(Icons.location_on, color: AppColors.secondary, size: 16),
-            SizedBox(width: 4),
-            Text(
-              '${specialist.distance} km',
-              style: TextStyle(color: AppColors.onSurface),
-            ),
+            const SizedBox(width: 16),
+            // dist might be null
+            if (specialist.distance != null) ...[
+              const Icon(
+                Icons.location_on,
+                color: AppColors.secondary,
+                size: 16,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '${specialist.distance} km',
+                style: const TextStyle(color: AppColors.onSurface),
+              ),
+            ],
           ],
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 4,
-          children: specialist.specialties
+          children: specialist.services
               .take(2)
               .map(
-                (specialty) => Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                (service) => Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    specialty,
-                    style: TextStyle(
+                    service.serviceName,
+                    style: const TextStyle(
                       color: AppColors.primary,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
