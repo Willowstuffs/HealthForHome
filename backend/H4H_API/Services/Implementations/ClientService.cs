@@ -46,7 +46,7 @@ namespace H4H_API.Services.Implementations
         /// <param name="userId">The unique identifier of the user whose client profile is to be retrieved.</param>
         /// <returns>A task that represents the asynchronous operation. The task result contains a <see cref="ClientProfileDto"/>
         /// representing the client's profile.</returns>
-        /// <exception cref="KeyNotFoundException">Thrown when no client profile is found for the specified <paramref name="userId"/>.</exception>
+        /// <exception cref="AppException">Thrown when no client profile is found for the specified <paramref name="userId"/>.</exception>
         public async Task<ClientProfileDto> GetProfileAsync(Guid userId)
         {
             var client = await _context.clients
@@ -54,7 +54,7 @@ namespace H4H_API.Services.Implementations
                 .FirstOrDefaultAsync(c => c.UserId == userId);
 
             if (client == null)
-                throw new KeyNotFoundException($"Nie znaleziono profilu klienta dla użytkownika {userId}");
+                throw new AppException($"Nie znaleziono profilu klienta dla użytkownika {userId}", ErrorCodes.ClientNotFound);
 
             return _mapper.Map<ClientProfileDto>(client);
         }
@@ -82,10 +82,10 @@ namespace H4H_API.Services.Implementations
                     .FirstOrDefaultAsync(c => c.UserId == userId);
 
                 if (client == null)
-                    throw new KeyNotFoundException($"Nie znaleziono profilu klienta dla użytkownika {userId}");
+                    throw new AppException($"Nie znaleziono profilu klienta dla użytkownika {userId}", ErrorCodes.ClientNotFound);
 
                 if (client.User == null)
-                    throw new InvalidOperationException($"User not found for client {client.Id}");
+                    throw new AppException($"Uzytkonik nie znaleziony dla klienta {client.Id}", ErrorCodes.ClientUserNotFound);
 
                 Console.WriteLine($"DEBUG: Found client: {client.FirstName} {client.LastName}");
 
@@ -206,7 +206,7 @@ namespace H4H_API.Services.Implementations
                 .FirstOrDefaultAsync(c => c.UserId == userId);
 
             if (client == null)
-                throw new KeyNotFoundException($"Nie znaleziono klienta dla użytkownika {userId}");
+                throw new AppException($"Nie znaleziono klienta dla użytkownika {userId}", ErrorCodes.ClientNotFound);
 
             if (string.IsNullOrEmpty(client.Address))
                 throw new AppException("Klient nie ma adresu do geokodowania", ErrorCodes.GeocodingFailed);
@@ -261,13 +261,13 @@ namespace H4H_API.Services.Implementations
         /// <param name="newPassword">The new password to set for the user. This will replace the existing password if verification succeeds.</param>
         /// <returns>A value indicating whether the password was successfully changed. Returns <see langword="true"/> if the
         /// password was updated; otherwise, <see langword="false"/> if the current password is incorrect.</returns>
-        /// <exception cref="KeyNotFoundException">Thrown if a user with the specified <paramref name="userId"/> does not exist.</exception>
+        /// <exception cref="AppException">Thrown if a user with the specified <paramref name="userId"/> does not exist.</exception>
         public async Task<bool> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword)
         {
             // Ta metoda powinna być w AuthService, ale dla wygody dodaję tutaj
             var user = await _context.users.FindAsync(userId);
             if (user == null)
-                throw new KeyNotFoundException($"Nie znaleziono użytkownika {userId}");
+                throw new AppException($"Nie znaleziono użytkownika {userId}", ErrorCodes.UserNotFound);
 
             if (!BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
                 return false;
@@ -279,23 +279,76 @@ namespace H4H_API.Services.Implementations
             return true;
         }
 
+        /// <summary>
+        /// Asynchronicznie pobiera listę wizyt (terminów) dla klienta z opcjonalnym filtrowaniem po statusie. Wyniki są paginowane
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="request"></param>
+        /// <param name="status"></param>
+        /// <returns></returns>
+        /// <exception cref="KeyNotFoundException"></exception>
         public async Task<PagedResponse<AppointmentDto>> GetAppointmentsAsync(Guid userId, PagedRequest request, string? status = null)
         {
-            // TODO: Zaimplementować po stworzeniu AppointmentDto
-            // Na razie zwróć pustą listę
+            var client = await _context.clients.FirstOrDefaultAsync(c => c.UserId == userId);
+            if (client == null) throw new AppException("Klient nie znaleziony", ErrorCodes.ClientNotFound);
+
+            var query = _context.appointments
+                .Include(a => a.Client) // Ważne dla ClientName
+                .Include(a => a.Specialist) // Ważne dla SpecialistName
+                .Include(a => a.SpecialistService) // Ważne dla ServiceName
+                    .ThenInclude(ss => ss.ServiceType)
+                .Where(a => a.ClientId == client.Id)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(status))
+                query = query.Where(a => a.AppointmentStatus == status);
+
+            var totalCount = await query.CountAsync();
+
+            var appointments = await query
+                .OrderByDescending(a => a.ScheduledStart)
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToListAsync();
+
+            // Mapujemy listę modeli na listę DTO za pomocą AutoMappera
+            var items = _mapper.Map<List<AppointmentDto>>(appointments);
+
             return new PagedResponse<AppointmentDto>
             {
-                Items = new List<AppointmentDto>(),
+                Items = items,
+                TotalCount = totalCount,
                 Page = request.Page,
-                PageSize = request.PageSize,
-                TotalCount = 0
+                PageSize = request.PageSize
             };
         }
 
+        /// <summary>
+        /// Asynchronicznie pobiera szczegóły wizyty (terminu) dla klienta, w tym informacje o specjaliście i usłudze. Sprawdza, czy wizyta należy do klienta.
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="appointmentId"></param>
+        /// <returns></returns>
+        /// <exception cref="AppException"></exception>
         public async Task<AppointmentDto> GetAppointmentDetailsAsync(Guid userId, Guid appointmentId)
         {
-            // TODO: Zaimplementować
-            throw new NotImplementedException("GetAppointmentDetailsAsync not implemented yet");
+            // Pobierz profil klienta
+            var client = await _context.clients.FirstOrDefaultAsync(c => c.UserId == userId);
+            if (client == null) throw new AppException("Klient nie znaleziony", ErrorCodes.ClientNotFound);
+
+            // Pobierz wizytę z uwzględnieniem danych specjalisty i usługi
+            var appointment = await _context.appointments
+                .Include(a => a.Client)
+                .Include(a => a.Specialist)
+                .Include(a => a.SpecialistService)
+                    .ThenInclude(ss => ss.ServiceType)
+                .FirstOrDefaultAsync(a => a.Id == appointmentId && a.ClientId == client.Id);
+
+            if (appointment == null)
+                throw new AppException($"Nie znaleziono wizyty o ID {appointmentId} dla tego klienta", ErrorCodes.AppointmentNotFound);
+
+            // Mapuj model wizyty na DTO, w tym nazwy klienta, specjalisty i usługi
+            return _mapper.Map<AppointmentDto>(appointment);
         }
 
         public async Task<AppointmentDto> CreateAppointmentAsync(Guid userId, CreateAppointmentDto dto)
@@ -304,10 +357,41 @@ namespace H4H_API.Services.Implementations
             throw new NotImplementedException("CreateAppointmentAsync not implemented yet");
         }
 
+        /// <summary>
+        /// Anuluj wizytę (termin) klienta, jeśli wizyta należy do niego i nie jest już zakończona lub anulowana. Zwraca true jeśli anulowano, false jeśli nie można anulować z powodu statusu wizyty.
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="appointmentId"></param>
+        /// <returns></returns>
+        /// <exception cref="KeyNotFoundException"></exception>
         public async Task<bool> CancelAppointmentAsync(Guid userId, Guid appointmentId)
         {
-            // TODO: Zaimplementować
-            throw new NotImplementedException("CancelAppointmentAsync not implemented yet");
+            // Pobierz profil klienta
+            var client = await _context.clients.FirstOrDefaultAsync(c => c.UserId == userId);
+            if (client == null) return false;
+
+            // Pobierz wizytę i sprawdź, czy należy do klienta
+            var appointment = await _context.appointments
+                .FirstOrDefaultAsync(a => a.Id == appointmentId && a.ClientId == client.Id);
+
+            // Sprawdź, czy wizyta istnieje i czy nie jest już zakończona lub anulowana
+            if (appointment == null) return false;
+
+            // Upewnij się, że porównujesz statusy małymi literami
+            if (appointment.AppointmentStatus.ToLower() == "cancelled" ||
+                appointment.AppointmentStatus.ToLower() == "completed")
+                return false;
+
+            appointment.AppointmentStatus = "cancelled";
+
+            // Zmiana na DateTime.Now i zapewnienie braku "Kind"
+            var now = DateTime.Now;
+            appointment.CancelledAt = DateTime.SpecifyKind(now, DateTimeKind.Unspecified);
+            appointment.UpdatedAt = DateTime.SpecifyKind(now, DateTimeKind.Unspecified);
+
+            // Zapisz zmiany w bazie danych
+            await _context.SaveChangesAsync();
+            return true;
         }
 
         public async Task<PagedResponse<SpecialistDto>> SearchSpecialistsAsync(SearchSpecialistsDto filters, PagedRequest request)
@@ -332,7 +416,7 @@ namespace H4H_API.Services.Implementations
                 .FirstOrDefaultAsync(c => c.UserId == userId);
 
             if (client == null)
-                throw new KeyNotFoundException($"Klient nie znaleziony dla użytkownika {userId}");
+                throw new AppException($"Klient nie znaleziony dla użytkownika {userId}", ErrorCodes.ClientNotFound);
 
             return client.Id;
         }

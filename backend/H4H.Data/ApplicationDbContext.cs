@@ -31,6 +31,7 @@ namespace H4H.Data
         public DbSet<VerificationCode> verification_codes { get; set; }
         public DbSet<AddressGeocache> address_geocache { get; set; }
         public DbSet<AppointmentSpecialist> appointments_specialists { get; set; }
+        public DbSet<DeviceToken> device_tokens { get; set; }
 
         // dla PostGIS i NetTopologySuite
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -397,6 +398,25 @@ namespace H4H.Data
 
                 // Unikalna para appointment + specialist
                 entity.HasIndex(a => new { a.AppointmentId, a.SpecialistId }).IsUnique();
+            });
+
+            // Konfiguracja tabeli DeviceToken dla powiadomień push
+            modelBuilder.Entity<DeviceToken>(entity =>
+            {
+                entity.ToTable("device_tokens");
+
+                entity.HasKey(e => e.Id);
+
+                // Relacja z użytkownikiem
+                entity.HasOne(e => e.User)
+                      .WithMany(u => u.DeviceTokens)
+                      .HasForeignKey(e => e.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => e.UserId).HasDatabaseName("idx_device_tokens_user");
+                entity.HasIndex(e => e.FcmToken).HasDatabaseName("idx_device_tokens_fcm_token");
+
+                entity.HasIndex(e => new { e.UserId, e.FcmToken }).IsUnique();
             });
         }
     }
