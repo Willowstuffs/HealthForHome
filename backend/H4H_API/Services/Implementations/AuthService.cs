@@ -337,5 +337,34 @@ namespace H4H_API.Services.Implementations
             // Implementacja resetu hasła
             return await Task.FromResult(true);
         }
+
+        /// <summary>
+        /// Akualizuje lub dodaje token urządzenia (FCM) dla użytkownika, umożliwiając wysyłanie powiadomień push na jego urządzenie. 
+        /// Jeśli token już istnieje dla tego użytkownika, aktualizuje datę ostatniego użycia; w przeciwnym razie tworzy nowy rekord tokena.
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="token"></param>
+        /// <returns></returns>
+        public async Task UpdateDeviceTokenAsync(Guid userId, string token)
+        {
+            var existingToken = await _context.device_tokens
+                .FirstOrDefaultAsync(t => t.UserId == userId && t.FcmToken == token);
+
+            if (existingToken != null)
+            {
+                existingToken.LastUsedAt = DateTime.UtcNow;
+            }
+            else
+            {
+                _context.device_tokens.Add(new DeviceToken
+                {
+                    UserId = userId,
+                    FcmToken = token,
+                    CreatedAt = DateTime.UtcNow,
+                    LastUsedAt = DateTime.UtcNow
+                });
+            }
+            await _context.SaveChangesAsync();
+        }
     }
 }

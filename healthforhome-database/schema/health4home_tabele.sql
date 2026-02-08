@@ -351,3 +351,23 @@ CREATE TABLE appointments_specialists (
 ALTER TABLE appointments ADD COLUMN selected_specialist_id UUID REFERENCES specialists(id);
 
 SELECT * FROM "__EFMigrationsHistory"
+
+
+-- Aktualizacja 08.02.26
+
+-- 1. Dodanie tabeli dla tokenów urządzeń (FCM) - Kasia
+CREATE TABLE device_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    fcm_token TEXT NOT NULL,
+    last_used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, fcm_token) 
+);
+
+-- 2. Indeksy dla wydajności wyszukiwania
+CREATE INDEX idx_device_tokens_user ON device_tokens(user_id);
+CREATE INDEX idx_device_tokens_fcm_token ON device_tokens(fcm_token);
+
+SELECT * FROM device_tokens
+SELECT * FROM "__EFMigrationsHistory"

@@ -1,0 +1,28 @@
+Testy swagger 08.02.26  
+
+Logujemy sie
+POST /api/Auth/login
+{
+  "email": "testklient@health4home.pl",
+  "password": "Test123!"
+}
+i autoryzujemy
+
+
+TEST 1: POST /api/Auth/device-token
+{
+  "token": "fcm_test_token_123456789_qwerty"
+}
+
+TEST 2:GET /api/Client/appointments
+Page 1
+PageSize 10
+
+TEST 3:GET /api/Client/appointments/{id}
+id 2421ca34-22c1-4e63-84d1-07f134f7aba9
+(u mnie)
+
+TEST 4:POST /api/Client/appointments/{id}/cancel
+id 2421ca34-22c1-4e63-84d1-07f134f7aba9
+jak chcemy przetestowac po raz kolejny (u mnie) to tu juz inne id bo ta juz zostala anulowana i wiecej nie zadziala
+

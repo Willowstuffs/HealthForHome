@@ -26,9 +26,15 @@ namespace H4H_API.Helpers
         public const string InvalidCoordinates = "GEO_002";
         public const string AddressNotFound = "GEO_003";
         public const string DistanceCalculationFailed = "GEO_004";
+        public const string GeocodingServiceUnavailable = "GEO_005";
 
         // Klienci
         public const string ClientNotFound = "CLIENT_001";
         public const string AddressUpdateFailed = "CLIENT_002";
+        public const string ClientUserNotFound = "CLIENT_003";
+
+        // Wizyty
+        public const string AppointmentNotFound = "APP_001"; 
+        public const string AppointmentCancelForbidden = "APP_002"; 
     }
 }
