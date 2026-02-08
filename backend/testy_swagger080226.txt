@@ -9,6 +9,7 @@ POST /api/Auth/login
 i autoryzujemy
 
 
+
 TEST 1: POST /api/Auth/device-token
 {
   "token": "fcm_test_token_123456789_qwerty"
