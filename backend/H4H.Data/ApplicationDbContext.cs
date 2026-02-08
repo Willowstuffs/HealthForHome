@@ -32,6 +32,7 @@ namespace H4H.Data
         public DbSet<AddressGeocache> address_geocache { get; set; }
         public DbSet<AppointmentSpecialist> appointments_specialists { get; set; }
         public DbSet<DeviceToken> device_tokens { get; set; }
+        public DbSet<ServiceRequest> service_requests { get; set; }
 
         // dla PostGIS i NetTopologySuite
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -417,6 +418,25 @@ namespace H4H.Data
                 entity.HasIndex(e => e.FcmToken).HasDatabaseName("idx_device_tokens_fcm_token");
 
                 entity.HasIndex(e => new { e.UserId, e.FcmToken }).IsUnique();
+            });
+
+            // Konfiguracja tabeli ServiceRequest dla ogłoszeń o usługę
+            modelBuilder.Entity<ServiceRequest>(entity =>
+            {
+                entity.ToTable("service_requests");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.DateFrom).IsRequired();
+                entity.Property(e => e.DateTo).IsRequired();
+                entity.Property(e => e.Location).HasColumnType("geography(Point, 4326)");
+                entity.Property(e => e.Status).HasDefaultValue("open");
+
+                // Klient jest opcjonalny (HasOne -> WithMany -> IsRequired(false))
+                entity.HasOne(d => d.Client)
+                      .WithMany()
+                      .HasForeignKey(d => d.ClientId)
+                      .IsRequired(false)
+                      .OnDelete(DeleteBehavior.SetNull); // Jeśli klient usunie konto, ogłoszenie zostaje jako "gość"
             });
         }
     }

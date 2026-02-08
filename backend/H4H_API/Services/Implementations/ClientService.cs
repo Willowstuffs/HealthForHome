@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using H4H_API.DTOs.Client;
 using H4H_API.Exceptions;
 using H4H_API.Helpers;
+using H4H_API.DTOs.Geolocation;
 
 namespace H4H_API.Services.Implementations
 {
@@ -236,24 +237,6 @@ namespace H4H_API.Services.Implementations
         }
 
         /// <summary>
-        /// Sprawdza czy klient jest w zasięgu specjalisty
-        /// </summary>
-        public async Task<bool> IsClientWithinSpecialistRangeAsync(Guid clientUserId, Guid specialistId)
-        {
-            try
-            {
-                return await _geocoder.IsWithinServiceAreaAsync(
-                    await GetClientIdFromUserId(clientUserId),
-                    specialistId
-                );
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        /// <summary>
         /// Attempts to change the password for the specified user using the provided current and new passwords.
         /// </summary>
         /// <param name="userId">The unique identifier of the user whose password is to be changed.</param>
@@ -394,6 +377,70 @@ namespace H4H_API.Services.Implementations
             return true;
         }
 
+        /// <summary>
+        /// Oblicza odległość między lokalizacją klienta a lokalizacją ogłoszenia serwisowego (ServiceRequest) i sprawdza, 
+        /// czy mieści się ona w zdefiniowanym zasięgu obszaru świadczenia usług (ServiceArea) przypisanego do specjalisty. 
+        /// Zwraca informacje o dystansie, szacowanym czasie dojazdu oraz czy zlecenie mieści się w zasięgu specjalisty. 
+        /// </summary>
+        /// <param name="specialistId"></param>
+        /// <param name="serviceRequestId"></param>
+        /// <returns></returns>
+        /// <exception cref="AppException"></exception>
+        public async Task<DistanceInfoDto> GetDistanceToServiceRequestAsync(Guid specialistId, Guid serviceRequestId)
+        {
+            // 1. Pobieramy lokalizację ogłoszenia (ServiceRequest)
+            var request = await _context.service_requests
+                .Where(r => r.Id == serviceRequestId)
+                .Select(r => new { r.Location })
+                .FirstOrDefaultAsync();
+
+            if (request == null)
+                throw new AppException("Nie znaleziono ogłoszenia.", ErrorCodes.ServiceRequestNotFound);
+
+            if (request.Location == null)
+                throw new AppException("Brak lokalizacji ogłoszenia.", ErrorCodes.GeocodingFailed);
+
+            // 2. Szukamy obszarów usług (ServiceAreas) przypisanych do tego specjalisty.
+            // Wybieramy ten obszar, którego środek (Location) jest najbliżej zlecenia.
+            var nearestArea = await _context.service_areas
+                .Where(sa => sa.SpecialistId == specialistId && sa.Location != null)
+                .OrderBy(sa => sa.Location!.Distance(request.Location))
+                .FirstOrDefaultAsync();
+
+            if (nearestArea == null)
+                throw new AppException("Brak zdefiniowanych obszarów.", ErrorCodes.SpecialistNotFound);
+
+            // 3. Obliczenia dystansu (PostGIS zwraca metry, więc dzielimy przez 1000 dla kilometrów)
+            double distance = nearestArea.Location!.Distance(request.Location);
+            double distanceInKm = 0;
+
+            if (distance < 2.0)
+            {
+                // Prawdopodobnie stopnie - zamieniamy na km (1 stopień to ok. 111km)
+                // Ale lepiej po prostu zapytać o dystans w metrach używając ProjectTo:
+                distanceInKm = Math.Round((distance * 111.32), 2);
+            }
+            else
+            {
+                // Prawdopodobnie metry
+                distanceInKm = Math.Round(distance / 1000, 2);
+            }
+
+            // 4. Sprawdzamy, czy zlecenie mieści się w zdefiniowanym zasięgu tego obszaru
+            bool isWithinRange = distanceInKm <= nearestArea.MaxDistanceKm;
+
+            // 5. Szacujemy czas (uproszczony model: 1.5 min na km + 5 min rezerwy)
+            int estimatedMinutes = (int)(distanceInKm * 1.5) + 5;
+
+            return new DistanceInfoDto
+            {
+                DistanceKm = distanceInKm,
+                DistanceMiles = Math.Round(distanceInKm * 0.621371, 2),
+                IsWithinRange = isWithinRange,
+                EstimatedTravelTime = $"{estimatedMinutes} min"
+            };
+        }
+
         public async Task<PagedResponse<SpecialistDto>> SearchSpecialistsAsync(SearchSpecialistsDto filters, PagedRequest request)
         {
             // TODO: Zaimplementować z filtrowaniem po odległości
@@ -419,6 +466,84 @@ namespace H4H_API.Services.Implementations
                 throw new AppException($"Klient nie znaleziony dla użytkownika {userId}", ErrorCodes.ClientNotFound);
 
             return client.Id;
+        }
+
+        /// <summary>
+        /// Asynchronicznie tworzy nowe ogłoszenie serwisowe na podstawie danych z formularza. 
+        /// Jeśli użytkownik jest zalogowany, powiązuje ogłoszenie z jego profilem klienta. 
+        /// Następnie geokoduje podany adres i zapisuje ogłoszenie w bazie danych. Zwraca ID nowo utworzonego ogłoszenia.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        public async Task<Guid> CreateServiceRequestAsync(CreateServiceRequestDto dto, Guid? userId = null)
+        {
+            Guid? clientId = null;
+
+            // Jeśli użytkownik jest zalogowany, powiąż go z ogłoszeniem
+            if (userId.HasValue)
+            {
+                var client = await _context.clients.FirstOrDefaultAsync(c => c.UserId == userId.Value);
+                clientId = client?.Id;
+            }
+
+            // GEOKODOWANIE: Zawsze geokodujemy adres wpisany w formularzu
+            // 1. Próbujemy zgeokodować adres
+            var geocoded = await _geocoder.GeocodeAddressAsync(dto.Address);
+
+            // 2. Jeśli się nie udało, nie pozwalamy przejść dalej
+            if (geocoded == null)
+            {
+                throw new AppException(
+                    "Nie udało się odnaleźć podanego adresu na mapie. Spróbuj podać bardziej szczegółowy adres (ulica, numer, miasto).",
+                    ErrorCodes.GeocodingFailed
+                );
+            }
+
+            // 3. Jeśli mamy dane, dopiero wtedy tworzymy obiekt
+            var request = new ServiceRequest
+            {
+                Id = Guid.NewGuid(),
+                ClientId = clientId, // Może być null
+                ServiceTypeId = dto.ServiceTypeId,
+                Description = dto.Description,
+                DateFrom = DateTime.SpecifyKind(dto.DateFrom, DateTimeKind.Unspecified),
+                DateTo = DateTime.SpecifyKind(dto.DateTo, DateTimeKind.Unspecified),
+
+                // Dane z formularza (ekran 1)
+                ContactName = dto.ContactName,
+                PhoneNumber = dto.PhoneNumber,
+                Email = dto.Email,
+                Address = geocoded?.FormattedAddress ?? dto.Address,
+
+                Status = "open",
+                Location = geocoded != null ? _geocoder.CreatePoint(geocoded.Longitude, geocoded.Latitude) : null
+            };
+
+            _context.service_requests.Add(request);
+            await _context.SaveChangesAsync();
+            return request.Id;
+        }
+
+        /// <summary>
+        /// Asynchronicznie pobiera listę ogłoszeń serwisowych (prośby o usługę) utworzonych przez zalogowanego klienta.
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        /// <exception cref="AppException"></exception>
+        public async Task<List<ServiceRequestDto>> GetMyServiceRequestsAsync(Guid userId)
+        {
+            var client = await _context.clients.FirstOrDefaultAsync(c => c.UserId == userId);
+            if (client == null) throw new AppException("Nie znaleziono klienta", ErrorCodes.ClientNotFound);
+
+            var requests = await _context.service_requests
+                .Include(r => r.ServiceType)
+                .Where(r => r.ClientId == client.Id)
+                .OrderByDescending(r => r.CreatedAt)
+                .ToListAsync();
+
+            // Automapper zamieni Encje na DTO automatycznie
+            return _mapper.Map<List<ServiceRequestDto>>(requests);
         }
     }
 }
