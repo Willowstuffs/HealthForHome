@@ -78,5 +78,32 @@ namespace H4H_API.Controllers
 
             return BadRequest(ApiResponse.ErrorResponse("Nie można anulować tej wizyty"));
         }
+
+        // Tworzy nową prośbę o usługę (ogłoszenie) - dostępne również dla gości (niezalogowanych)
+        [HttpPost("service-requests")]
+        [AllowAnonymous] // Pozwala gościom dodawać ogłoszenia (bez tokena JWT)
+        public async Task<ActionResult<ApiResponse<Guid>>> CreateRequest([FromBody] CreateServiceRequestDto dto)
+        {
+            // Jeśli token jest przesłany, wyciągamy userId, jeśli nie - null
+            Guid? userId = null;
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (!string.IsNullOrEmpty(userIdClaim))
+            {
+                userId = Guid.Parse(userIdClaim);
+            }
+
+            var requestId = await _clientService.CreateServiceRequestAsync(dto, userId);
+            return Ok(ApiResponse<Guid>.SuccessResponse(requestId));
+        }
+
+        // Pobiera listę ogłoszeń (prośb o usługę) utworzonych przez zalogowanego klienta.
+        [HttpGet("service-requests")]
+        public async Task<ActionResult<ApiResponse<List<ServiceRequestDto>>>> GetMyRequests()
+        {
+            var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value!);
+            var requests = await _clientService.GetMyServiceRequestsAsync(userId);
+            return Ok(ApiResponse<List<ServiceRequestDto>>.SuccessResponse(requests));
+        }
     }
 }

@@ -6,7 +6,7 @@
 Kompletny (prawie) schemat bazy danych PostgreSQL dla platformy HealthForHome.
 
 ## Struktura bazy danych
-#### Główne tabele (21 tabel)
+#### Główne tabele (22 tabele)
 * <code>users</code> - główna tabela użytkowników systemu
 * <code>clients</code> - pacjenci korzystający z usług
 * <code>specialists</code> - pielęgniarki i fizjoterapeuci
@@ -27,12 +27,13 @@ Kompletny (prawie) schemat bazy danych PostgreSQL dla platformy HealthForHome.
 * <code>address_geocache</code> - cache geokodowania adresów
 * <code>appointments_specialists</code> - relacja wiele-do-wielu między wizytami a specjalistami
 * <code>device_tokens</code> - przechowywanie tokenów FCM (Firebase Cloud Messaging) dla systemu powiadomień
+* <code>service_requests</code> - przechowywanie ofert zgłoszeń wysyłanych przez klientów
 * <code>__EFMigrationsHistory</code> - tabelka z migracjami
 
 ## Diagram relacji
 * diagrams/schemat.png
 * diagrams/schemat.svg
-na diagramach brakuje jeszcze najnowszej tabelki (device_tokens)
+na diagramach brakuje jeszcze najnowszej tabelki (device_tokens i service_requests )
 
 ## Jak uruchomić bazę danych
 ### Wymagania:

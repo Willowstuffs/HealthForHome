@@ -43,6 +43,10 @@ namespace H4H_API.Helpers
                 .ForMember(dest => dest.ServiceName, opt => opt.MapFrom(src =>
                     src.SpecialistService != null && src.SpecialistService.ServiceType != null
                     ? src.SpecialistService.ServiceType.Name : "Usługa nieznana"));
+
+            // Mapowanie z modelu ServiceRequest na ServiceRequestDto, uwzględniające nazwę typu usługi
+            CreateMap<ServiceRequest, ServiceRequestDto>()
+                .ForMember(dest => dest.ServiceTypeName, opt => opt.MapFrom(src => src.ServiceType.Name));
         }
     }
 }
