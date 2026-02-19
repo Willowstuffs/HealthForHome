@@ -1,0 +1,285 @@
+/* uzytkownikSzczegoly.css */
+
+.user-details-wrap{
+  max-width: 1200px;
+}
+
+.user-details-hero{
+  margin-bottom: 12px;
+}
+
+.user-details-title{
+  margin: 0;
+  font-size: 44px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+/* header card */
+.user-profile-card{
+  padding: 18px 18px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.72);
+  border: 1px solid rgba(226,232,240,0.65);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 22px 60px rgba(15,23,42,0.10);
+
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.user-profile-left{
+  display:flex;
+  align-items:center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.user-avatar{
+  width: 62px;
+  height: 62px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  font-size: 22px;
+  color: rgba(15,23,42,0.75);
+  background: rgba(30,166,154,0.12);
+  border: 1px solid rgba(30,166,154,0.22);
+  flex: 0 0 auto;
+}
+
+.user-profile-main{
+  min-width: 0;
+}
+
+.user-name{
+  margin: 0;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.user-email{
+  margin-top: 4px;
+  color: rgba(15,23,42,0.55);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 520px;
+}
+
+.user-actions{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* grid of cards */
+.user-details-grid{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+@media (min-width: 1000px){
+  .user-details-grid{
+    grid-template-columns: 2fr minmax(360px, 1fr);
+    align-items: start;
+  }
+}
+
+.user-card{
+  background: rgba(255,255,255,0.72);
+  border: 1px solid rgba(226,232,240,0.65);
+  box-shadow: 0 18px 52px rgba(15,23,42,0.10);
+  border-radius: 18px;
+  padding: 22px;
+}
+
+.user-card-title{
+  margin: 0 0 10px;
+  font-size: 18px;
+  font-weight: 900;
+  color: rgba(15,23,42,0.80);
+}
+
+.user-kv{
+  display:grid;
+  border-top: 1px solid rgba(15,23,42,0.06);
+  margin-top: 10px;
+}
+
+.user-kv-row{
+  display:grid;
+  grid-template-columns: 1fr auto;  
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(15,23,42,0.06);
+}
+
+
+@media (max-width: 560px){
+  .user-kv-row{
+    grid-template-columns: 1fr;
+    gap: 6px;
+    align-items: start;
+  }
+}
+
+.user-kv-key{
+  color: rgba(15,23,42,0.85);
+  font-weight: 900;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+}
+
+.user-kv-val{
+  font-weight: 700;
+  color: rgba(15,23,42,0.75);
+  text-align: right;
+  font-size: 15px;
+}
+
+/* activity full width */
+.user-activity-card{
+  grid-column: 1 / -1;
+  padding: 0;
+  overflow: hidden;
+}
+
+.user-activity-head{
+  padding: 18px 22px 10px;
+  border-bottom: 1px solid rgba(15,23,42,0.06);
+  background: rgba(255,255,255,0.45);
+}
+
+.user-activity-body{
+  padding: 18px 22px;
+}
+
+.user-activity-table{
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.user-activity-table th,
+.user-activity-table td{
+  padding: 14px 10px;
+  border-bottom: 1px solid rgba(15,23,42,0.06);
+  text-align: left;
+}
+
+.user-activity-empty{
+  color: rgba(15,23,42,0.55);
+  font-weight: 700;
+}
+
+/* back link */
+.user-back-row{
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.user-back-link{
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: rgba(15,23,42,0.65);
+  font-weight: 900;
+  padding: 8px 0;
+}
+.user-back-link:hover{
+  color: rgba(15,23,42,0.90);
+  text-decoration: underline;
+}
+
+/* reuse your existing .btn from admin.css, only make it match mock */
+.btn{
+  height: 42px;
+  padding: 0 16px;
+  border-radius: 14px;
+}
+
+/* RIGHT card: make value column start in the same place (like left card) */
+.user-card--activity .user-kv-row{
+  grid-template-columns: 190px 1fr !important; /* label | value column */
+  column-gap: 16px !important;
+  align-items: center !important;
+}
+
+.user-card--activity .user-kv-key{
+  white-space: nowrap !important;
+  font-weight: 800;
+  color: rgba(15,23,42,0.75);
+}
+
+.user-card--activity .user-kv-val{
+  text-align: left !important;        /* 🔥 nie do prawej */
+  justify-self: start !important;     /* 🔥 nie do końca */
+  font-weight: 900 !important;
+  color: rgba(15,23,42,0.85) !important;
+}
+/* === A11Y: większa czytelność (labels + values) === */
+
+.user-details-title{
+  font-size: 48px;
+  line-height: 1.1;
+}
+
+.user-name{
+  font-size: 30px;
+}
+.user-email{
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+.user-card-title{
+  font-size: 20px;
+}
+
+/* klucz/wartość: większe */
+.user-kv-key{
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.user-kv-val{
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: rgba(15,23,42,0.78);
+}
+
+/* prawy box Aktywność: zachowaj wyrównanie i czytelność */
+.user-card--activity .user-kv-row{
+  grid-template-columns: 210px 1fr !important; /* większa etykieta */
+  column-gap: 16px !important;
+}
+.user-card--activity .user-kv-key{
+  font-size: 16px !important;
+}
+.user-card--activity .user-kv-val{
+  font-size: 18px !important;
+}
+
+/* tabela aktywności */
+.user-activity-table th{
+  font-size: 16px;
+  font-weight: 900;
+}
+.user-activity-table td{
+  font-size: 17px;
+}
+.user-activity-empty{
+  font-size: 17px;
+}
