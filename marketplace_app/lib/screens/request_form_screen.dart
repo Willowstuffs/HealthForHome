@@ -132,9 +132,12 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                     _buildTextField(
                       controller: nameController,
                       label: 'Imię i nazwisko osoby kontaktowej',
-                      validator: (v) => v == null || v.isEmpty
-                          ? 'Podaj imię i nazwisko'
-                          : null,
+                      validator: (v) {
+                        if (!ApiService().isLoggedIn && (v == null || v.isEmpty)) {
+                          return 'Podaj imię i nazwisko';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 12),
 
@@ -142,9 +145,12 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                       controller: phoneController,
                       label: 'Numer telefonu',
                       keyboardType: TextInputType.phone,
-                      validator: (v) => v == null || v.isEmpty
-                          ? 'Podaj numer telefonu'
-                          : null,
+                      validator: (v) {
+                        if (!ApiService().isLoggedIn && (v == null || v.isEmpty)) {
+                          return 'Podaj numer telefonu';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 12),
 
@@ -152,8 +158,12 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                       controller: emailController,
                       label: 'Email',
                       keyboardType: TextInputType.emailAddress,
-                      validator: (v) =>
-                          v == null || v.isEmpty ? 'Podaj email' : null,
+                      validator: (v) {
+                        if (!ApiService().isLoggedIn && (v == null || v.isEmpty)) {
+                          return 'Podaj email';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 24),
                     const Divider(),
@@ -242,21 +252,23 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
     }
 
     if (!ApiService().isLoggedIn) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Zaloguj się, aby dodać ogłoszenie.')),
-      );
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginRegisterScreen()),
-      );
-      return;
+      if (nameController.text.isEmpty ||
+          phoneController.text.isEmpty ||
+          emailController.text.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Uzupełnij dane kontaktowe lub zaloguj się.'),
+          ),
+        ); 
+        return;
+      }
     }
 
-    final serviceTypeId = MockData.serviceTypeIds[selectedCategory];
-    if (serviceTypeId == null) {
+    final categoryKey = MockData.categoryMapping[selectedCategory];
+    if (categoryKey == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Błąd: Nie znaleziono ID dla tej kategorii.'),
+          content: Text('Błąd: Nie znaleziono kategorii dla wybranej usługi.'),
         ),
       );
       return;
@@ -266,7 +278,7 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
 
     try {
       final dto = CreateServiceRequestDto(
-        serviceTypeId: serviceTypeId,
+        category: categoryKey,
         description: notesController.text,
         dateFrom: selectedDateFrom!,
         dateTo: selectedDateTo!,

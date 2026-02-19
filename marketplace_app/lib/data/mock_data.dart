@@ -79,13 +79,10 @@ class MockData {
     ];
   }
 
-  // Mapping of Category Name -> Backend ServiceType ID (GUID)
-  // These GUIDs should ideally be fetched from the backend, but for now we hardcode them.
-  // Replace these with real IDs from your database if known.
-  static const Map<String, String> serviceTypeIds = {
-    'Fizjoterapia': '3fa85f64-5717-4562-b3fc-2c963f66afa6',
-    'Pielęgniarstwo': '4fa85f64-5717-4562-b3fc-2c963f66afa6',
-    'Rehabilitacja': '6fa85f64-5717-4562-b3fc-2c963f66afa6',
+  static const Map<String, String> categoryMapping = {
+    'Fizjoterapia': 'physiotherapy',
+    'Pielęgniarstwo': 'nursing',
+    'Rehabilitacja': 'rehabilitation',
   };
 
   static List<Category> getCategories() {

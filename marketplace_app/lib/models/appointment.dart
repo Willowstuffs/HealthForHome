@@ -105,7 +105,7 @@ class ServiceRequest {
 }
 
 class CreateServiceRequestDto {
-  final String serviceTypeId;
+  final String category;
   final String description;
   final DateTime dateFrom;
   final DateTime dateTo;
@@ -116,7 +116,7 @@ class CreateServiceRequestDto {
   final String? email;
 
   CreateServiceRequestDto({
-    required this.serviceTypeId,
+    required this.category,
     required this.description,
     required this.dateFrom,
     required this.dateTo,
@@ -129,7 +129,7 @@ class CreateServiceRequestDto {
 
   Map<String, dynamic> toJson() {
     return {
-      'serviceTypeId': serviceTypeId,
+      'category': category,
       'description': description,
       'dateFrom': dateFrom.toIso8601String(),
       'dateTo': dateTo.toIso8601String(),

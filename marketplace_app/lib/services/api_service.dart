@@ -228,21 +228,44 @@ class ApiService {
         '/api/Client/service-requests',
         data: dto.toJson(),
       );
-      return response.data['data']; // Returns GUID string
+      
+      // The backend returns the GUID as a string in the data field
+      final requestId = response.data['data']?.toString();
+      if (requestId == null || requestId.isEmpty) {
+        throw Exception('Niepoprawna odpowiedź serwera');
+      }
+      
+      return requestId;
     } on DioException catch (e) {
       throw _handleDioError(e);
-    } catch (_) {
-      throw Exception('Nieznany błąd podczas tworzenia ogłoszenia');
+    } catch (e) {
+      throw Exception('Nieznany błąd podczas tworzenia ogłoszenia: $e');
     }
   }
 
   Future<List<ServiceRequest>> getMyServiceRequests() async {
     try {
       final response = await _dio.get('/api/Client/service-requests');
-      final List<dynamic> list = response.data['data'];
+      
+      // Handle the response data structure
+      final data = response.data;
+      List<dynamic> list;
+      
+      if (data is Map<String, dynamic>) {
+        // If response is wrapped in ApiResponse format
+        list = data['data'] ?? [];
+      } else if (data is List) {
+        // If response is direct list
+        list = data;
+      } else {
+        throw Exception('Niepoprawny format odpowiedzi serwera');
+      }
+      
       return list.map((e) => ServiceRequest.fromJson(e)).toList();
-    } catch (_) {
-      return [];
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (e) {
+      throw Exception('Błąd podczas pobierania ogłoszeń: $e');
     }
   }
 
@@ -251,23 +274,43 @@ class ApiService {
   Exception _handleDioError(DioException e) {
     if (e.response != null) {
       final statusCode = e.response?.statusCode;
+      final responseData = e.response?.data;
+
+      // Try to extract error message from response
+      String errorMessage = 'Wystąpił błąd';
+      if (responseData is Map<String, dynamic>) {
+        errorMessage = responseData['message'] ?? 
+                      responseData['error'] ?? 
+                      errorMessage;
+      }
 
       switch (statusCode) {
         case 400:
-          return Exception(e.response?.data['message'] ?? 'Niepoprawne dane');
+          return Exception('Niepoprawne dane: $errorMessage');
         case 401:
-          return Exception('Brak autoryzacji');
+          return Exception('Brak autoryzacji. Zaloguj się ponownie.');
         case 403:
-          return Exception('Brak dostępu');
+          return Exception('Brak uprawnień: $errorMessage'); 
+        case 404:
+          return Exception('Nie znaleziono zasobu: $errorMessage');
         case 409:
-          return Exception('Użytkownik już istnieje');
+          return Exception('Konflikt danych: $errorMessage');
+        case 422:
+          return Exception('Niepoprawne dane: $errorMessage');
         case 500:
-          return Exception('Błąd serwera');
+          return Exception('Błąd serwera: $errorMessage');
         default:
-          return Exception(e.response?.data['message'] ?? 'Wystąpił błąd');
+          return Exception('Błąd HTTP $statusCode: $errorMessage');
       }
     } else {
-      return Exception('Brak połączenia z serwerem');
+      if (e.type == DioExceptionType.connectionTimeout || 
+          e.type == DioExceptionType.receiveTimeout) {
+        return Exception('Przekroczono limit czasu połączenia');
+      } else if (e.type == DioExceptionType.connectionError) {
+        return Exception('Brak połączenia z serwerem');
+      } else {
+        return Exception('Błąd sieciowy: ${e.message}');
+      }
     }
   }
 }

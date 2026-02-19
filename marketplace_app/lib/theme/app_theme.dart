@@ -20,6 +20,8 @@ class AppColors {
   
   static const Color outline = Color(0xFFE5E7EB);
   static const Color outlineVariant = Color(0xFFF3F4F6);
+  
+  static const Color error = Color(0xFFEF4444);
 }
 
 class AppTheme {
@@ -73,11 +75,11 @@ class AppTheme {
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: AppColors.accent),
+        borderSide: BorderSide(color: AppColors.error),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: AppColors.accent, width: 2),
+        borderSide: BorderSide(color: AppColors.error, width: 2),
       ),
       hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 14),
       labelStyle: TextStyle(color: AppColors.textSecondary, fontSize: 14),

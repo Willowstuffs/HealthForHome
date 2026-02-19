@@ -349,6 +349,55 @@ class HomeScreenState extends State<HomeScreen> {
           );
         }
 
+        if (snapshot.hasError) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.list_alt_rounded, color: AppColors.primary, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Moje ogłoszenia',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.onBackground,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline, color: AppColors.error),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Błąd podczas ładowania ogłoszeń: ${snapshot.error}',
+                        style: TextStyle(color: AppColors.error),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        }
+
         final requests = snapshot.data ?? [];
 
         return Column(
@@ -472,6 +521,55 @@ class HomeScreenState extends State<HomeScreen> {
                 strokeWidth: 3,
               ),
             ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.accent.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.calendar_today_rounded, color: AppColors.accent, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Moje wizyty',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.onBackground,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline, color: AppColors.error),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Błąd podczas ładowania wizyt: ${snapshot.error}',
+                        style: TextStyle(color: AppColors.error),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           );
         }
 
