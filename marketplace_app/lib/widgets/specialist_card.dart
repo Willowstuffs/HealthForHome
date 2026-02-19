@@ -14,22 +14,34 @@ class SpecialistCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: AppColors.surface,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildAvatar(),
-              const SizedBox(width: 16),
-              Expanded(child: _buildSpecialistInfo()),
-            ],
+    return Container(
+      margin: EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildAvatar(),
+                const SizedBox(width: 16),
+                Expanded(child: _buildSpecialistInfo()),
+              ],
+            ),
           ),
         ),
       ),
@@ -40,34 +52,41 @@ class SpecialistCard extends StatelessWidget {
     return Stack(
       children: [
         Container(
-          width: 70,
-          height: 70,
+          width: 64,
+          height: 64,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: AppColors.background,
-            border: Border.all(color: AppColors.outline, width: 2),
-            // Use placeholder as ImageUrl is not in DTO
-            image: const DecorationImage(
-              image: AssetImage('lib/images/logo.png'),
-              fit: BoxFit.cover,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.livingColor20,
+                AppColors.livingColor30,
+              ],
             ),
-          ),
-          child: const Icon(Icons.person, size: 40, color: Colors.grey),
-        ),
-        if (specialist
-            .isVerified) // isAvailable replaced by isVerified or logic? MockData had isAvailable. DTO has IsVerified.
-          Positioned(
-            right: 0,
-            bottom: 0,
-            child: Container(
-              width: 16,
-              height: 16,
-              decoration: BoxDecoration(
-                color: Colors.blue, // Verified badge
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.surface, width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                blurRadius: 8,
+                offset: Offset(0, 2),
               ),
-              child: const Icon(Icons.check, size: 10, color: Colors.white),
+            ],
+          ),
+          child: Icon(Icons.person, size: 32, color: AppColors.primary),
+        ),
+        if (specialist.isVerified)
+          Positioned(
+            right: -2,
+            bottom: -2,
+            child: Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.surface, width: 3),
+              ),
+              child: const Icon(Icons.check, size: 12, color: Colors.white),
             ),
           ),
       ],
@@ -85,14 +104,22 @@ class SpecialistCard extends StatelessWidget {
               child: Text(
                 specialist.fullName,
                 style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
                   color: AppColors.onSurface,
+                  letterSpacing: 0.1,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const Icon(Icons.favorite_border, color: AppColors.secondary),
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.favorite_border, size: 18, color: AppColors.textSecondary),
+            ),
           ],
         ),
         const SizedBox(height: 4),

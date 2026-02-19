@@ -79,12 +79,20 @@ class MockData {
     ];
   }
 
+  // Mapping of Category Name -> Backend ServiceType ID (GUID)
+  // These GUIDs should ideally be fetched from the backend, but for now we hardcode them.
+  // Replace these with real IDs from your database if known.
+  static const Map<String, String> serviceTypeIds = {
+    'Fizjoterapia': '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+    'Pielęgniarstwo': '4fa85f64-5717-4562-b3fc-2c963f66afa6',
+    'Rehabilitacja': '6fa85f64-5717-4562-b3fc-2c963f66afa6',
+  };
+
   static List<Category> getCategories() {
     return [
-      Category(title: 'Fizjoterapia', icon: Icons.accessibility_new_outlined),
-      Category(title: 'Rehabilitacja', icon: Icons.healing_outlined),
-      Category(title: 'Masaż', icon: Icons.spa_outlined),
-      Category(title: 'Konsultacje', icon: Icons.chat_bubble_outline),
+      Category(title: 'Fizjoterapia', icon: Icons.accessibility_new),
+      Category(title: 'Pielęgniarstwo', icon: Icons.medical_services),
+      Category(title: 'Rehabilitacja', icon: Icons.fitness_center),
     ];
   }
 

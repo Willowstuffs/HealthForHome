@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
+import '../../theme/app_theme.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -56,7 +57,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         context,
       ).showSnackBar(const SnackBar(content: Text('Konto zostało utworzone')));
 
-      Navigator.pop(context); // np. do logowania / success screen
+      Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
 
@@ -83,19 +84,56 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Rejestracja')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              _buildTextField(
-                controller: firstNameController,
-                label: 'Imię',
-                validator: (v) => v == null || v.isEmpty ? 'Podaj imię' : null,
-              ),
-              const SizedBox(height: 12),
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: IconButton(
+                    icon: Icon(Icons.arrow_back_ios_rounded, color: AppColors.onSurface),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+                
+                const SizedBox(height: 32),
+                
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Utwórz konto',
+                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                        color: AppColors.onBackground,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Dołącz do naszej społeczności',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 40),
+                
+                _buildTextField(
+                  controller: firstNameController,
+                  label: 'Imię',
+                  validator: (v) => v == null || v.isEmpty ? 'Podaj imię' : null,
+                ),
+                const SizedBox(height: 20),
 
               _buildTextField(
                 controller: lastNameController,
@@ -170,7 +208,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   if (v.length < 8) {
                     return 'Hasło musi mieć minimum 8 znaków';
                   }
-                  // Backend requirement: Upper, Lower, Digit, Special char
                   final passwordRegex = RegExp(
                     r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{8,}$',
                   );
@@ -189,26 +226,52 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 validator: (v) =>
                     v == passwordController.text ? null : 'Hasła nie są zgodne',
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
 
               SizedBox(
                 width: double.infinity,
+                height: 56,
                 child: ElevatedButton(
                   onPressed: isLoading ? null : _register,
                   child: isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                      ? SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
                         )
                       : const Text('Załóż konto'),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Center(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: RichText(
+                    text: TextSpan(
+                      text: 'Masz już konto? ',
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                      children: [
+                        TextSpan(
+                          text: 'Zaloguj się',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
         ),
       ),
-    );
+    )
+  );
   }
 
   Widget _buildTextField({
@@ -219,17 +282,54 @@ class _RegisterScreenState extends State<RegisterScreen> {
     String? Function(String?)? validator,
     int maxLines = 1,
   }) {
-    return TextFormField(
-      controller: controller,
-      obscureText: obscureText,
-      keyboardType: keyboardType,
-      maxLines: maxLines,
-      validator: validator,
-      decoration: InputDecoration(
-        labelText: label,
-        filled: true,
-        alignLabelWithHint: maxLines > 1,
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.onSurface,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          obscureText: obscureText,
+          keyboardType: keyboardType,
+          maxLines: maxLines,
+          validator: validator,
+          style: TextStyle(fontSize: 16, color: AppColors.onSurface),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: AppColors.surfaceVariant,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: AppColors.outlineVariant),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: AppColors.primary, width: 2),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: AppColors.accent),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: AppColors.accent, width: 2),
+            ),
+            contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            hintStyle: TextStyle(color: AppColors.textSecondary),
+            alignLabelWithHint: maxLines > 1,
+          ),
+        ),
+      ],
     );
   }
 }

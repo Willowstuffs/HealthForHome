@@ -14,7 +14,6 @@ class Appointment {
   final DateTime updatedAt;
   final DateTime? cancelledAt;
 
-  // Navigation properties
   final String? specialistName;
   final String? clientName;
   final String? serviceName;
@@ -64,31 +63,81 @@ class Appointment {
   }
 }
 
-class CreateAppointmentDto {
-  final String specialistId;
-  final String? specialistServiceId;
-  final DateTime scheduledStart;
-  final DateTime scheduledEnd;
-  final String? clientAddress;
-  final String? clientNotes;
+class ServiceRequest {
+  final String id;
+  final String serviceTypeName;
+  final String description;
+  final DateTime dateFrom;
+  final DateTime dateTo;
+  final double? maxPrice;
+  final String address;
+  final String status;
+  final DateTime createdAt;
+  final String? contactName;
 
-  CreateAppointmentDto({
-    required this.specialistId,
-    required this.specialistServiceId,
-    required this.scheduledStart,
-    required this.scheduledEnd,
-    this.clientAddress,
-    this.clientNotes,
+  ServiceRequest({
+    required this.id,
+    required this.serviceTypeName,
+    required this.description,
+    required this.dateFrom,
+    required this.dateTo,
+    this.maxPrice,
+    required this.address,
+    required this.status,
+    required this.createdAt,
+    this.contactName,
+  });
+
+  factory ServiceRequest.fromJson(Map<String, dynamic> json) {
+    return ServiceRequest(
+      id: json['id'],
+      serviceTypeName: json['serviceTypeName'] ?? '',
+      description: json['description'] ?? '',
+      dateFrom: DateTime.parse(json['dateFrom']),
+      dateTo: DateTime.parse(json['dateTo']),
+      maxPrice: (json['maxPrice'] as num?)?.toDouble(),
+      address: json['address'] ?? '',
+      status: json['status'] ?? 'active',
+      createdAt: DateTime.parse(json['createdAt']),
+      contactName: json['contactName'],
+    );
+  }
+}
+
+class CreateServiceRequestDto {
+  final String serviceTypeId;
+  final String description;
+  final DateTime dateFrom;
+  final DateTime dateTo;
+  final String address;
+  final double? maxPrice;
+  final String? contactName;
+  final String? phoneNumber;
+  final String? email;
+
+  CreateServiceRequestDto({
+    required this.serviceTypeId,
+    required this.description,
+    required this.dateFrom,
+    required this.dateTo,
+    required this.address,
+    this.maxPrice,
+    this.contactName,
+    this.phoneNumber,
+    this.email,
   });
 
   Map<String, dynamic> toJson() {
     return {
-      'specialistId': specialistId,
-      'specialistServiceId': specialistServiceId,
-      'scheduledStart': scheduledStart.toIso8601String(),
-      'scheduledEnd': scheduledEnd.toIso8601String(),
-      if (clientAddress != null) 'clientAddress': clientAddress,
-      if (clientNotes != null) 'clientNotes': clientNotes,
+      'serviceTypeId': serviceTypeId,
+      'description': description,
+      'dateFrom': dateFrom.toIso8601String(),
+      'dateTo': dateTo.toIso8601String(),
+      'address': address,
+      if (maxPrice != null) 'maxPrice': maxPrice,
+      if (contactName != null) 'contactName': contactName,
+      if (phoneNumber != null) 'phoneNumber': phoneNumber,
+      if (email != null) 'email': email,
     };
   }
 }

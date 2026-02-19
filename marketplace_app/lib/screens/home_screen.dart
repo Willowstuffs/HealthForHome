@@ -4,10 +4,10 @@ import '../../screens/request_form_screen.dart';
 import '../../screens/account_screen.dart';
 import '../../services/api_service.dart';
 import '../../widgets/category_chip.dart';
-import '../../widgets/specialist_card.dart';
 import '../../widgets/appointment_card.dart';
 import '../../data/mock_data.dart';
-import '../../models/client_profile.dart'; // Import ClientProfile
+import '../../models/client_profile.dart';
+import '../../models/appointment.dart';
 import '../../theme/app_theme.dart';
 import '../../screens/map_screen.dart';
 
@@ -22,6 +22,7 @@ class HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   ClientProfile? _clientProfile;
   bool _isLoadingProfile = false;
+
   @override
   void initState() {
     super.initState();
@@ -45,7 +46,6 @@ class HomeScreenState extends State<HomeScreen> {
           });
         }
       } catch (e) {
-        // Handle error silently or show snackbar
         if (mounted) setState(() => _isLoadingProfile = false);
       }
     }
@@ -61,47 +61,81 @@ class HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final isLoggedIn = ApiService().isLoggedIn;
 
-    // Guest View
+    // Guest
     if (!isLoggedIn) {
       return _buildGuestScaffold();
     }
 
-    // Logged In View
+    // Logged In
     return _buildLoggedInScaffold();
   }
 
   Widget _buildGuestScaffold() {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.person_outline,
-              color: AppColors.onBackground,
-            ),
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginRegisterScreen()),
-              );
-              _checkLoginAndLoadProfile(); // Refresh on return
-            },
-          ),
-        ],
-      ),
       backgroundColor: AppColors.background,
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildWelcomeSection(),
-              const SizedBox(height: 24),
-              _buildCategoriesSection(),
-            ],
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'HealthForHome',
+                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                            color: AppColors.onBackground,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Twoje zdrowie w domu',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: IconButton(
+                        icon: Icon(
+                          Icons.person_outline_rounded,
+                          color: AppColors.primary,
+                        ),
+                        onPressed: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const LoginRegisterScreen()),
+                          );
+                          _checkLoginAndLoadProfile();
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                _buildWelcomeSection(),
+                const SizedBox(height: 32),
+                _buildCategoriesSection(),
+              ],
+            ),
           ),
         ),
       ),
@@ -109,8 +143,6 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildLoggedInScaffold() {
-    // If we are on Home tab (index 0), show dashboard
-    // Otherwise show placeholder
     Widget bodyContent;
     switch (_currentIndex) {
       case 0:
@@ -132,139 +164,315 @@ class HomeScreenState extends State<HomeScreen> {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.background, // Match theme background
-      appBar: _currentIndex == 0
-          ? null // No AppBar on Home tab (custom greeting inside body or custom SliverAppBar could be used, but standard design typically mimics SafeArea)
-          : AppBar(
-              title: const Text('HealthForHome'),
-              backgroundColor: AppColors.background,
-              elevation: 0,
-            ),
+      backgroundColor: AppColors.background,
       body: SafeArea(child: bodyContent),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        type: BottomNavigationBarType.fixed,
-        // selectedItemColor and unselectedItemColor are now handled by the theme
-        showUnselectedLabels: true,
-        onTap: _onBottomNavTapped,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Start'),
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Szukaj'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.map_outlined),
-            label: 'Mapa',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today),
-            label: 'Kalendarz',
-          ),
-        ],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surfaceVariant,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 20,
+              offset: Offset(0, -4),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          showUnselectedLabels: true,
+          onTap: _onBottomNavTapped,
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Start'),
+            BottomNavigationBarItem(icon: Icon(Icons.search_rounded), label: 'Szukaj'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.map_outlined),
+              label: 'Mapa',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_today_rounded),
+              label: 'Kalendarz',
+            ),
+          ],
+        ),
       ),
+      floatingActionButton: _currentIndex == 0
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        const RequestFormScreen(categoryName: 'Fizjoterapia'),
+                  ),
+                );
+              },
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              label: const Text(
+                "Nowe zgłoszenie",
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              icon: const Icon(Icons.add_rounded),
+            )
+          : null,
     );
   }
 
   Widget _buildDashboard() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header / Greeting
           _buildUserInfoHeader(),
+          const SizedBox(height: 32),
+
+          _buildServiceRequestsList(),
           const SizedBox(height: 24),
 
-          // Specialists Section
-          _buildSpecialistsList(),
-          const SizedBox(height: 24),
-
-          // Appointments Section
           _buildAppointmentsList(),
+          const SizedBox(height: 100),
         ],
       ),
     );
   }
 
   Widget _buildUserInfoHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Witaj,',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).colorScheme.secondary,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              _isLoadingProfile
-                  ? 'Ładowanie...'
-                  : (_clientProfile?.firstName ?? 'Użytkowniku'),
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
+    return Container(
+      padding: EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.surface,
+            AppColors.surface.withValues(alpha: 0.7),
           ],
         ),
-        GestureDetector(
-          onTap: () async {
-            await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AccountScreen()),
-            );
-            _checkLoginAndLoadProfile();
-          },
-          child: CircleAvatar(
-            radius: 24,
-            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-            child: Icon(Icons.person, color: AppColors.primary),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 12,
+            offset: Offset(0, 4),
           ),
-        ),
-      ],
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Witaj z powrotem!',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _isLoadingProfile
+                      ? 'Ładowanie...'
+                      : (_clientProfile?.firstName ?? 'Użytkowniku'),
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Jak możemy Ci dzisiaj pomóc?',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          GestureDetector(
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AccountScreen()),
+              );
+              _checkLoginAndLoadProfile();
+            },
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.primary,
+                    AppColors.primary.withValues(alpha: 0.8),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Icon(Icons.person, color: Colors.white, size: 24),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildSpecialistsList() {
-    final specialists = MockData.getSpecialists();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Proponowani specjaliści',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: specialists.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final specialist = specialists[index];
-            return SpecialistCard(
-              specialist: specialist,
-              onTap: () {
-                // Navigate to details
+  Widget _buildServiceRequestsList() {
+    return FutureBuilder<List<ServiceRequest>>(
+      future: ApiService().getMyServiceRequests(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return SizedBox(
+            height: 100,
+            child: Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                strokeWidth: 3,
+              ),
+            ),
+          );
+        }
+
+        final requests = snapshot.data ?? [];
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.list_alt_rounded, color: AppColors.primary, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Twoje ogłoszenia',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.onBackground,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (requests.isEmpty)
+              Container(
+                padding: EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.outlineVariant),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline_rounded, color: AppColors.textSecondary),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Brak aktywnych ogłoszeń.',
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: requests.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final req = requests[index];
+                return Container(
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 10,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              req.serviceTypeName,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Status: ${req.status}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Data: ${req.dateFrom.day}.${req.dateFrom.month} - ${req.dateTo.day}.${req.dateTo.month}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.textSecondary),
+                    ],
+                  ),
+                );
               },
-            );
-          },
-        ),
-      ],
+            ),
+          ],
+        );
+      },
     );
   }
 
   Widget _buildAppointmentsList() {
-    return FutureBuilder<List<dynamic>>(
+    return FutureBuilder<List<Appointment>>(
       future: ApiService().getAppointments(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return SizedBox(
+            height: 100,
+            child: Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                strokeWidth: 3,
+              ),
+            ),
+          );
         }
 
         final appointments = snapshot.data ?? [];
@@ -272,19 +480,46 @@ class HomeScreenState extends State<HomeScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Nadchodzące wizyty',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.calendar_today_rounded, color: AppColors.accent, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Nadchodzące wizyty',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.onBackground,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             if (appointments.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(8.0),
-                child: Text('Brak nadchodzących wizyt'),
+              Container(
+                padding: EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.outlineVariant),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline_rounded, color: AppColors.textSecondary),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Brak nadchodzących wizyt',
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
               ),
-
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -308,18 +543,55 @@ class HomeScreenState extends State<HomeScreen> {
   Widget _buildWelcomeSection() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // LOGO
-          Image.asset('lib/images/logo.png', width: 150, height: 150),
-          const SizedBox(height: 16),
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.primary.withValues(alpha: 0.1),
+                  AppColors.accent.withValues(alpha: 0.05),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(30),
+            ),
+            child: Center(
+              child: Image.asset('lib/images/logo.png', width: 80, height: 80),
+            ),
+          ),
+          const SizedBox(height: 24),
           Text(
             'Health for Home',
-            style: Theme.of(context).textTheme.headlineLarge!.copyWith(
-              fontSize: 48,
-              fontWeight: FontWeight.bold,
+            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+              color: AppColors.onBackground,
+              letterSpacing: -0.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Profesjonalna opieka zdrowotna\nw zaciszu Twojego domu',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppColors.textSecondary,
+              height: 1.4,
             ),
             textAlign: TextAlign.center,
           ),
@@ -332,15 +604,38 @@ class HomeScreenState extends State<HomeScreen> {
     final categories = MockData.getCategories();
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Wybierz kategorię',
-          style: Theme.of(context).textTheme.headlineMedium,
-          textAlign: TextAlign.center,
+        Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [AppColors.primary.withValues(alpha: 0.1), AppColors.accent.withValues(alpha: 0.05)],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.medical_services_rounded, color: AppColors.primary, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Wybierz kategorię',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: AppColors.onBackground,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
-        // Lista kategorii
+        const SizedBox(height: 8),
+        Text(
+          'Znajdź specjalistę odpowiedniego dla Twoich potrzeb',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 20),
         ListView.separated(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),

@@ -72,8 +72,6 @@ class ApiService {
     _token = null;
   }
 
-  // Auth
-
   Future<void> register({
     required String email,
     required String password,
@@ -92,11 +90,11 @@ class ApiService {
           "password": password,
           "firstName": firstName,
           "lastName": lastName,
-          if (phoneNumber != null) "phoneNumber": phoneNumber,
+          "phoneNumber": ?phoneNumber,
           if (dateOfBirth != null)
             "dateOfBirth": dateOfBirth.toIso8601String().split('T')[0],
-          if (address != null) "address": address,
-          if (emergencyContact != null) "emergencyContact": emergencyContact,
+          "address": ?address,
+          "emergencyContact": ?emergencyContact,
         },
       );
     } on DioException catch (e) {
@@ -136,8 +134,6 @@ class ApiService {
     }
   }
 
-  // Client Profile
-
   Future<ClientProfile> getClientProfile() async {
     try {
       final response = await _dio.get('/api/Client/profile');
@@ -163,8 +159,6 @@ class ApiService {
     }
   }
 
-  // Specialists & Services
-
   Future<List<Specialist>> searchSpecialists({String? category}) async {
     try {
       final queryParams = <String, dynamic>{};
@@ -184,11 +178,22 @@ class ApiService {
     }
   }
 
-  // Appointments
-
-  Future<List<Appointment>> getAppointments() async {
+  Future<List<Appointment>> getAppointments({
+    int page = 1,
+    int pageSize = 10,
+    String? status,
+  }) async {
     try {
-      final response = await _dio.get('/api/Client/appointments');
+      final queryParams = {
+        'Page': page,
+        'PageSize': pageSize,
+        'status': ?status,
+      };
+
+      final response = await _dio.get(
+        '/api/Client/appointments',
+        queryParameters: queryParams,
+      );
       final List<dynamic> list = response.data['data']['items'];
       return list.map((e) => Appointment.fromJson(e)).toList();
     } catch (_) {
@@ -196,13 +201,48 @@ class ApiService {
     }
   }
 
-  Future<void> createAppointment(CreateAppointmentDto dto) async {
+  Future<Appointment> getAppointmentDetails(String id) async {
     try {
-      await _dio.post('/api/Client/appointments', data: dto.toJson());
+      final response = await _dio.get('/api/Client/appointments/$id');
+      return Appointment.fromJson(response.data['data']);
     } on DioException catch (e) {
       throw _handleDioError(e);
     } catch (_) {
-      throw Exception('Nieznany błąd podczas tworzenia wizyty');
+      throw Exception('Błąd pobierania szczegółów wizyty');
+    }
+  }
+
+  Future<void> cancelAppointment(String id) async {
+    try {
+      await _dio.post('/api/Client/appointments/$id/cancel');
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (_) {
+      throw Exception('Nieznany błąd podczas anulowania wizyty');
+    }
+  }
+
+  Future<String> createServiceRequest(CreateServiceRequestDto dto) async {
+    try {
+      final response = await _dio.post(
+        '/api/Client/service-requests',
+        data: dto.toJson(),
+      );
+      return response.data['data']; // Returns GUID string
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (_) {
+      throw Exception('Nieznany błąd podczas tworzenia ogłoszenia');
+    }
+  }
+
+  Future<List<ServiceRequest>> getMyServiceRequests() async {
+    try {
+      final response = await _dio.get('/api/Client/service-requests');
+      final List<dynamic> list = response.data['data'];
+      return list.map((e) => ServiceRequest.fromJson(e)).toList();
+    } catch (_) {
+      return [];
     }
   }
 

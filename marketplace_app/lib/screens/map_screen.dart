@@ -12,6 +12,7 @@ class MapScreen extends StatelessWidget {
     return Scaffold(
       body: FlutterMap(
         options: MapOptions(
+          // TODO: wysrodkowanie na podstawie lokalizacji klienta (lub ostatnio wybranej lokalizacji)
           initialCenter: const LatLng(53.013790, 18.598444), // Toruń
           initialZoom: 13.0,
         ),

@@ -4,7 +4,6 @@ import 'package:marketplace_app/services/api_service.dart';
 import '../../screens/request_success_screen.dart';
 import '../../theme/app_theme.dart';
 import '../../data/mock_data.dart';
-import '../../models/specialist.dart';
 import '../../models/appointment.dart';
 
 class RequestFormScreen extends StatefulWidget {
@@ -20,82 +19,67 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
+  final TextEditingController nameController =
+      TextEditingController();
+  final TextEditingController phoneController =
+      TextEditingController();
+  final TextEditingController emailController =
+      TextEditingController();
+
   final TextEditingController addressController = TextEditingController();
   final TextEditingController notesController = TextEditingController();
+  final TextEditingController maxPriceController = TextEditingController();
 
-  DateTime? selectedDate;
-  TimeOfDay? selectedTime;
+  DateTime? selectedDateFrom;
+  DateTime? selectedDateTo;
 
   late List<Category> categories;
   String? selectedCategory;
-
-  List<Specialist> specialists = [];
-  Specialist? selectedSpecialist;
-
-  List<SpecialistService> services = [];
-  SpecialistService? selectedService;
 
   @override
   void initState() {
     super.initState();
     categories = MockData.getCategories();
     selectedCategory = widget.categoryName;
-    _fetchSpecialists(); // Fetch immediately for the passed category
+    selectedDateFrom = DateTime.now().add(const Duration(days: 1));
+    selectedDateTo = DateTime.now().add(const Duration(days: 1, hours: 2));
+
+    _loadUserProfile();
   }
 
-  Future<void> _fetchSpecialists() async {
-    if (selectedCategory == null) return;
-
-    setState(() => _isLoading = true);
-    try {
-      final results = await ApiService().searchSpecialists(
-        category: selectedCategory,
-      );
-      if (mounted) {
+  Future<void> _loadUserProfile() async {
+    if (ApiService().isLoggedIn) {
+      try {
+        final profile = await ApiService().getClientProfile();
         setState(() {
-          specialists = results;
-          selectedSpecialist = null;
-          services = [];
-          selectedService = null;
+          nameController.text = '${profile.firstName} ${profile.lastName}'
+              .trim();
+          phoneController.text = profile.phoneNumber ?? '';
+          emailController.text = profile.email;
+          if (profile.address != null && addressController.text.isEmpty) {
+            addressController.text = profile.address!;
+          }
         });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Błąd pobierania specjalistów: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
+      } catch (e) {
+        // Ignore error, just don't prefill
       }
     }
   }
 
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
+  Future<void> _pickDateRange() async {
+    final picked = await showDateRangePicker(
       context: context,
-      initialDate: DateTime.now(),
       firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 90)),
+      initialDateRange: selectedDateFrom != null && selectedDateTo != null
+          ? DateTimeRange(start: selectedDateFrom!, end: selectedDateTo!)
+          : null,
     );
 
     if (picked != null && mounted) {
       setState(() {
-        selectedDate = picked;
-      });
-    }
-  }
-
-  Future<void> _pickTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: const TimeOfDay(hour: 12, minute: 0),
-    );
-
-    if (picked != null && mounted) {
-      setState(() {
-        selectedTime = picked;
+        selectedDateFrom = picked.start;
+        selectedDateTo = picked.end.add(const Duration(hours: 23, minutes: 59));
       });
     }
   }
@@ -106,7 +90,7 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Formularz rezerwacji"),
+        title: const Text("Utwórz ogłoszenie"),
         backgroundColor: AppColors.background,
         elevation: 0,
         actions: [
@@ -136,74 +120,87 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Text(
+                      "Wypełnij formularz, a specjaliści sami zgłoszą się do Ciebie.",
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 16),
+
+                    _buildSectionTitle(theme, "Dane kontaktowe"),
+                    const SizedBox(height: 8),
+
+                    _buildTextField(
+                      controller: nameController,
+                      label: 'Imię i nazwisko osoby kontaktowej',
+                      validator: (v) => v == null || v.isEmpty
+                          ? 'Podaj imię i nazwisko'
+                          : null,
+                    ),
+                    const SizedBox(height: 12),
+
+                    _buildTextField(
+                      controller: phoneController,
+                      label: 'Numer telefonu',
+                      keyboardType: TextInputType.phone,
+                      validator: (v) => v == null || v.isEmpty
+                          ? 'Podaj numer telefonu'
+                          : null,
+                    ),
+                    const SizedBox(height: 12),
+
+                    _buildTextField(
+                      controller: emailController,
+                      label: 'Email',
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (v) =>
+                          v == null || v.isEmpty ? 'Podaj email' : null,
+                    ),
+                    const SizedBox(height: 24),
+                    const Divider(),
+
+                    _buildSectionTitle(theme, "Szczegóły zgłoszenia"),
+                    const SizedBox(height: 12),
+
                     _buildCategoryDropdown(),
                     const SizedBox(height: 12),
 
-                    if (specialists.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8.0),
-                        child: Text(
-                          "Brak dostępnych specjalistów w tej kategorii.",
-                        ),
-                      )
-                    else
-                      _buildSpecialistDropdown(),
-
-                    const SizedBox(height: 12),
-
-                    _buildServiceDropdown(),
-                    const SizedBox(height: 12),
-
-                    if (selectedService != null) ...[
-                      Text(
-                        "Czas trwania: ${selectedService!.durationMinutes} min, Cena: ${selectedService!.price} PLN",
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: AppColors.secondary,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-
-                    const Divider(),
-                    const SizedBox(height: 12),
-
-                    Text("Termin wizyty", style: theme.textTheme.titleMedium),
+                    Text(
+                      "Termin realizacji",
+                      style: theme.textTheme.titleMedium,
+                    ),
                     const SizedBox(height: 8),
 
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildDateField(
-                            label: 'Data',
-                            value: selectedDate != null
-                                ? '${selectedDate!.day}.${selectedDate!.month}.${selectedDate!.year}'
-                                : null,
-                            onTap: _pickDate,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildDateField(
-                            label: 'Godzina',
-                            value: selectedTime?.format(context),
-                            onTap: _pickTime,
-                          ),
-                        ),
-                      ],
+                    _buildDateField(
+                      label: 'Zakres dat',
+                      value: selectedDateFrom != null && selectedDateTo != null
+                          ? '${selectedDateFrom!.day}.${selectedDateFrom!.month} - ${selectedDateTo!.day}.${selectedDateTo!.month}.${selectedDateTo!.year}'
+                          : 'Wybierz daty',
+                      onTap: _pickDateRange,
                     ),
                     const SizedBox(height: 12),
 
                     _buildTextField(
                       controller: addressController,
-                      label: 'Adres wizyty (dla wizyt domowych)',
-                      // Optional
+                      label: 'Adres (miasto/dzielnica)',
+                      validator: (v) =>
+                          v == null || v.isEmpty ? 'Podaj adres' : null,
+                    ),
+                    const SizedBox(height: 12),
+
+                    _buildTextField(
+                      controller: maxPriceController,
+                      label: 'Maksymalna cena (PLN) - opcjonalne',
+                      keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 12),
 
                     _buildTextField(
                       controller: notesController,
-                      label: 'Uwagi dla specjalisty',
+                      label: 'Opis problemu / wymagania',
                       maxLines: 4,
+                      validator: (v) => v == null || v.isEmpty
+                          ? 'Opisz swoje potrzeby'
+                          : null,
                     ),
 
                     const SizedBox(height: 24),
@@ -212,7 +209,7 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: _submitForm,
-                        child: const Text('Zarezerwuj wizytę'),
+                        child: const Text('Dodaj ogłoszenie'),
                       ),
                     ),
                   ],
@@ -222,28 +219,31 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
     );
   }
 
+  Widget _buildSectionTitle(ThemeData theme, String title) {
+    return Text(
+      title,
+      style: theme.textTheme.titleMedium?.copyWith(
+        fontWeight: FontWeight.bold,
+        color: AppColors.primary,
+      ),
+    );
+  }
+
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (selectedSpecialist == null ||
-        selectedService == null ||
-        selectedDate == null ||
-        selectedTime == null) {
+    if (selectedCategory == null ||
+        selectedDateFrom == null ||
+        selectedDateTo == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Proszę uzupełnić wszystkie pola (Specjalista, Usługa, Termin)',
-          ),
-        ),
+        const SnackBar(content: Text('Uzupełnij kategorię i daty.')),
       );
       return;
     }
 
     if (!ApiService().isLoggedIn) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Musisz być zalogowany, aby umówić wizytę.'),
-        ),
+        const SnackBar(content: Text('Zaloguj się, aby dodać ogłoszenie.')),
       );
       Navigator.push(
         context,
@@ -252,35 +252,32 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
       return;
     }
 
+    final serviceTypeId = MockData.serviceTypeIds[selectedCategory];
+    if (serviceTypeId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Błąd: Nie znaleziono ID dla tej kategorii.'),
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
-      final startDateTime = DateTime(
-        selectedDate!.year,
-        selectedDate!.month,
-        selectedDate!.day,
-        selectedTime!.hour,
-        selectedTime!.minute,
+      final dto = CreateServiceRequestDto(
+        serviceTypeId: serviceTypeId,
+        description: notesController.text,
+        dateFrom: selectedDateFrom!,
+        dateTo: selectedDateTo!,
+        address: addressController.text,
+        maxPrice: double.tryParse(maxPriceController.text),
+        contactName: nameController.text,
+        phoneNumber: phoneController.text,
+        email: emailController.text,
       );
 
-      final endDateTime = startDateTime.add(
-        Duration(minutes: selectedService!.durationMinutes),
-      );
-
-      final dto = CreateAppointmentDto(
-        specialistId: selectedSpecialist!.id,
-        specialistServiceId: selectedService!.id,
-        scheduledStart: startDateTime,
-        scheduledEnd: endDateTime,
-        clientAddress: addressController.text.isNotEmpty
-            ? addressController.text
-            : null,
-        clientNotes: notesController.text.isNotEmpty
-            ? notesController.text
-            : null,
-      );
-
-      await ApiService().createAppointment(dto);
+      await ApiService().createServiceRequest(dto);
 
       if (mounted) {
         Navigator.pushReplacement(
@@ -292,7 +289,7 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Błąd rezerwacji: $e')));
+        ).showSnackBar(SnackBar(content: Text('Błąd: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -327,16 +324,10 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
           )
           .toList(),
       onChanged: (value) {
-        if (value != selectedCategory) {
+        if (value != null) {
           setState(() {
             selectedCategory = value;
-            // Reset dependent fields
-            specialists = [];
-            selectedSpecialist = null;
-            services = [];
-            selectedService = null;
           });
-          _fetchSpecialists();
         }
       },
       validator: (value) => value == null ? 'Proszę wybrać kategorię' : null,
@@ -344,61 +335,16 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
     );
   }
 
-  Widget _buildSpecialistDropdown() {
-    return DropdownButtonFormField<Specialist>(
-      initialValue: selectedSpecialist,
-      items: specialists
-          .map(
-            (s) =>
-                DropdownMenuItem<Specialist>(value: s, child: Text(s.fullName)),
-          )
-          .toList(),
-      onChanged: (value) {
-        setState(() {
-          selectedSpecialist = value;
-          services = value?.services ?? [];
-          selectedService = null;
-        });
-      },
-      validator: (value) => value == null ? 'Proszę wybrać specjalistę' : null,
-      decoration: const InputDecoration(labelText: 'Specjalista', filled: true),
-    );
-  }
-
-  Widget _buildServiceDropdown() {
-    return DropdownButtonFormField<SpecialistService>(
-      initialValue: selectedService,
-      items: services
-          .map(
-            (s) => DropdownMenuItem<SpecialistService>(
-              value: s,
-              child: Text(s.serviceName),
-            ),
-          )
-          .toList(),
-      onChanged: selectedSpecialist == null
-          ? null
-          : (value) {
-              setState(() {
-                selectedService = value;
-              });
-            },
-      validator: (value) => value == null ? 'Proszę wybrać usługę' : null,
-      decoration: const InputDecoration(labelText: 'Usługa', filled: true),
-      disabledHint: const Text("Najpierw wybierz specjalistę"),
-    );
-  }
-
   Widget _buildDateField({
     required String label,
-    required String? value,
+    required String value,
     required VoidCallback onTap,
   }) {
     return InkWell(
       onTap: onTap,
       child: InputDecorator(
         decoration: InputDecoration(labelText: label, filled: true),
-        child: Text(value ?? ''),
+        child: Text(value),
       ),
     );
   }
