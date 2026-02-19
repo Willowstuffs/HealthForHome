@@ -1,3 +1,5 @@
+
+
 -- TWORZENIE TABEL
 -- uzytkownicy
 CREATE TABLE users (

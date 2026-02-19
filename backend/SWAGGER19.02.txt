@@ -1,0 +1,55 @@
+1. Dodajemy zgloszenie moze byc jako gosc w 
+POST /api/Client/service-requests
+{
+  "category": "nursing",
+  "address": "Kazimierza Wielkiego 10, Kraków",
+  "dateFrom": "2026-03-10T10:00:00Z",
+  "dateTo": "2026-03-10T12:00:00Z",
+  "description": "Potrzebna pomoc przy zmianie opatrunku po operacji kolana.",
+  "contactName": "Anna Nowak",
+  "phoneNumber": "987654321",
+  "email": "anna.nowak@example.com",
+  "maxPrice": 100
+}
+
+
+2. logowanie do specjalisty mojego jakiegos w krakowie
+{
+  "email": "nowy@specjalista.pl",
+  "password": "Test1234!"
+}
+i autoryzujemy
+
+3. Sprawdzamy czy widzi w 
+GET /api/Specialist/available-requests
+
+200	
+Response body
+Download
+{
+  "success": true,
+  "message": "Pobrano dostępne zgłoszenia w okolicy.",
+  "errorCode": null,
+  "data": [
+    {
+      "id": "2b1bf05d-8a88-4736-afad-4e1ecdf0fba8",
+      "serviceTypeName": "Konsultacja pielęgniarska",
+      "description": "Kontakt: Anna Nowak, Tel: 987654321. Opis: Potrzebna pomoc przy zmianie opatrunku po operacji kolana.",
+      "dateFrom": "2026-03-10T10:00:00Z",
+      "dateTo": "2026-03-10T12:00:00Z",
+      "maxPrice": null,
+      "address": "10, Kazimierza Wielkiego, Konsulka, Słomniki, gmina Słomniki, powiat krakowski, województwo małopolskie, 32-090, Polska",
+      "status": "open",
+      "createdAt": "2026-02-19T15:23:38.115336Z",
+      "contactName": null
+    }
+  ],
+  "errors": null,
+  "timestamp": "2026-02-19T16:24:47.2675437+01:00"
+}
+Response headers
+ content-type: application/json; charset=utf-8 
+ date: Thu,19 Feb 2026 15:24:46 GMT 
+ server: Kestrel 
+
+no i zobaczyl
