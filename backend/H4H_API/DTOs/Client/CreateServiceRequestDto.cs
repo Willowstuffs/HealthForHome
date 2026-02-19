@@ -5,8 +5,9 @@ namespace H4H_API.DTOs.Client
     public class CreateServiceRequestDto
     {
         // Ekran 0 i 1: Wybór kategorii/usługi
+        // Klient wybiera: "nursing" lub "physiotherapy"
         [Required]
-        public Guid ServiceTypeId { get; set; }
+        public string Category { get; set; }
 
         // Ekran 1: Dane kontaktowe i adres
         public string? ContactName { get; set; }  // "Imię (opcjonalnie)"

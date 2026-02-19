@@ -485,16 +485,27 @@ namespace H4H_API.Services.Implementations
                 finalClientId = client?.Id;
             }
 
+            // 1. Znajdź techniczne ID usługi dla danej kategorii (np. domyślna usługa nursing)
+            var serviceType = await _context.service_types
+                .FirstOrDefaultAsync(st => st.Category.ToLower() == dto.Category.ToLower());
+
+            if (serviceType == null) throw new Exception("Nieprawidłowa kategoria usługi.");
+
             // Geokodowanie
-            var geocoded = await _geocoder.GeocodeAddressAsync(dto.Address);
+            string cleanAddress = dto.Address
+                .Replace("ul. ", " ", StringComparison.OrdinalIgnoreCase) //sprzatamy zeby napisanie ul. nie powodowalo bledow
+                .Replace("ul ", " ", StringComparison.OrdinalIgnoreCase)
+                .Trim();
+
+            var geocoded = await _geocoder.GeocodeAddressAsync(cleanAddress);
 
             // Tworzenie wizyty (ogłoszenia)
             var appointment = new Appointment
             {
                 Id = Guid.NewGuid(),
-                ClientId = finalClientId,
+                ClientId = finalClientId, // Może być null dla gościa
                 SpecialistId = null, // To jest ogłoszenie otwarte
-                ServiceTypeId = dto.ServiceTypeId,
+                ServiceTypeId = serviceType.Id,
 
                 ClientNotes = $"Kontakt: {dto.ContactName}, Tel: {dto.PhoneNumber}. Opis: {dto.Description}",
                 ClientAddress = geocoded?.FormattedAddress ?? dto.Address,
