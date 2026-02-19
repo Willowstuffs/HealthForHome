@@ -1,3 +1,5 @@
+
+
 -- TWORZENIE TABEL
 -- uzytkownicy
 CREATE TABLE users (
@@ -464,3 +466,33 @@ ALTER TABLE service_requests
 ALTER TABLE service_requests 
     ADD CONSTRAINT FK_service_requests_service_types_service_type_id 
     FOREIGN KEY (service_type_id) REFERENCES service_types(id) ON DELETE CASCADE;
+
+-- AKTUALIZACJA JEDNAK NARA SERVICE REQUESR
+-- 1. Dodanie kolumn do tabeli appointments
+ALTER TABLE appointments 
+ADD COLUMN location geography(Point, 4326),
+ADD COLUMN service_type_id uuid;
+
+-- 2. Utworzenie relacji (Klucza obcego) z tabelą service_types
+ALTER TABLE appointments
+ADD CONSTRAINT "FK_appointments_service_types_service_type_id" 
+FOREIGN KEY (service_type_id) 
+REFERENCES service_types (id) 
+ON DELETE SET NULL;
+
+-- 3. Utworzenie indeksu dla wydajności wyszukiwania po kategorii
+CREATE INDEX "IX_appointments_service_type_id" 
+ON appointments (service_type_id);
+
+-- 4. Usunięcie nieużywanej już tabeli service_requests
+DROP TABLE IF EXISTS service_requests;
+
+
+-- 1. Usuwamy stare ograniczenie
+ALTER TABLE appointments 
+DROP CONSTRAINT appointments_appointment_status_check;
+
+-- 2. Dodajemy nowe ograniczenie z uwzględnieniem statusu 'open'
+ALTER TABLE appointments 
+ADD CONSTRAINT appointments_appointment_status_check 
+CHECK (appointment_status IN ('open', 'confirmed', 'cancelled', 'completed', 'pending'));

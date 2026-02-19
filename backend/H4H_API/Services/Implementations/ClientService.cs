@@ -389,7 +389,7 @@ namespace H4H_API.Services.Implementations
         public async Task<DistanceInfoDto> GetDistanceToServiceRequestAsync(Guid specialistId, Guid serviceRequestId)
         {
             // 1. Pobieramy lokalizację ogłoszenia (ServiceRequest)
-            var request = await _context.service_requests
+            var request = await _context.appointments
                 .Where(r => r.Id == serviceRequestId)
                 .Select(r => new { r.Location })
                 .FirstOrDefaultAsync();
@@ -479,50 +479,52 @@ namespace H4H_API.Services.Implementations
         public async Task<Guid> CreateServiceRequestAsync(CreateServiceRequestDto dto, Guid? userId = null)
         {
             Guid? finalClientId = null;
-
-            // Jeśli użytkownik jest zalogowany, znajdź jego ID Klienta
             if (userId.HasValue)
             {
                 var client = await _context.clients.FirstOrDefaultAsync(c => c.UserId == userId.Value);
                 finalClientId = client?.Id;
             }
 
-            // GEOKODOWANIE: Zawsze geokodujemy adres wpisany w formularzu
-            // 1. Próbujemy zgeokodować adres
-            var geocoded = await _geocoder.GeocodeAddressAsync(dto.Address);
+            // 1. Znajdź techniczne ID usługi dla danej kategorii (np. domyślna usługa nursing)
+            var serviceType = await _context.service_types
+                .FirstOrDefaultAsync(st => st.Category.ToLower() == dto.Category.ToLower());
 
-            // 2. Jeśli się nie udało, nie pozwalamy przejść dalej
-            if (geocoded == null)
-            {
-                throw new AppException(
-                    "Nie udało się odnaleźć podanego adresu na mapie. Spróbuj podać bardziej szczegółowy adres (ulica, numer, miasto).",
-                    ErrorCodes.GeocodingFailed
-                );
-            }
+            if (serviceType == null) throw new Exception("Nieprawidłowa kategoria usługi.");
 
-            // 3. Jeśli mamy dane, dopiero wtedy tworzymy obiekt
-            var request = new ServiceRequest
+            // Geokodowanie
+            string cleanAddress = dto.Address
+                .Replace("ul. ", " ", StringComparison.OrdinalIgnoreCase) //sprzatamy zeby napisanie ul. nie powodowalo bledow
+                .Replace("ul ", " ", StringComparison.OrdinalIgnoreCase)
+                .Trim();
+
+            var geocoded = await _geocoder.GeocodeAddressAsync(cleanAddress);
+
+            // Tworzenie wizyty (ogłoszenia)
+            var appointment = new Appointment
             {
                 Id = Guid.NewGuid(),
-                ClientId = finalClientId, // Teraz przypisujemy poprawne ID klienta (lub null dla gościa)
-                ServiceTypeId = dto.ServiceTypeId,
-                Description = dto.Description,
-                DateFrom = DateTime.SpecifyKind(dto.DateFrom, DateTimeKind.Unspecified),
-                DateTo = DateTime.SpecifyKind(dto.DateTo, DateTimeKind.Unspecified),
+                ClientId = finalClientId, // Może być null dla gościa
+                SpecialistId = null, // To jest ogłoszenie otwarte
+                ServiceTypeId = serviceType.Id,
 
-                // Dane z formularza (ekran 1)
-                ContactName = dto.ContactName,
-                PhoneNumber = dto.PhoneNumber,
-                Email = dto.Email,
-                Address = geocoded?.FormattedAddress ?? dto.Address,
+                ClientNotes = $"Kontakt: {dto.ContactName}, Tel: {dto.PhoneNumber}. Opis: {dto.Description}",
+                ClientAddress = geocoded?.FormattedAddress ?? dto.Address,
 
-                Status = "open",
-                Location = geocoded != null ? _geocoder.CreatePoint(geocoded.Longitude, geocoded.Latitude) : null
+                // Zapisujemy punkt GPS (jeśli geokodowanie się udało)
+                Location = geocoded != null ? _geocoder.CreatePoint(geocoded.Longitude, geocoded.Latitude) : null,
+
+                ScheduledStart = dto.DateFrom,
+                ScheduledEnd = dto.DateTo,
+                AppointmentStatus = "open",
+
+                // POPRAWKA DAT DLA POSTGRES:
+                CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified),
+                UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
             };
 
-            _context.service_requests.Add(request);
+            _context.appointments.Add(appointment);
             await _context.SaveChangesAsync();
-            return request.Id;
+            return appointment.Id;
         }
 
         /// <summary>
@@ -536,9 +538,10 @@ namespace H4H_API.Services.Implementations
             var client = await _context.clients.FirstOrDefaultAsync(c => c.UserId == userId);
             if (client == null) throw new AppException("Nie znaleziono klienta", ErrorCodes.ClientNotFound);
 
-            var requests = await _context.service_requests
+            // ZMIANA: _context.appointments ZAMIAST _context.service_requests
+            var requests = await _context.appointments
                 .Include(r => r.ServiceType)
-                .Where(r => r.ClientId == client.Id)
+                .Where(r => r.ClientId == client.Id && r.SpecialistId == null) // szukamy naszych otwartych
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
 

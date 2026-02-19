@@ -290,43 +290,53 @@ namespace H4H_API.Services.Implementations
         /// <exception cref="KeyNotFoundException"></exception>
         public async Task<List<ServiceRequestDto>> GetAvailableServiceRequestsAsync(Guid specialistId)
         {
-            // 1. Pobierz obszar działania specjalisty
+            // 1. Pobieramy specjalistę z jego kwalifikacjami i obszarem działania
             var specialist = await _context.specialists
                 .Include(s => s.ServiceAreas)
+                .Include(s => s.Qualifications) // Nazwa zgodna z modelem Specialist
                 .FirstOrDefaultAsync(s => s.UserId == specialistId);
 
-            if (specialist == null) throw new KeyNotFoundException("Specjalista nie znaleziony");
+            // Rozwiązanie błędu CS0161 - rzucamy wyjątek, jeśli nie ma specjalisty
+            if (specialist == null)
+            {
+                throw new KeyNotFoundException($"Nie znaleziono specjalisty dla UserId: {specialistId}");
+            }
 
-            // Zakładamy główny obszar (lub pierwszy)
-            var primaryArea = specialist.ServiceAreas.FirstOrDefault(sa => sa.IsPrimary)
-                              ?? specialist.ServiceAreas.FirstOrDefault();
-
+            // 2. Pobieramy główny obszar działania
+            var primaryArea = specialist.ServiceAreas?.FirstOrDefault();
             if (primaryArea == null || primaryArea.Location == null)
-                return new List<ServiceRequestDto>(); // Specjalista nie ma ustawionej lokalizacji
+            {
+                return new List<ServiceRequestDto>();
+            }
 
-            // 2. Pobierz zgłoszenia, które są "open" (otwarte)
-            // Zapytanie przestrzenne (PostGIS) - szukamy zleceń w zasięgu
-            var requests = await _context.service_requests
+            // 3. Mapujemy profesje z bazy na kategorie usług
+            // Korzystamy z modelu SpecialistQualification i pola Profession
+            var myCategories = specialist.Qualifications?
+                .Where(q => q.IsActive)
+                .Select(q => q.Profession.ToLower() == "nurse" ? "nursing" : "physiotherapy")
+                .ToList() ?? new List<string>();
+
+            // 4. Pobieramy zgłoszenia pasujące do kategorii i lokalizacji
+            var requests = await _context.appointments
                 .Include(r => r.ServiceType)
-                .Where(r => r.Status == "open") // Tylko otwarte zgłoszenia
-                .Where(r => r.Location.Distance(primaryArea.Location) <= (primaryArea.MaxDistanceKm * 1000)) // Distance zwraca metry, mnożymy km * 1000
+                .Where(r => r.AppointmentStatus == "open" && r.SpecialistId == null)
+                .Where(r => myCategories.Contains(r.ServiceType.Category)) // Filtrujemy po kategorii (nursing/physiotherapy)
+                .Where(r => r.Location != null &&
+                       r.Location.Distance(primaryArea.Location) <= (primaryArea.MaxDistanceKm * 1000))
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
 
-            // 3. Zmapuj na DTO
-            // Uwaga: Być moze będzie potrzebne nowego DTO dla specjalisty, ale ServiceRequestDto też zadziała na początek, a przynajmniej mam nadzieje
+            // 5. Mapowanie na DTO
             return requests.Select(r => new ServiceRequestDto
             {
                 Id = r.Id,
-                ServiceTypeName = r.ServiceType.Name,
-                Description = r.Description,
-                DateFrom = r.DateFrom,
-                DateTo = r.DateTo,
-                MaxPrice = r.MaxPrice,
-                Address = r.Address, // Tutaj specjalista widzi przybliżony adres
-                Status = r.Status,
-                CreatedAt = r.CreatedAt,
-                ContactName = r.ContactName // Imię klienta
+                ServiceTypeName = r.ServiceType?.Name ?? "Usługa",
+                Description = r.ClientNotes ?? "",
+                DateFrom = r.ScheduledStart,
+                DateTo = r.ScheduledEnd,
+                Address = r.ClientAddress ?? "",
+                Status = r.AppointmentStatus,
+                CreatedAt = r.CreatedAt
             }).ToList();
         }
 
