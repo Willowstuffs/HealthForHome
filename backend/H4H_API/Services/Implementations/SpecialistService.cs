@@ -298,35 +298,31 @@ namespace H4H_API.Services.Implementations
             if (specialist == null) throw new KeyNotFoundException("Specjalista nie znaleziony");
 
             // Zakładamy główny obszar (lub pierwszy)
-            var primaryArea = specialist.ServiceAreas.FirstOrDefault(sa => sa.IsPrimary)
-                              ?? specialist.ServiceAreas.FirstOrDefault();
-
+            var primaryArea = specialist?.ServiceAreas.FirstOrDefault();
             if (primaryArea == null || primaryArea.Location == null)
                 return new List<ServiceRequestDto>(); // Specjalista nie ma ustawionej lokalizacji
 
             // 2. Pobierz zgłoszenia, które są "open" (otwarte)
             // Zapytanie przestrzenne (PostGIS) - szukamy zleceń w zasięgu
-            var requests = await _context.service_requests
+            var requests = await _context.appointments
                 .Include(r => r.ServiceType)
-                .Where(r => r.Status == "open") // Tylko otwarte zgłoszenia
-                .Where(r => r.Location.Distance(primaryArea.Location) <= (primaryArea.MaxDistanceKm * 1000)) // Distance zwraca metry, mnożymy km * 1000
+                .Where(r => r.AppointmentStatus == "open" && r.SpecialistId == null)
+                // USUNIĘTO: .Where(r => _context.specialist_services.Any(...)) 
+                // Dzięki temu specjalista widzi wszystko w okolicy
+                .Where(r => r.Location != null && r.Location.Distance(primaryArea.Location) <= (primaryArea.MaxDistanceKm * 1000))
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
 
-            // 3. Zmapuj na DTO
-            // Uwaga: Być moze będzie potrzebne nowego DTO dla specjalisty, ale ServiceRequestDto też zadziała na początek, a przynajmniej mam nadzieje
             return requests.Select(r => new ServiceRequestDto
             {
                 Id = r.Id,
-                ServiceTypeName = r.ServiceType.Name,
-                Description = r.Description,
-                DateFrom = r.DateFrom,
-                DateTo = r.DateTo,
-                MaxPrice = r.MaxPrice,
-                Address = r.Address, // Tutaj specjalista widzi przybliżony adres
-                Status = r.Status,
-                CreatedAt = r.CreatedAt,
-                ContactName = r.ContactName // Imię klienta
+                ServiceTypeName = r.ServiceType?.Name ?? "Usługa",
+                Description = r.ClientNotes ?? "",
+                DateFrom = r.ScheduledStart,
+                DateTo = r.ScheduledEnd,
+                Address = r.ClientAddress ?? "",
+                Status = r.AppointmentStatus,
+                CreatedAt = r.CreatedAt
             }).ToList();
         }
 

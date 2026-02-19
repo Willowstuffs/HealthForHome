@@ -27,7 +27,6 @@ Kompletny (prawie) schemat bazy danych PostgreSQL dla platformy HealthForHome.
 * <code>address_geocache</code> - cache geokodowania adresów
 * <code>appointments_specialists</code> - relacja wiele-do-wielu między wizytami a specjalistami
 * <code>device_tokens</code> - przechowywanie tokenów FCM (Firebase Cloud Messaging) dla systemu powiadomień
-* <code>service_requests </code> - przechowywanie ofert zgłoszeń wysyłanych przez klientów
 * <code>__EFMigrationsHistory</code> - tabelka z migracjami
 
 ## Diagram relacji
