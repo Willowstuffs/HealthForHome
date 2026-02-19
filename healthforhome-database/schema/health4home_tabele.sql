@@ -1,3 +1,5 @@
+
+
 -- TWORZENIE TABEL
 -- uzytkownicy
 CREATE TABLE users (
@@ -484,3 +486,13 @@ ON appointments (service_type_id);
 
 -- 4. Usunięcie nieużywanej już tabeli service_requests
 DROP TABLE IF EXISTS service_requests;
+
+
+-- 1. Usuwamy stare ograniczenie
+ALTER TABLE appointments 
+DROP CONSTRAINT appointments_appointment_status_check;
+
+-- 2. Dodajemy nowe ograniczenie z uwzględnieniem statusu 'open'
+ALTER TABLE appointments 
+ADD CONSTRAINT appointments_appointment_status_check 
+CHECK (appointment_status IN ('open', 'confirmed', 'cancelled', 'completed', 'pending'));
