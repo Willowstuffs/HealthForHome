@@ -1,4 +1,4 @@
-/* zamowienieSzczegoly.css */
+
 
 .order-wrap{
   max-width: 1200px;
@@ -32,7 +32,6 @@
   font-size: 13px;
 }
 
-/* main card */
 .order-card{
   padding: 18px 18px;
   border-radius: 18px;
@@ -42,7 +41,6 @@
   box-shadow: 0 22px 60px rgba(15,23,42,0.10);
 }
 
-/* top header (avatar + name + email) */
 .order-header{
   display:flex;
   align-items:center;
@@ -87,7 +85,6 @@
   max-width: 680px;
 }
 
-/* content grid inside card */
 .order-grid{
   display:grid;
   grid-template-columns: 1.4fr 1fr;
@@ -117,7 +114,7 @@
   }
 }
 
-/* rows */
+
 .order-kv{
   display:grid;
   gap: 12px;
@@ -142,7 +139,7 @@
   letter-spacing: -0.01em;
 }
 
-/* sections */
+
 .order-section{
   padding: 12px 0;
   border-bottom: 1px solid rgba(15,23,42,0.08);
@@ -151,7 +148,7 @@
   border-bottom: none;
 }
 
-/* bottom back link */
+
 .order-back-row{
   margin-top: 14px;
   display:flex;
@@ -171,7 +168,7 @@
   text-decoration: underline;
 }
 
-/* make badge inside status look like pill area */
+
 .order-status-wrap > *{
   display:inline-flex;
   align-items:center;
@@ -183,7 +180,7 @@
   line-height: 1;
 }
 
-/* === A11Y: większa czytelność (labels + values) === */
+
 
 .order-title{
   font-size: 48px;
@@ -198,7 +195,6 @@
   line-height: 1.45;
 }
 
-/* label/value większe */
 .order-label{
   font-size: 16px;
   font-weight: 800;
@@ -216,7 +212,7 @@
   font-size: 20px;
 }
 
-/* status badge większy */
+
 .order-status-wrap > *{
   height: 32px;
   font-size: 14px;

@@ -123,7 +123,6 @@ function OrdersChart({ series, totalRevenue, newOrders, successRate, loading }) 
             points={points}
           />
 
-          {/* proste etykiety dni (na dole) */}
           {series.map((p, i) => (
             <text
               key={p.date + i}
@@ -157,7 +156,7 @@ function OrdersChart({ series, totalRevenue, newOrders, successRate, loading }) 
   );
 }
 
-/** ---------- dashboard mocks (na później podmienimy na API) ---------- */
+/** ---------- później podmienimy na API ---------- */
 function ActivityMock() {
   const items = [
     { name: "Marek Mazur", email: "marek.mazur@example.com", text: "Zarejestrował się.", time: "25 min temu" },

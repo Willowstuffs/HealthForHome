@@ -1,5 +1,3 @@
-/* uzytkownikSzczegoly.css */
-
 .user-details-wrap{
   max-width: 1200px;
 }
@@ -15,7 +13,7 @@
   letter-spacing: -0.02em;
 }
 
-/* header card */
+
 .user-profile-card{
   padding: 18px 18px;
   border-radius: 18px;
@@ -80,7 +78,7 @@
   flex-wrap: wrap;
 }
 
-/* grid of cards */
+
 .user-details-grid{
   display:grid;
   grid-template-columns: 1fr;
@@ -147,7 +145,7 @@
   font-size: 15px;
 }
 
-/* activity full width */
+
 .user-activity-card{
   grid-column: 1 / -1;
   padding: 0;
@@ -181,7 +179,7 @@
   font-weight: 700;
 }
 
-/* back link */
+
 .user-back-row{
   margin-top: 12px;
   display: flex;
@@ -201,16 +199,14 @@
   text-decoration: underline;
 }
 
-/* reuse your existing .btn from admin.css, only make it match mock */
 .btn{
   height: 42px;
   padding: 0 16px;
   border-radius: 14px;
 }
 
-/* RIGHT card: make value column start in the same place (like left card) */
 .user-card--activity .user-kv-row{
-  grid-template-columns: 190px 1fr !important; /* label | value column */
+  grid-template-columns: 190px 1fr !important;
   column-gap: 16px !important;
   align-items: center !important;
 }
@@ -222,12 +218,12 @@
 }
 
 .user-card--activity .user-kv-val{
-  text-align: left !important;        /* 🔥 nie do prawej */
-  justify-self: start !important;     /* 🔥 nie do końca */
+  text-align: left !important;       
+  justify-self: start !important;    
   font-weight: 900 !important;
   color: rgba(15,23,42,0.85) !important;
 }
-/* === A11Y: większa czytelność (labels + values) === */
+
 
 .user-details-title{
   font-size: 48px;
@@ -246,7 +242,7 @@
   font-size: 20px;
 }
 
-/* klucz/wartość: większe */
+
 .user-kv-key{
   font-size: 16px;
   font-weight: 800;
@@ -260,9 +256,9 @@
   color: rgba(15,23,42,0.78);
 }
 
-/* prawy box Aktywność: zachowaj wyrównanie i czytelność */
+
 .user-card--activity .user-kv-row{
-  grid-template-columns: 210px 1fr !important; /* większa etykieta */
+  grid-template-columns: 210px 1fr !important; 
   column-gap: 16px !important;
 }
 .user-card--activity .user-kv-key{

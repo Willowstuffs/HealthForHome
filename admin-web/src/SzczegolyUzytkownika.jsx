@@ -123,7 +123,7 @@ function SzczegolyUzytkownika() {
               </div>
             </div>
 
-            {/* Activity table full width (jak w mocku dół) */}
+           
             <div className="user-card user-activity-card">
               <div className="user-activity-head">
                 <h3 className="user-card-title" style={{ margin: 0 }}>Aktywność</h3>

@@ -258,7 +258,7 @@ function SzczegolySpecjalisty() {
 
             </div>
 
-            {/* Activity full width */}
+            
             <div className="card activity-card">
               <div className="activity-head">
                 <h3 className="card-title">Ostatnia aktywność</h3>
@@ -290,7 +290,7 @@ function SzczegolySpecjalisty() {
             </div>
           </div>
 
-          {/* Reject box (if you want it still) */}
+  
           {showReject && (
             <div className="card reject-box">
               <h3 className="card-title" style={{ marginTop: 0 }}>Usuń konto</h3>
