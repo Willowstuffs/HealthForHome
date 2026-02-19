@@ -1,4 +1,7 @@
-﻿using H4H_API.DTOs.Specialist;
+﻿using H4H_API.DTOs.Client;
+using H4H_API.DTOs.Specialist;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace H4H_API.Services.Interfaces
 {
@@ -48,5 +51,14 @@ namespace H4H_API.Services.Interfaces
         /// <returns></returns>
         Task<List<ServiceTypeDto>> GetServiceTypesAsync();
 
+
+
+
+        /// <summary>
+        /// Pobiera listę dostępnych zapytań (inquiries) dla specjalisty, które pasują do jego usług i obszaru działania.
+        /// </summary>
+        /// <param name="specialistId"></param>
+        /// <returns></returns>
+        Task<List<ServiceRequestDto>> GetAvailableServiceRequestsAsync(Guid specialistId);
     }
 }

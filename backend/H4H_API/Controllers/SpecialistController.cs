@@ -1,4 +1,5 @@
-﻿using H4H_API.DTOs.Common;
+﻿using H4H_API.DTOs.Client;
+using H4H_API.DTOs.Common;
 using H4H_API.DTOs.Specialist;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -144,6 +145,27 @@ namespace H4H_API.Controllers
             var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
             await _specialistService.UpdateServiceAreaAsync(userId, dto);
             return Ok(ApiResponse<object?>.SuccessResponse(null, "Zasięg został zaktualizowany."));
+        }
+
+
+
+        /// <summary>
+        /// Pobiera listę dostępnych zgłoszeń (inquiries) z servicerequest w okolicy specjalisty, które spełniają kryteria jego obszaru działania i oferowanych usług.
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet("available-requests")]
+        public async Task<ActionResult<ApiResponse<List<ServiceRequestDto>>>> GetAvailableRequests()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim))
+                return Unauthorized(ApiResponse<object>.ErrorResponse("Błąd autoryzacji."));
+
+            var userId = Guid.Parse(userIdClaim);
+
+            // Używamy nowej metody
+            var requests = await _specialistService.GetAvailableServiceRequestsAsync(userId);
+
+            return Ok(ApiResponse<List<ServiceRequestDto>>.SuccessResponse(requests, "Pobrano dostępne zgłoszenia w okolicy."));
         }
     }
 }
