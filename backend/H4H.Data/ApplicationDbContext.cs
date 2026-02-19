@@ -424,19 +424,52 @@ namespace H4H.Data
             modelBuilder.Entity<ServiceRequest>(entity =>
             {
                 entity.ToTable("service_requests");
-                entity.HasKey(e => e.Id);
 
-                entity.Property(e => e.DateFrom).IsRequired();
-                entity.Property(e => e.DateTo).IsRequired();
-                entity.Property(e => e.Location).HasColumnType("geography(Point, 4326)");
-                entity.Property(e => e.Status).HasDefaultValue("open");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasColumnName("id"); // To jest kluczowe!
+
+                entity.Property(e => e.ClientId).HasColumnName("client_id");
+                entity.Property(e => e.ServiceTypeId).HasColumnName("service_type_id");
+
+                entity.Property(e => e.ContactName).HasColumnName("contact_name");
+                entity.Property(e => e.PhoneNumber).HasColumnName("phone_number");
+                entity.Property(e => e.Email).HasColumnName("email");
+                entity.Property(e => e.Description).HasColumnName("description");
+
+                entity.Property(e => e.DateFrom)
+                    .HasColumnName("date_from")
+                    .HasColumnType("timestamp without time zone"); // Ważne dla Postgresa
+
+                entity.Property(e => e.DateTo)
+                    .HasColumnName("date_to")
+                    .HasColumnType("timestamp without time zone");
+
+                entity.Property(e => e.MaxPrice).HasColumnName("max_price");
+
+                entity.Property(e => e.Address).HasColumnName("address");
+
+                entity.Property(e => e.Location)
+                    .HasColumnName("location")
+                    .HasColumnType("geography(Point, 4326)");
+
+                entity.Property(e => e.Status)
+                    .HasColumnName("status")
+                    .HasDefaultValue("open");
+
+                entity.Property(e => e.CreatedAt)
+                    .HasColumnName("created_at")
+                    .HasColumnType("timestamp without time zone");
+
+                entity.Property(e => e.UpdatedAt)
+                    .HasColumnName("updated_at")
+                    .HasColumnType("timestamp without time zone");
 
                 // Klient jest opcjonalny (HasOne -> WithMany -> IsRequired(false))
                 entity.HasOne(d => d.Client)
-                      .WithMany()
-                      .HasForeignKey(d => d.ClientId)
-                      .IsRequired(false)
-                      .OnDelete(DeleteBehavior.SetNull); // Jeśli klient usunie konto, ogłoszenie zostaje jako "gość"
+                    .WithMany()
+                    .HasForeignKey(d => d.ClientId)
+                    .IsRequired(false)
+                    .OnDelete(DeleteBehavior.SetNull); // Jeśli klient usunie konto, ogłoszenie zostaje jako "gość"
             });
         }
     }

@@ -478,13 +478,13 @@ namespace H4H_API.Services.Implementations
         /// <returns></returns>
         public async Task<Guid> CreateServiceRequestAsync(CreateServiceRequestDto dto, Guid? userId = null)
         {
-            Guid? clientId = null;
+            Guid? finalClientId = null;
 
-            // Jeśli użytkownik jest zalogowany, powiąż go z ogłoszeniem
+            // Jeśli użytkownik jest zalogowany, znajdź jego ID Klienta
             if (userId.HasValue)
             {
                 var client = await _context.clients.FirstOrDefaultAsync(c => c.UserId == userId.Value);
-                clientId = client?.Id;
+                finalClientId = client?.Id;
             }
 
             // GEOKODOWANIE: Zawsze geokodujemy adres wpisany w formularzu
@@ -504,7 +504,7 @@ namespace H4H_API.Services.Implementations
             var request = new ServiceRequest
             {
                 Id = Guid.NewGuid(),
-                ClientId = clientId, // Może być null
+                ClientId = finalClientId, // Teraz przypisujemy poprawne ID klienta (lub null dla gościa)
                 ServiceTypeId = dto.ServiceTypeId,
                 Description = dto.Description,
                 DateFrom = DateTime.SpecifyKind(dto.DateFrom, DateTimeKind.Unspecified),

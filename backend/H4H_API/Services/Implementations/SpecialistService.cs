@@ -6,6 +6,7 @@ using H4H_API.Exceptions;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using SpecialistServiceEntity = H4H.Core.Models.SpecialistService;
+using H4H_API.DTOs.Client;
 
 namespace H4H_API.Services.Implementations
 {
@@ -277,6 +278,56 @@ namespace H4H_API.Services.Implementations
             }
             */
             await _context.SaveChangesAsync();
+        }
+
+
+
+        /// <summary>
+        /// Pobiera listę dostępnych zgłoszeń (service requests) dla specjalisty na podstawie jego obszaru działania.
+        /// </summary>
+        /// <param name="specialistId"></param>
+        /// <returns></returns>
+        /// <exception cref="KeyNotFoundException"></exception>
+        public async Task<List<ServiceRequestDto>> GetAvailableServiceRequestsAsync(Guid specialistId)
+        {
+            // 1. Pobierz obszar działania specjalisty
+            var specialist = await _context.specialists
+                .Include(s => s.ServiceAreas)
+                .FirstOrDefaultAsync(s => s.UserId == specialistId);
+
+            if (specialist == null) throw new KeyNotFoundException("Specjalista nie znaleziony");
+
+            // Zakładamy główny obszar (lub pierwszy)
+            var primaryArea = specialist.ServiceAreas.FirstOrDefault(sa => sa.IsPrimary)
+                              ?? specialist.ServiceAreas.FirstOrDefault();
+
+            if (primaryArea == null || primaryArea.Location == null)
+                return new List<ServiceRequestDto>(); // Specjalista nie ma ustawionej lokalizacji
+
+            // 2. Pobierz zgłoszenia, które są "open" (otwarte)
+            // Zapytanie przestrzenne (PostGIS) - szukamy zleceń w zasięgu
+            var requests = await _context.service_requests
+                .Include(r => r.ServiceType)
+                .Where(r => r.Status == "open") // Tylko otwarte zgłoszenia
+                .Where(r => r.Location.Distance(primaryArea.Location) <= (primaryArea.MaxDistanceKm * 1000)) // Distance zwraca metry, mnożymy km * 1000
+                .OrderByDescending(r => r.CreatedAt)
+                .ToListAsync();
+
+            // 3. Zmapuj na DTO
+            // Uwaga: Być moze będzie potrzebne nowego DTO dla specjalisty, ale ServiceRequestDto też zadziała na początek, a przynajmniej mam nadzieje
+            return requests.Select(r => new ServiceRequestDto
+            {
+                Id = r.Id,
+                ServiceTypeName = r.ServiceType.Name,
+                Description = r.Description,
+                DateFrom = r.DateFrom,
+                DateTo = r.DateTo,
+                MaxPrice = r.MaxPrice,
+                Address = r.Address, // Tutaj specjalista widzi przybliżony adres
+                Status = r.Status,
+                CreatedAt = r.CreatedAt,
+                ContactName = r.ContactName // Imię klienta
+            }).ToList();
         }
 
     }
