@@ -59,6 +59,8 @@ gdy plik się pobierze wstawiacie go w
 
 /Firebase
 
+//jeśli nie ma to stworzyć
+
 Oraz zmieniacie nzwy w backendzie w pliku
 
 FirebaseNotificationService.cs
