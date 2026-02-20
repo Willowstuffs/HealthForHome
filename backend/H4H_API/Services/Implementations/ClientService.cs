@@ -29,6 +29,7 @@ namespace H4H_API.Services.Implementations
         private readonly IGeocoder _geocoder;
         private readonly FirebaseNotificationService _firebaseNotificationService;
 
+
         /// <summary>
         /// Initializes a new instance of the ClientService class using the specified database context and object
         /// mapper.
@@ -50,7 +51,6 @@ namespace H4H_API.Services.Implementations
         /// <param name="userId">The unique identifier of the user whose client profile is to be retrieved.</param>
         /// <returns>A task that represents the asynchronous operation. The task result contains a <see cref="ClientProfileDto"/>
         /// representing the client's profile.</returns>
-
         /// <exception cref="AppException">Thrown when no client profile is found for the specified <paramref name="userId"/>.</exception>
 
         public async Task<ClientProfileDto> GetProfileAsync(Guid userId)
@@ -60,9 +60,7 @@ namespace H4H_API.Services.Implementations
                 .FirstOrDefaultAsync(c => c.UserId == userId);
 
             if (client == null)
-
                 throw new AppException($"Nie znaleziono profilu klienta dla użytkownika {userId}", ErrorCodes.ClientNotFound);
-
 
             return _mapper.Map<ClientProfileDto>(client);
         }
@@ -90,12 +88,10 @@ namespace H4H_API.Services.Implementations
                     .FirstOrDefaultAsync(c => c.UserId == userId);
 
                 if (client == null)
-
                     throw new AppException($"Nie znaleziono profilu klienta dla użytkownika {userId}", ErrorCodes.ClientNotFound);
 
                 if (client.User == null)
                     throw new AppException($"Uzytkonik nie znaleziony dla klienta {client.Id}", ErrorCodes.ClientUserNotFound);
-
 
                 Console.WriteLine($"DEBUG: Found client: {client.FirstName} {client.LastName}");
 
@@ -216,7 +212,6 @@ namespace H4H_API.Services.Implementations
                 .FirstOrDefaultAsync(c => c.UserId == userId);
 
             if (client == null)
-
                 throw new AppException($"Nie znaleziono klienta dla użytkownika {userId}", ErrorCodes.ClientNotFound);
 
 
@@ -248,7 +243,6 @@ namespace H4H_API.Services.Implementations
         }
 
         /// <summary>
-
         /// Attempts to change the password for the specified user using the provided current and new passwords.
         /// </summary>
         /// <param name="userId">The unique identifier of the user whose password is to be changed.</param>
@@ -256,17 +250,13 @@ namespace H4H_API.Services.Implementations
         /// <param name="newPassword">The new password to set for the user. This will replace the existing password if verification succeeds.</param>
         /// <returns>A value indicating whether the password was successfully changed. Returns <see langword="true"/> if the
         /// password was updated; otherwise, <see langword="false"/> if the current password is incorrect.</returns>
-
         /// <exception cref="AppException">Thrown if a user with the specified <paramref name="userId"/> does not exist.</exception>
-
         public async Task<bool> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword)
         {
             // Ta metoda powinna być w AuthService, ale dla wygody dodaję tutaj
             var user = await _context.users.FindAsync(userId);
             if (user == null)
-
                 throw new AppException($"Nie znaleziono użytkownika {userId}", ErrorCodes.UserNotFound);
-
 
             if (!BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
                 return false;
@@ -277,7 +267,6 @@ namespace H4H_API.Services.Implementations
             await _context.SaveChangesAsync();
             return true;
         }
-
 
         /// <summary>
         /// Asynchronicznie pobiera listę wizyt (terminów) dla klienta z opcjonalnym filtrowaniem po statusie. Wyniki są paginowane
@@ -349,7 +338,6 @@ namespace H4H_API.Services.Implementations
 
             // Mapuj model wizyty na DTO, w tym nazwy klienta, specjalisty i usługi
             return _mapper.Map<AppointmentDto>(appointment);
-
         }
 
         public async Task<AppointmentDto> CreateAppointmentAsync(Guid userId, CreateAppointmentDto dto)
@@ -357,8 +345,6 @@ namespace H4H_API.Services.Implementations
             // TODO: Zaimplementować z walidacją odległości
             throw new NotImplementedException("CreateAppointmentAsync not implemented yet");
         }
-
-
         /// <summary>
         /// Anuluj wizytę (termin) klienta, jeśli wizyta należy do niego i nie jest już zakończona lub anulowana. Zwraca true jeśli anulowano, false jeśli nie można anulować z powodu statusu wizyty.
         /// </summary>
@@ -408,7 +394,8 @@ namespace H4H_API.Services.Implementations
         public async Task<DistanceInfoDto> GetDistanceToServiceRequestAsync(Guid specialistId, Guid serviceRequestId)
         {
             // 1. Pobieramy lokalizację ogłoszenia (ServiceRequest)
-            var request = await _context.service_requests
+
+            var request = await _context.appointments
                 .Where(r => r.Id == serviceRequestId)
                 .Select(r => new { r.Location })
                 .FirstOrDefaultAsync();
@@ -482,7 +469,6 @@ namespace H4H_API.Services.Implementations
                 .FirstOrDefaultAsync(c => c.UserId == userId);
 
             if (client == null)
-
                 throw new AppException($"Klient nie znaleziony dla użytkownika {userId}", ErrorCodes.ClientNotFound);
 
             return client.Id;
@@ -497,52 +483,53 @@ namespace H4H_API.Services.Implementations
         /// <param name="userId"></param>
         /// <returns></returns>
         public async Task<Guid> CreateServiceRequestAsync(CreateServiceRequestDto dto, Guid? userId = null)
-        {
-            Guid? clientId = null;
-
-            // Jeśli użytkownik jest zalogowany, powiąż go z ogłoszeniem
+        {            
+            Guid? finalClientId = null;
             if (userId.HasValue)
             {
                 var client = await _context.clients.FirstOrDefaultAsync(c => c.UserId == userId.Value);
-                clientId = client?.Id;
+                finalClientId = client?.Id;
             }
 
-            // GEOKODOWANIE: Zawsze geokodujemy adres wpisany w formularzu
-            // 1. Próbujemy zgeokodować adres
-            var geocoded = await _geocoder.GeocodeAddressAsync(dto.Address);
+            // 1. Znajdź techniczne ID usługi dla danej kategorii (np. domyślna usługa nursing)
+            var serviceType = await _context.service_types
+                .FirstOrDefaultAsync(st => st.Category.ToLower() == dto.Category.ToLower());
 
-            // 2. Jeśli się nie udało, nie pozwalamy przejść dalej
-            if (geocoded == null)
-            {
-                throw new AppException(
-                    "Nie udało się odnaleźć podanego adresu na mapie. Spróbuj podać bardziej szczegółowy adres (ulica, numer, miasto).",
-                    ErrorCodes.GeocodingFailed
-                );
-            }
+            if (serviceType == null) throw new Exception("Nieprawidłowa kategoria usługi.");
 
-            // 3. Jeśli mamy dane, dopiero wtedy tworzymy obiekt
-            var request = new ServiceRequest
+            // Geokodowanie
+            string cleanAddress = dto.Address
+                .Replace("ul. ", " ", StringComparison.OrdinalIgnoreCase) //sprzatamy zeby napisanie ul. nie powodowalo bledow
+                .Replace("ul ", " ", StringComparison.OrdinalIgnoreCase)
+                .Trim();
+
+            var geocoded = await _geocoder.GeocodeAddressAsync(cleanAddress);
+
+            // Tworzenie wizyty (ogłoszenia)
+            var appointment = new Appointment
             {
                 Id = Guid.NewGuid(),
-                ClientId = clientId, // Może być null
-                ServiceTypeId = dto.ServiceTypeId,
-                Description = dto.Description,
-                DateFrom = DateTime.SpecifyKind(dto.DateFrom, DateTimeKind.Unspecified),
-                DateTo = DateTime.SpecifyKind(dto.DateTo, DateTimeKind.Unspecified),
+                ClientId = finalClientId, // Może być null dla gościa
+                SpecialistId = null, // To jest ogłoszenie otwarte
+                ServiceTypeId = serviceType.Id,
 
-                // Dane z formularza (ekran 1)
-                ContactName = dto.ContactName,
-                PhoneNumber = dto.PhoneNumber,
-                Email = dto.Email,
-                Address = geocoded?.FormattedAddress ?? dto.Address,
+                ClientNotes = $"Kontakt: {dto.ContactName}, Tel: {dto.PhoneNumber}. Opis: {dto.Description}",
+                ClientAddress = geocoded?.FormattedAddress ?? dto.Address,
 
-                Status = "open",
-                Location = geocoded != null ? _geocoder.CreatePoint(geocoded.Longitude, geocoded.Latitude) : null
+                // Zapisujemy punkt GPS (jeśli geokodowanie się udało)
+                Location = geocoded != null ? _geocoder.CreatePoint(geocoded.Longitude, geocoded.Latitude) : null,
+
+                ScheduledStart = dto.DateFrom,
+                ScheduledEnd = dto.DateTo,
+                AppointmentStatus = "open",
+
+                // POPRAWKA DAT DLA POSTGRES:
+                CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified),
+                UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
             };
 
-            _context.service_requests.Add(request);
+            _context.appointments.Add(appointment);
             await _context.SaveChangesAsync();
-            //4. wysyłąmy powiadomienia na razie do wszystkich użytkowników
             var specialistTokens = await _context.device_tokens
                 .Where(t => t.User.UserType == "specialist")
                 .Select(t => t.FcmToken)
@@ -553,10 +540,11 @@ namespace H4H_API.Services.Implementations
                 await _firebaseNotificationService.SendNotificationToManyAsync(
                     specialistTokens,
                     "Nowa oferta!",
-                    $"Nowe zapytanie: {request.Description}"
+                    $"Nowe zapytanie: {appointment.ServiceType}," +
+                    $"od: {appointment.ScheduledStart} do: {appointment.ScheduledEnd}"
                 );
             }
-            return request.Id;
+            return appointment.Id;
         }
 
         /// <summary>
@@ -570,15 +558,16 @@ namespace H4H_API.Services.Implementations
             var client = await _context.clients.FirstOrDefaultAsync(c => c.UserId == userId);
             if (client == null) throw new AppException("Nie znaleziono klienta", ErrorCodes.ClientNotFound);
 
-            var requests = await _context.service_requests
+
+            // ZMIANA: _context.appointments ZAMIAST _context.service_requests
+            var requests = await _context.appointments
                 .Include(r => r.ServiceType)
-                .Where(r => r.ClientId == client.Id)
+                .Where(r => r.ClientId == client.Id && r.SpecialistId == null) // szukamy naszych otwartych
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
 
             // Automapper zamieni Encje na DTO automatycznie
             return _mapper.Map<List<ServiceRequestDto>>(requests);
         }
-        
     }
 }

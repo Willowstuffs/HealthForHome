@@ -1,4 +1,3 @@
-
 ﻿using H4H_API.DTOs.Auth;
 using H4H_API.DTOs.Common;
 using H4H_API.DTOs.Client;
@@ -43,6 +42,7 @@ namespace H4H_API.Controllers
         var result = await _authService.RegisterSpecialistAsync(request);
         return Ok(ApiResponse<RegisterResponse>.SuccessResponse(result, "Zarejestrowano pomyślnie. Oczekiwanie na weryfikacje."));
     }
+
 
 
         /// <summary>
@@ -135,7 +135,6 @@ namespace H4H_API.Controllers
             await _authService.LogoutAsync(token);
             return Ok(ApiResponse.SuccessResponse("Wylogowano pomyślnie"));
         }
-
 
         /// <summary>
         /// Aktualizuje token urządzenia dla zalogowanego użytkownika, umożliwiając otrzymywanie powiadomień push

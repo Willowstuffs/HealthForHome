@@ -13,7 +13,6 @@
         public string LastName { get; set; } = string.Empty;
         public string? ProfessionalTitle { get; set; }
         public string? Bio { get; set; }
-
         public string Email { get; set; } = string.Empty;
         public string? PhoneNumber { get; set; }
         
@@ -25,6 +24,7 @@
         public List<SpecialistServiceDto> Services { get; set; } = [];
         public List<ServiceAreaDto> ServiceAreas { get; set; } = [];
         public string? AvatarUrl { get; set; }
+
     }
 
     /// <summary>
@@ -40,7 +40,6 @@
         public string ServiceName { get; set; } = string.Empty;
         public string Category { get; set; } = string.Empty;
         public int DurationMinutes { get; set; }
-
         public Guid ServiceTypeId { get; set; }
 
         public decimal Price { get; set; }
@@ -77,6 +76,7 @@ namespace H4H_API.DTOs.Specialist
         public DateTime? AvailableTo { get; set; }
     }
 }
+
 //update danych specjalisty
 public class UpdateSpecialistProfileDto
 {
@@ -91,3 +91,4 @@ public class UpdateSpecialistProfileDto
     public decimal? HourlyRate { get; set; }
     public IFormFile? Avatar { get; set; }
 }
+

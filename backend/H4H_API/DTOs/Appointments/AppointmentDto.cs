@@ -43,10 +43,11 @@ namespace H4H_API.DTOs.Appointments
     public class CreateAppointmentDto
     {
         [Required]
-        public Guid? SpecialistId { get; set; }
+        public Guid SpecialistId { get; set; }
 
         [Required]
-        public Guid SpecialistServiceId { get; set; }
+        public Guid? SpecialistServiceId { get; set; }
+
 
         [Required]
         public DateTime ScheduledStart { get; set; }

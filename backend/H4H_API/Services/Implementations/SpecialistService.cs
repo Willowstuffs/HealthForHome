@@ -1,5 +1,4 @@
-
-﻿using H4H.Core.Helpers;
+﻿using H4H_API.Helpers;
 using H4H.Core.Models;
 using H4H.Data;
 using H4H_API.DTOs.Specialist;
@@ -7,9 +6,7 @@ using H4H_API.Exceptions;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using SpecialistServiceEntity = H4H.Core.Models.SpecialistService;
-
-using H4H_API.Helpers;
-
+using H4H_API.DTOs.Client;
 
 namespace H4H_API.Services.Implementations
 {
@@ -35,6 +32,7 @@ namespace H4H_API.Services.Implementations
             return spec == null
                 ? throw new KeyNotFoundException($"Nie znaleziono specjalisty dla użytkownika {userId}")
                 : new SpecialistDto
+
                 {
                     Id = spec.Id,
                     FirstName = spec.FirstName,
@@ -53,11 +51,11 @@ namespace H4H_API.Services.Implementations
                     //uproszczone mapowanie list
 
                     ServiceAreas = [.. spec.ServiceAreas.Select(a => new ServiceAreaDto
+
                 {
                     City = a.City,
                     MaxDistanceKm = a.MaxDistanceKm
                 })]
-                    
 
                 };
         }
@@ -85,6 +83,7 @@ namespace H4H_API.Services.Implementations
 
 
 
+
             //Aplikowanie filtrow
             if (filters.DateFrom.HasValue) // od
                 query = query.Where(a => a.ScheduledStart >= filters.DateFrom.Value);
@@ -101,6 +100,7 @@ namespace H4H_API.Services.Implementations
             }
             //filtrowanie po statusie
             query = query.Where(a => a.AppointmentStatus == "pending");
+
 
 
             //Pobranie danych i mapowanie na DTO
@@ -125,6 +125,7 @@ namespace H4H_API.Services.Implementations
             var specialist = await _context.specialists
                 .FirstOrDefaultAsync(s => s.UserId == userId)
                 ?? throw new KeyNotFoundException($"Nie znaleziono specjalisty dla użytkownika {userId}");
+
 
             var qualification = await _context.specialist_qualifications
                 .FirstOrDefaultAsync(q => q.SpecialistId == specialist.Id);
@@ -157,6 +158,7 @@ namespace H4H_API.Services.Implementations
                 .FirstOrDefaultAsync(s => s.UserId == userId);
 
             if (specialist == null)
+
                 throw new KeyNotFoundException($"Nie znaleziono profilu specjalisty dla użytkownika {userId}");
 
             var qualification = specialist.Qualifications.FirstOrDefault();
@@ -179,9 +181,7 @@ namespace H4H_API.Services.Implementations
                     Category = s.ServiceType.Category ?? "",
                     DurationMinutes = s.DurationMinutes,
                     Price = s.Price,
-
                     ServiceTypeId = s.ServiceTypeId,
-
                     Description = s.Description
                 })
                 .ToList();
@@ -246,6 +246,7 @@ namespace H4H_API.Services.Implementations
             service.Description = dto.Description;
             service.ServiceTypeId = dto.ServiceTypeId;
 
+
             await _context.SaveChangesAsync();
         }
 
@@ -299,6 +300,7 @@ namespace H4H_API.Services.Implementations
         }
 
 
+
         public async Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId)
         {
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
@@ -311,7 +313,7 @@ namespace H4H_API.Services.Implementations
                 throw new AppException("Wizyta nie znaleziona.", ErrorCodes.AppointmentNotFound);
 
             if (appointment.AppointmentStatus != "pending")
-                throw new AppException("Można potwierdzić tylko wizyty oczekujące.", ErrorCodes.AppointmentStatusNotPending);
+                throw new AppException("Można potwierdzić tylko wizyty oczekujące.", ErrorCodes.AppointmentCancelForbidden);
 
 
             var appointmentSpecialist = new AppointmentSpecialist
@@ -340,7 +342,7 @@ namespace H4H_API.Services.Implementations
                 throw new AppException("Wizyta nie znaleziona.", ErrorCodes.AppointmentNotFound);
 
             if (appointment.AppointmentStatus != "pending")
-                throw new AppException("Można potwierdzić tylko wizyty oczekujące.", ErrorCodes.AppointmentStatusNotPending);
+                throw new AppException("Można potwierdzić tylko wizyty oczekujące.", ErrorCodes.AppointmentCancelForbidden);
 
             appointment.AppointmentStatus = "confirmed";
 
@@ -359,7 +361,7 @@ namespace H4H_API.Services.Implementations
                 throw new AppException("Wizyta nie znaleziona.", ErrorCodes.AppointmentNotFound);
 
             if (appointment.AppointmentStatus != "pending")
-                throw new AppException("Można potwierdzić tylko wizyty oczekujące.", ErrorCodes.AppointmentStatusNotPending);
+                throw new AppException("Można potwierdzić tylko wizyty oczekujące.", ErrorCodes.AppointmentCancelForbidden);
 
             appointment.AppointmentStatus = "confirmed";
             appointment.UpdatedAt = DateTime.UtcNow;

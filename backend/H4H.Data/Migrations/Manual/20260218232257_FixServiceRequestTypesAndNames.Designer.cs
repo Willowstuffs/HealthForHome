@@ -3,18 +3,21 @@ using System;
 using H4H.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NetTopologySuite.Geometries;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace H4H.Data.Migrations
+namespace H4H.Data.Migrations.Manual
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260218232257_FixServiceRequestTypesAndNames")]
+    partial class FixServiceRequestTypesAndNames
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -142,7 +145,7 @@ namespace H4H.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("client_address");
 
-                    b.Property<Guid?>("ClientId")
+                    b.Property<Guid>("ClientId")
                         .HasColumnType("uuid")
                         .HasColumnName("client_id");
 
@@ -153,11 +156,6 @@ namespace H4H.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_at");
-
-
-                    b.Property<Point>("Location")
-                        .HasColumnType("geometry")
-                        .HasColumnName("location");
 
                     b.Property<DateTime>("ScheduledEnd")
                         .HasColumnType("timestamp without time zone")
@@ -171,12 +169,7 @@ namespace H4H.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("selected_specialist_id");
 
-                    b.Property<Guid?>("ServiceTypeId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("service_type_id");
-
-                    b.Property<Guid?>("SpecialistId")
-
+                    b.Property<Guid>("SpecialistId")
                         .HasColumnType("uuid")
                         .HasColumnName("specialist_id");
 
@@ -203,8 +196,6 @@ namespace H4H.Data.Migrations
                     b.HasIndex("ClientId");
 
                     b.HasIndex("ScheduledStart");
-
-                    b.HasIndex("ServiceTypeId");
 
                     b.HasIndex("SpecialistId");
 
@@ -646,6 +637,86 @@ namespace H4H.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("H4H.Core.Models.ServiceRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("address");
+
+                    b.Property<Guid?>("ClientId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("client_id");
+
+                    b.Property<string>("ContactName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("contact_name");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("DateFrom")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("date_from");
+
+                    b.Property<DateTime>("DateTo")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("date_to");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
+                    b.Property<Point>("Location")
+                        .IsRequired()
+                        .HasColumnType("geography(Point, 4326)")
+                        .HasColumnName("location");
+
+                    b.Property<decimal?>("MaxPrice")
+                        .HasColumnType("numeric")
+                        .HasColumnName("max_price");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("phone_number");
+
+                    b.Property<Guid>("ServiceTypeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("service_type_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("open")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("ServiceTypeId");
+
+                    b.ToTable("service_requests", (string)null);
+                });
 
             modelBuilder.Entity("H4H.Core.Models.ServiceType", b =>
                 {
@@ -1070,17 +1141,14 @@ namespace H4H.Data.Migrations
                     b.HasOne("H4H.Core.Models.Client", "Client")
                         .WithMany("Appointments")
                         .HasForeignKey("ClientId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("H4H.Core.Models.ServiceType", "ServiceType")
-                        .WithMany()
-                        .HasForeignKey("ServiceTypeId");
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("H4H.Core.Models.Specialist", "Specialist")
                         .WithMany("Appointments")
                         .HasForeignKey("SpecialistId")
-
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("H4H.Core.Models.SpecialistService", "SpecialistService")
                         .WithMany("Appointments")
@@ -1088,8 +1156,6 @@ namespace H4H.Data.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Client");
-
-                    b.Navigation("ServiceType");
 
                     b.Navigation("Specialist");
 
@@ -1232,6 +1298,24 @@ namespace H4H.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Specialist");
+                });
+
+            modelBuilder.Entity("H4H.Core.Models.ServiceRequest", b =>
+                {
+                    b.HasOne("H4H.Core.Models.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("H4H.Core.Models.ServiceType", "ServiceType")
+                        .WithMany()
+                        .HasForeignKey("ServiceTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Client");
+
+                    b.Navigation("ServiceType");
                 });
 
             modelBuilder.Entity("H4H.Core.Models.Specialist", b =>

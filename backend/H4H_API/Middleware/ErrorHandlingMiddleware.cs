@@ -71,7 +71,6 @@ namespace H4H_API.Middleware
             string? errorCode = null;
             string message = "Wystąpił nieoczekiwany błąd serwera";
 
-
             switch (exception)
             {
                 case AppException appEx:

@@ -49,7 +49,6 @@ namespace H4H_API.Controllers
             return Ok(ApiResponse<ClientProfileDto>.SuccessResponse(updatedProfile, "Profil zaktualizowany"));
         }
 
-
         // Pobiera listę wizyt klienta z opcjonalnym filtrowaniem po statusie
         [HttpGet("appointments")]
         public async Task<IActionResult> GetAppointments([FromQuery] PagedRequest request, [FromQuery] string? status)
@@ -86,7 +85,6 @@ namespace H4H_API.Controllers
         [AllowAnonymous] // Pozwala gościom dodawać ogłoszenia (bez tokena JWT)
         public async Task<ActionResult<ApiResponse<Guid>>> CreateRequest([FromBody] CreateServiceRequestDto dto)
         {
-            Console.WriteLine("=== START CreateRequest ===");
             // Jeśli token jest przesłany, wyciągamy userId, jeśli nie - null
             Guid? userId = null;
             var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -95,12 +93,8 @@ namespace H4H_API.Controllers
             {
                 userId = Guid.Parse(userIdClaim);
             }
-            Console.WriteLine($"Opis: {dto.Description}");
-            Console.WriteLine($"Adres: {dto.Address}");
 
             var requestId = await _clientService.CreateServiceRequestAsync(dto, userId);
-            Console.WriteLine($"Utworzono ServiceRequest o ID: {requestId}");
-            Console.WriteLine("=== END CreateRequest ===");
             return Ok(ApiResponse<Guid>.SuccessResponse(requestId));
         }
 
@@ -112,6 +106,5 @@ namespace H4H_API.Controllers
             var requests = await _clientService.GetMyServiceRequestsAsync(userId);
             return Ok(ApiResponse<List<ServiceRequestDto>>.SuccessResponse(requests));
         }
-
     }
 }

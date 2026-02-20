@@ -1,4 +1,6 @@
+
 ﻿using H4H_API.DTOs.Specialist;
+
 
 namespace H4H_API.Services.Interfaces
 {
@@ -48,6 +50,7 @@ namespace H4H_API.Services.Interfaces
         /// </summary>
         /// <returns></returns>
         Task<List<ServiceTypeDto>> GetServiceTypesAsync();
+
         /// <summary>Zmienia status wizyty u specjalisty na potwierdzony (confirmed)</summary>
         Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId);
         /// <summary>
@@ -67,5 +70,10 @@ namespace H4H_API.Services.Interfaces
         /// <param name="dto"> przyjmuje parametry do zmiany</param>
         /// <returns></returns>
         Task UpdateProfileAsync(Guid userId, UpdateSpecialistProfileDto dto);
+
+
+
+
+
     }
 }

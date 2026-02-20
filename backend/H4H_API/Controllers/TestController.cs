@@ -51,7 +51,6 @@ namespace H4H_API.Controllers
                 var canConnect = _context.Database.CanConnect();
 
                 // Bezpośrednie zapytanie SQL do pobrania informacji o tabelach
-
                 var connection = _context.Database.GetDbConnection();
                 connection.Open();
 
@@ -123,16 +122,12 @@ namespace H4H_API.Controllers
                     });
                 }
 
-
                 // Stwórz nowego użytkownika testowego
-
                 var user = new H4H.Core.Models.User
                 {
                     Id = Guid.NewGuid(),
                     Email = "test@health4home.pl",
-
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword("Test123!"), // Zahaszowane hasło
-
                     UserType = "client",
                     PhoneNumber = "+48123456789",
                     IsActive = true,
@@ -160,7 +155,6 @@ namespace H4H_API.Controllers
             }
         }
 
-
         /// <summary>
         /// Retrieves a list of all users with basic profile information.
         /// </summary>
@@ -169,14 +163,12 @@ namespace H4H_API.Controllers
         /// response is returned with an error message.</remarks>
         /// <returns>An <see cref="IActionResult"/> containing a JSON object with the total user count and a collection of user
         /// records. Each user record includes the user's ID, email, user type, active status, and creation date.</returns>
-
         [HttpGet("users")]
         public async Task<IActionResult> GetUsers()
         {
             try
             {
                 var users = await _context.users
-
                     .Select(u => new // Projektowanie danych - nie zwracamy hash hasła!
                     {
                         u.Id,

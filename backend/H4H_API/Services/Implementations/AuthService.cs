@@ -338,7 +338,6 @@ namespace H4H_API.Services.Implementations
             return await Task.FromResult(true);
         }
 
-
         /// <summary>
         /// Akualizuje lub dodaje token urządzenia (FCM) dla użytkownika, umożliwiając wysyłanie powiadomień push na jego urządzenie. 
         /// Jeśli token już istnieje dla tego użytkownika, aktualizuje datę ostatniego użycia; w przeciwnym razie tworzy nowy rekord tokena.

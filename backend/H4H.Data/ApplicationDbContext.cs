@@ -31,10 +31,7 @@ namespace H4H.Data
         public DbSet<VerificationCode> verification_codes { get; set; }
         public DbSet<AddressGeocache> address_geocache { get; set; }
         public DbSet<AppointmentSpecialist> appointments_specialists { get; set; }
-
         public DbSet<DeviceToken> device_tokens { get; set; }
-        public DbSet<ServiceRequest> service_requests { get; set; }
-
 
         // dla PostGIS i NetTopologySuite
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -104,15 +101,12 @@ namespace H4H.Data
                 entity.Property(e => e.UserType).HasMaxLength(20);
             });
 
-
             // Relacja jeden-do-jednego User <=> Client z kaskadowym usuwaniem
-
             modelBuilder.Entity<Client>(entity =>
             {
                 entity.HasOne(c => c.User)
                     .WithOne(u => u.Client)
                     .HasForeignKey<Client>(c => c.UserId)
-
                     .OnDelete(DeleteBehavior.Cascade); // Usunięcie użytkownika usuwa klienta
 
                 // KONFIGURACJA POSTGIS DLA Client:
@@ -121,13 +115,11 @@ namespace H4H.Data
             });
 
             // Relacja jeden-do-jednego User <=> Specialist z kaskadowym usuwaniem
-
             modelBuilder.Entity<Specialist>(entity =>
             {
                 entity.HasOne(s => s.User)
                     .WithOne(u => u.Specialist)
                     .HasForeignKey<Specialist>(s => s.UserId)
-
                     .OnDelete(DeleteBehavior.Cascade); // Usunięcie użytkownika usuwa specjalistę
 
                 entity.Property(s => s.VerificationStatus)
@@ -198,40 +190,57 @@ namespace H4H.Data
             // Wizyty - centralna encja systemu
             modelBuilder.Entity<Appointment>(entity =>
             {
-                // Relacja z Klientem
+
+                entity.ToTable("appointments"); // Upewnienie się co do nazwy tabeli
+
+                // 1. RELACJE
+                // Relacja z Klientem (opcjonalna dla gości)
                 entity.HasOne(a => a.Client)
-                    .WithMany(c => c.Appointments) // Jeden klient ma wiele wizyt
+                    .WithMany(c => c.Appointments)
                     .HasForeignKey(a => a.ClientId)
-                    .OnDelete(DeleteBehavior.Cascade);
+                    .IsRequired(false) // KLUCZOWE dla ogłoszeń "open"
+                    .OnDelete(DeleteBehavior.SetNull);
 
-                // Relacja z Specjalistami
+                // Relacja z Specjalistą (opcjonalna dla ogłoszeń "open")
                 entity.HasOne(a => a.Specialist)
-                    .WithMany(s => s.Appointments) // Jeden specjalista ma wiele wizyt
+                    .WithMany(s => s.Appointments)
                     .HasForeignKey(a => a.SpecialistId)
-                    .OnDelete(DeleteBehavior.Cascade);
+                    .IsRequired(false) // KLUCZOWE dla ogłoszeń "open"
+                    .OnDelete(DeleteBehavior.SetNull);
 
-                // Relacja z Usługą Specjalisty
+                // Relacja z typem usługi (kategoria)
+                entity.HasOne(a => a.ServiceType)
+                      .WithMany()
+                      .HasForeignKey(a => a.ServiceTypeId)
+                      .IsRequired(false);
+
+                // Relacja z konkretną usługa specjalisty
                 entity.HasOne(a => a.SpecialistService)
-                    .WithMany(ss => ss.Appointments) // Jedna usługa może być w wielu wizytach
+                    .WithMany(ss => ss.Appointments)
                     .HasForeignKey(a => a.SpecialistServiceId)
-                    .OnDelete(DeleteBehavior.SetNull); // Usunięcie usługi ustawia NULL
+                    .OnDelete(DeleteBehavior.SetNull);
 
+                // 2. NOWE KOLUMNY PRZESTRZENNE I MAPOWANIE
+                entity.Property(a => a.Location)
+                    .HasColumnName("location"); // Wymuszenie nazwy małą literą
+
+                entity.Property(a => a.ServiceTypeId)
+                    .HasColumnName("service_type_id");
+
+                // 3. POZOSTAŁE WŁAŚCIWOŚCI
                 entity.Property(a => a.AppointmentStatus)
-                    .HasMaxLength(20); // Status wizyty (confirmed, cancelled, completed)
+                    .HasMaxLength(20);
 
-
+                // 4. INDEKSY
                 entity.HasIndex(a => a.ScheduledStart);
                 entity.HasIndex(a => a.AppointmentStatus);
             });
-
-
             // Płatności
             modelBuilder.Entity<Payment>(entity =>
             {
                 // Relacja jeden-do-jednego z Wizytą
                 entity.HasOne(p => p.Appointment)
                     .WithOne(a => a.Payment) // Jedna wizyta ma jedną płatność
-
                     .HasForeignKey<Payment>(p => p.AppointmentId)
                     .OnDelete(DeleteBehavior.Cascade);
 
@@ -240,24 +249,20 @@ namespace H4H.Data
                 entity.Property(p => p.PaymentStatus).HasMaxLength(20);
             });
 
-
             // Recenzje
             modelBuilder.Entity<Review>(entity =>
             {
                 // Relacja z Wizytą
-
                 entity.HasOne(r => r.Appointment)
                     .WithOne(a => a.Review)
                     .HasForeignKey<Review>(r => r.AppointmentId)
                     .OnDelete(DeleteBehavior.Cascade);
 
                 // Relacja z Klientem
-
                 entity.HasOne(r => r.Client)
                     .WithMany(c => c.Reviews)
                     .HasForeignKey(r => r.ClientId)
                     .OnDelete(DeleteBehavior.Cascade);
-
 
                 // Relacja z Specialista
                 entity.HasOne(r => r.Specialist)
@@ -266,7 +271,6 @@ namespace H4H.Data
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasIndex(r => r.AppointmentId).IsUnique();
-
                 // Constraint w bazie: ocena musi być między 1 a 5
                 entity.ToTable(tb => tb.HasCheckConstraint("CK_Review_Rating", "\"Rating\" >= 1 AND \"Rating\" <= 5"));
             });
@@ -276,12 +280,10 @@ namespace H4H.Data
             {
                 entity.HasOne(sq => sq.Specialist)
                     .WithMany(s => s.Qualifications) // Jeden specjalista ma wiele kwalifikacji
-
                     .HasForeignKey(sq => sq.SpecialistId)
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasOne(sq => sq.VerifiedByAdmin)
-
                     .WithMany(a => a.VerifiedQualifications) // Jeden admin może zweryfikować wiele kwalifikacji
                     .HasForeignKey(sq => sq.VerifiedByAdminId)
                     .OnDelete(DeleteBehavior.SetNull); // Usunięcie admina ustawia NULL
@@ -290,11 +292,9 @@ namespace H4H.Data
             });
 
             // Administratorzy systemu
-
             modelBuilder.Entity<Admin>(entity =>
             {
                 entity.ToTable("admins");
-
 
                 entity.HasIndex(a => a.Email).IsUnique(); // Unikalny email admina
                 entity.Property(a => a.Role).HasMaxLength(20); // Rola admina (super_admin, support)
@@ -318,7 +318,6 @@ namespace H4H.Data
                     .HasColumnType("timestamp without time zone");
             });
 
-
             // Logi weryfikacji specjalistów
             modelBuilder.Entity<VerificationLog>(entity =>
             {
@@ -328,7 +327,6 @@ namespace H4H.Data
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasOne(vl => vl.Admin)
-
                     .WithMany(a => a.VerificationLogs) // Jeden admin ma wiele logów weryfikacji
                     .HasForeignKey(vl => vl.AdminId)
                     .OnDelete(DeleteBehavior.SetNull); // Usunięcie admina ustawia NULL
@@ -354,14 +352,11 @@ namespace H4H.Data
                 // Relacja z Wizytą (wiadomości mogą dotyczyć konkretnej wizyty)
                 entity.HasOne(m => m.Appointment)
                     .WithMany(a => a.Messages) // Jedna wizyta może mieć wiele wiadomości
-
                     .HasForeignKey(m => m.AppointmentId)
                     .OnDelete(DeleteBehavior.SetNull);
 
                 entity.HasIndex(m => m.CreatedAt);
             });
-
-
             // Powiadomienia
             modelBuilder.Entity<Notification>(entity =>
             {
@@ -375,7 +370,6 @@ namespace H4H.Data
                 entity.HasIndex(n => n.CreatedAt);
             });
 
-
             // Kody weryfikacyjne 
             modelBuilder.Entity<VerificationCode>(entity =>
             {
@@ -385,7 +379,6 @@ namespace H4H.Data
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.Property(vc => vc.Purpose).HasMaxLength(50); // Cel kodu (email_verification)
-
                 entity.HasIndex(vc => new { vc.Email, vc.Code, vc.IsUsed });
                 entity.HasIndex(vc => vc.ExpiresAt);
             });
@@ -426,7 +419,6 @@ namespace H4H.Data
                 entity.HasIndex(a => new { a.AppointmentId, a.SpecialistId }).IsUnique();
             });
 
-
             // Konfiguracja tabeli DeviceToken dla powiadomień push
             modelBuilder.Entity<DeviceToken>(entity =>
             {
@@ -446,24 +438,8 @@ namespace H4H.Data
                 entity.HasIndex(e => new { e.UserId, e.FcmToken }).IsUnique();
             });
 
-            // Konfiguracja tabeli ServiceRequest dla ogłoszeń o usługę
-            modelBuilder.Entity<ServiceRequest>(entity =>
-            {
-                entity.ToTable("service_requests");
-                entity.HasKey(e => e.Id);
 
-                entity.Property(e => e.DateFrom).IsRequired();
-                entity.Property(e => e.DateTo).IsRequired();
-                entity.Property(e => e.Location).HasColumnType("geography(Point, 4326)");
-                entity.Property(e => e.Status).HasDefaultValue("open");
-
-                // Klient jest opcjonalny (HasOne -> WithMany -> IsRequired(false))
-                entity.HasOne(d => d.Client)
-                      .WithMany()
-                      .HasForeignKey(d => d.ClientId)
-                      .IsRequired(false)
-                      .OnDelete(DeleteBehavior.SetNull); // Jeśli klient usunie konto, ogłoszenie zostaje jako "gość"
-            });
+            // usuniecie service_requests
 
         }
     }

@@ -3,18 +3,21 @@ using System;
 using H4H.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NetTopologySuite.Geometries;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace H4H.Data.Migrations
+namespace H4H.Data.Migrations.Manual
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260219124831_FinalizeAppointmentRefactoring")]
+    partial class FinalizeAppointmentRefactoring
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -154,7 +157,6 @@ namespace H4H.Data.Migrations
                         .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_at");
 
-
                     b.Property<Point>("Location")
                         .HasColumnType("geometry")
                         .HasColumnName("location");
@@ -176,7 +178,6 @@ namespace H4H.Data.Migrations
                         .HasColumnName("service_type_id");
 
                     b.Property<Guid?>("SpecialistId")
-
                         .HasColumnType("uuid")
                         .HasColumnName("specialist_id");
 
@@ -646,7 +647,6 @@ namespace H4H.Data.Migrations
                         });
                 });
 
-
             modelBuilder.Entity("H4H.Core.Models.ServiceType", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1079,7 +1079,6 @@ namespace H4H.Data.Migrations
                     b.HasOne("H4H.Core.Models.Specialist", "Specialist")
                         .WithMany("Appointments")
                         .HasForeignKey("SpecialistId")
-
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("H4H.Core.Models.SpecialistService", "SpecialistService")

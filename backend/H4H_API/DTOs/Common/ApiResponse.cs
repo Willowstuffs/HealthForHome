@@ -15,10 +15,7 @@ namespace H4H_API.DTOs.Common
     {
         public bool Success { get; set; }
         public string Message { get; set; } = string.Empty;
-
-
         public string? ErrorCode { get; set; } // Opcjonalny kod błędu
-
         public T? Data { get; set; } // Dane zwracane przez endpoint
         public List<string>? Errors { get; set; } // Lista błędów (jeśli success=false)
         public DateTime Timestamp { get; set; } = DateTime.Now; // Znacznik czasu odpowiedzi
@@ -54,8 +51,6 @@ namespace H4H_API.DTOs.Common
                 Message = message,
                 ErrorCode = errorCode,
                 Errors = errors ?? new List<string>()
-
-
             };
         }
     }

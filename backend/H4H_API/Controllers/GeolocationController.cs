@@ -82,7 +82,6 @@ namespace H4H_API.Controllers
         }
 
         /// <summary>
-
         /// Oblicza odległość między konkretnym ogłoszeniem a obszarem pracy specjalisty
         /// </summary>
         [HttpGet("distance/{specialistId}")]

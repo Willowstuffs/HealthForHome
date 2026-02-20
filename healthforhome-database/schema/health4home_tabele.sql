@@ -1,3 +1,8 @@
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> origin/justyna
 -- TWORZENIE TABEL
 -- uzytkownicy
 CREATE TABLE users (
@@ -350,8 +355,12 @@ CREATE TABLE appointments_specialists (
 -- Kto ostatecznie wziął to zlecenie (PIERWSZY który zaakceptował)
 ALTER TABLE appointments ADD COLUMN selected_specialist_id UUID REFERENCES specialists(id);
 
+<<<<<<< HEAD
 
 SELECT * FROM "__EFMigrationsHistory"
+=======
+SELECT * FROM "__EFMigrationsHistory";
+>>>>>>> origin/justyna
 
 
 -- Aktualizacja 08.02.26
@@ -372,8 +381,13 @@ CREATE TABLE device_tokens (
 CREATE INDEX idx_device_tokens_user ON device_tokens(user_id);
 CREATE INDEX idx_device_tokens_fcm_token ON device_tokens(fcm_token);
 
+<<<<<<< HEAD
 SELECT * FROM device_tokens
 SELECT * FROM "__EFMigrationsHistory"
+=======
+SELECT * FROM device_tokens;
+SELECT * FROM "__EFMigrationsHistory";
+>>>>>>> origin/justyna
 
 -- czesc 2
 
@@ -417,3 +431,84 @@ CREATE TABLE service_requests (
 CREATE INDEX idx_service_requests_location ON service_requests USING GIST(location);
 CREATE INDEX idx_service_requests_status ON service_requests(status);
 CREATE INDEX idx_service_requests_client ON service_requests(client_id);
+<<<<<<< HEAD
+=======
+
+
+
+-- AKTUALIZACJA SERVICE REQUEST 19.02 - mam nadzieje ze teraz zadziala ;-;
+-- 1. Zmiana nazw kolumn na na małe literki spójne z resztą tabelek
+ALTER TABLE service_requests RENAME COLUMN "Id" TO id;
+ALTER TABLE service_requests RENAME COLUMN "ClientId" TO client_id;
+ALTER TABLE service_requests RENAME COLUMN "ServiceTypeId" TO service_type_id;
+ALTER TABLE service_requests RENAME COLUMN "ContactName" TO contact_name;
+ALTER TABLE service_requests RENAME COLUMN "PhoneNumber" TO phone_number;
+ALTER TABLE service_requests RENAME COLUMN "Email" TO email;
+ALTER TABLE service_requests RENAME COLUMN "Description" TO description;
+ALTER TABLE service_requests RENAME COLUMN "DateFrom" TO date_from;
+ALTER TABLE service_requests RENAME COLUMN "DateTo" TO date_to;
+ALTER TABLE service_requests RENAME COLUMN "MaxPrice" TO max_price;
+ALTER TABLE service_requests RENAME COLUMN "Address" TO address;
+ALTER TABLE service_requests RENAME COLUMN "Location" TO location;
+ALTER TABLE service_requests RENAME COLUMN "Status" TO status;
+ALTER TABLE service_requests RENAME COLUMN "CreatedAt" TO created_at;
+ALTER TABLE service_requests RENAME COLUMN "UpdatedAt" TO updated_at;
+
+-- 2. Zmiana typów kolumn na wymagane (NOT NULL) tam, gdzie to konieczne
+-- Uwaga: Jeśli macioe tam puste dane, te komendy mogą wyrzucić błąd - wtedy najpierw DELETE FROM service_requests;
+ALTER TABLE service_requests ALTER COLUMN contact_name SET NOT NULL;
+ALTER TABLE service_requests ALTER COLUMN phone_number SET NOT NULL;
+ALTER TABLE service_requests ALTER COLUMN email SET NOT NULL;
+ALTER TABLE service_requests ALTER COLUMN location SET NOT NULL;
+
+-- 3. Ustawienie jawnych typów dla dat i geolokalizacji (PostGIS)
+ALTER TABLE service_requests ALTER COLUMN date_from TYPE timestamp without time zone;
+ALTER TABLE service_requests ALTER COLUMN date_to TYPE timestamp without time zone;
+ALTER TABLE service_requests ALTER COLUMN created_at TYPE timestamp without time zone;
+ALTER TABLE service_requests ALTER COLUMN updated_at TYPE timestamp without time zone;
+ALTER TABLE service_requests ALTER COLUMN location TYPE geography(Point, 4326);
+
+-- 4. Naprawa Kluczy Obcych (Foreign Keys)
+-- Najpierw usuwamy stare klucze (używamy nazw, które wygenerował EF wcześniej)
+ALTER TABLE service_requests DROP CONSTRAINT IF EXISTS "FK_service_requests_clients_ClientId";
+ALTER TABLE service_requests DROP CONSTRAINT IF EXISTS "FK_service_requests_service_types_ServiceTypeId";
+
+-- Dodajemy nowe klucze z poprawnym mapowaniem
+ALTER TABLE service_requests 
+    ADD CONSTRAINT FK_service_requests_clients_client_id 
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL;
+
+ALTER TABLE service_requests 
+    ADD CONSTRAINT FK_service_requests_service_types_service_type_id 
+    FOREIGN KEY (service_type_id) REFERENCES service_types(id) ON DELETE CASCADE;
+
+-- AKTUALIZACJA JEDNAK NARA SERVICE REQUESR
+-- 1. Dodanie kolumn do tabeli appointments
+ALTER TABLE appointments 
+ADD COLUMN location geography(Point, 4326),
+ADD COLUMN service_type_id uuid;
+
+-- 2. Utworzenie relacji (Klucza obcego) z tabelą service_types
+ALTER TABLE appointments
+ADD CONSTRAINT "FK_appointments_service_types_service_type_id" 
+FOREIGN KEY (service_type_id) 
+REFERENCES service_types (id) 
+ON DELETE SET NULL;
+
+-- 3. Utworzenie indeksu dla wydajności wyszukiwania po kategorii
+CREATE INDEX "IX_appointments_service_type_id" 
+ON appointments (service_type_id);
+
+-- 4. Usunięcie nieużywanej już tabeli service_requests
+DROP TABLE IF EXISTS service_requests;
+
+
+-- 1. Usuwamy stare ograniczenie
+ALTER TABLE appointments 
+DROP CONSTRAINT appointments_appointment_status_check;
+
+-- 2. Dodajemy nowe ograniczenie z uwzględnieniem statusu 'open'
+ALTER TABLE appointments 
+ADD CONSTRAINT appointments_appointment_status_check 
+CHECK (appointment_status IN ('open', 'confirmed', 'cancelled', 'completed', 'pending'));
+>>>>>>> origin/justyna

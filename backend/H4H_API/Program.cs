@@ -98,6 +98,7 @@ builder.Services.AddScoped<IGeocoder, Geocoder>();
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<FirebaseNotificationService>();
 
+
 // CORS dla frontendu jeœli Flutter debuguje przez przegl¹darkê
 builder.Services.AddCors(options =>
 {
@@ -106,7 +107,6 @@ builder.Services.AddCors(options =>
             .AllowAnyOrigin()  // Ka¿de Ÿród³o
             .AllowAnyMethod()
             .AllowAnyHeader());
-
 });
 
 // Dependency Injection dla Repository
@@ -144,7 +144,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-
 app.Run();
 
 
@@ -178,5 +177,5 @@ public class SecurityRequirementsOperationFilter : IOperationFilter
             };
         }
     }
-}
 
+}

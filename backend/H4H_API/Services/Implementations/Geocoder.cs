@@ -96,7 +96,6 @@ namespace H4H_API.Services.Implementations
 
 
                 // UŻYJ KROPEK zamiast przecinków
-
                 var url = $"https://nominatim.openstreetmap.org/reverse?format=json" +
                          $"&lat={latitude.ToString(_invariantCulture)}" +
                          $"&lon={longitude.ToString(_invariantCulture)}" +
