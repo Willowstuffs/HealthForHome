@@ -1,3 +1,4 @@
+
 ﻿using H4H.Core.Helpers;
 using H4H.Core.Models;
 using H4H.Data;
@@ -6,7 +7,9 @@ using H4H_API.Exceptions;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using SpecialistServiceEntity = H4H.Core.Models.SpecialistService;
+
 using H4H_API.Helpers;
+
 
 namespace H4H_API.Services.Implementations
 {
@@ -32,38 +35,37 @@ namespace H4H_API.Services.Implementations
             return spec == null
                 ? throw new KeyNotFoundException($"Nie znaleziono specjalisty dla użytkownika {userId}")
                 : new SpecialistDto
-            {
-                Id = spec.Id,
-                FirstName = spec.FirstName,
-                LastName = spec.LastName,
-                Email = spec.User.Email,
-                PhoneNumber = spec.User.PhoneNumber,
-                ProfessionalTitle = spec.ProfessionalTitle,
-                Bio = spec.Bio,
-                HourlyRate = spec.HourlyRate,
-                IsVerified = spec.IsVerified,
-                AverageRating = (decimal)spec.AverageRating,
-                TotalReviews = spec.TotalReviews,
-                //uproszczone mapowanie list
-                Services = [.. spec.Services.Select(s => new SpecialistServiceDto
                 {
-                    Id = s.Id,
-                    ServiceName = s.ServiceType?.Name ?? "Nieznana usługa",
-                    Price = s.Price,
-                //tu uzupelnic o reszte pozniej
-                })],
-                ServiceAreas = [.. spec.ServiceAreas.Select(a => new ServiceAreaDto
+                    Id = spec.Id,
+                    FirstName = spec.FirstName,
+                    LastName = spec.LastName,
+
+                    Email = spec.User.Email,
+                    PhoneNumber = spec.User.PhoneNumber,
+
+                    ProfessionalTitle = spec.ProfessionalTitle,
+                    Bio = spec.Bio,
+                    HourlyRate = spec.HourlyRate,
+                    IsVerified = spec.IsVerified,
+                    AverageRating = (decimal)spec.AverageRating,
+                    TotalReviews = spec.TotalReviews,
+                    AvatarUrl = spec.User.AvatarUrl,
+                    //uproszczone mapowanie list
+
+                    ServiceAreas = [.. spec.ServiceAreas.Select(a => new ServiceAreaDto
                 {
                     City = a.City,
                     MaxDistanceKm = a.MaxDistanceKm
                 })]
+                    
+
                 };
         }
         public async Task<List<InquiryListItemDto>> GetInquiriesAsync(Guid userId, InquiryFilterDto filters)
         {
             var specialist = await _context.specialists
                 .FirstOrDefaultAsync(s => s.UserId == userId) ?? throw new KeyNotFoundException($"Nie znaleziono specjalisty dla użytkownika {userId}");
-            
+
             ///<summary>
             ///Query Builder do pobrania zapytan z zastosowaniem filtrow
             /// </summary>
@@ -71,6 +73,7 @@ namespace H4H_API.Services.Implementations
                 .Include(a => a.Client)
                 .Include(a => a.SpecialistService)
                     .ThenInclude(ss => ss!.ServiceType) //by dostac nazwe uslugi
+
                 .AsQueryable();
             ///<summary>
             ///dadanie sprawdzenia czy dany specjalista już nie dodał ogłoszenia
@@ -79,6 +82,7 @@ namespace H4H_API.Services.Implementations
 
             query = query.Where(a => !_context.appointments_specialists
                             .Any(aspl => aspl.AppointmentId == a.Id && aspl.SpecialistId == specialist.Id));
+
 
 
             //Aplikowanie filtrow
@@ -97,6 +101,7 @@ namespace H4H_API.Services.Implementations
             }
             //filtrowanie po statusie
             query = query.Where(a => a.AppointmentStatus == "pending");
+
 
             //Pobranie danych i mapowanie na DTO
             var result = await query
@@ -118,9 +123,9 @@ namespace H4H_API.Services.Implementations
         public async Task UpdateLicenseNumberAsync(Guid userId, string licenseNumber)
         {
             var specialist = await _context.specialists
-                .FirstOrDefaultAsync(s => s.UserId == userId) 
+                .FirstOrDefaultAsync(s => s.UserId == userId)
                 ?? throw new KeyNotFoundException($"Nie znaleziono specjalisty dla użytkownika {userId}");
-            
+
             var qualification = await _context.specialist_qualifications
                 .FirstOrDefaultAsync(q => q.SpecialistId == specialist.Id);
 
@@ -151,7 +156,7 @@ namespace H4H_API.Services.Implementations
                 .Include(s => s.Qualifications) //relacja do kwalifikacji
                 .FirstOrDefaultAsync(s => s.UserId == userId);
 
-            if(specialist == null)
+            if (specialist == null)
                 throw new KeyNotFoundException($"Nie znaleziono profilu specjalisty dla użytkownika {userId}");
 
             var qualification = specialist.Qualifications.FirstOrDefault();
@@ -174,7 +179,9 @@ namespace H4H_API.Services.Implementations
                     Category = s.ServiceType.Category ?? "",
                     DurationMinutes = s.DurationMinutes,
                     Price = s.Price,
+
                     ServiceTypeId = s.ServiceTypeId,
+
                     Description = s.Description
                 })
                 .ToList();
@@ -237,7 +244,7 @@ namespace H4H_API.Services.Implementations
             service.Price = dto.Price;
             service.DurationMinutes = dto.DurationMinutes;
             service.Description = dto.Description;
-            service.ServiceTypeId = dto.ServiceTypeId; 
+            service.ServiceTypeId = dto.ServiceTypeId;
 
             await _context.SaveChangesAsync();
         }
@@ -291,6 +298,7 @@ namespace H4H_API.Services.Implementations
             await _context.SaveChangesAsync();
         }
 
+
         public async Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId)
         {
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
@@ -305,7 +313,7 @@ namespace H4H_API.Services.Implementations
             if (appointment.AppointmentStatus != "pending")
                 throw new AppException("Można potwierdzić tylko wizyty oczekujące.", ErrorCodes.AppointmentStatusNotPending);
 
-            
+
             var appointmentSpecialist = new AppointmentSpecialist
             {
                 Id = Guid.NewGuid(),
@@ -453,5 +461,58 @@ namespace H4H_API.Services.Implementations
                 .ToListAsync();
             return result;
         }
+        public async Task UpdateProfileAsync(Guid userId, UpdateSpecialistProfileDto dto)
+        {
+            Console.WriteLine("----rozpoczęcie----");
+            // Pobranie specjalisty wraz z obszarami działania
+            var specialist = await _context.specialists
+                .Include(s => s.ServiceAreas)
+                .FirstOrDefaultAsync(s => s.UserId == userId)
+                ?? throw new KeyNotFoundException("Profil specjalisty nie istnieje.");
+
+            // Pobranie powiązanego użytkownika osobno, aby EF Core poprawnie śledził zmiany
+            var user = await _context.users.FirstOrDefaultAsync(u => u.Id == userId)
+                ?? throw new KeyNotFoundException("Użytkownik nie istnieje.");
+            Console.WriteLine("----aktualizacja---");
+            // Aktualizacja podstawowych danych w tabeli Users
+            user.Email = dto.Email;
+            user.PhoneNumber = dto.PhoneNumber;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            // Obsługa uploadu avataru
+            if (dto.Avatar != null && dto.Avatar.Length > 0)
+            {
+                // Tworzymy nazwę pliku z GUIDem, zachowując rozszerzenie
+                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(dto.Avatar.FileName)}";
+
+                // Tworzymy folder wwwroot/avatars jeśli nie istnieje
+                var folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "avatars");
+                if (!Directory.Exists(folderPath))
+                    Directory.CreateDirectory(folderPath);
+
+                var filePath = Path.Combine(folderPath, fileName);
+
+                // Zapis pliku na dysku
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await dto.Avatar.CopyToAsync(stream);
+                }
+
+                // Zapisujemy ścieżkę do bazy (relative URL)
+                user.AvatarUrl = $"/avatars/{fileName}";
+            }
+            Console.WriteLine("----aktualizacja specjalisty---");
+            // Aktualizacja danych specjalisty
+            specialist.FirstName = dto.FirstName;
+            specialist.LastName = dto.LastName;
+            specialist.ProfessionalTitle = dto.ProfessionalTitle;
+            specialist.Bio = dto.Bio;
+            specialist.HourlyRate = dto.HourlyRate;
+            Console.WriteLine("----zapis do bazy---");
+            // Zapis wszystkich zmian w jednej transakcji
+            await _context.SaveChangesAsync();
+            Console.WriteLine("----koniec----");
+        }
+
     }
 }

@@ -31,7 +31,6 @@ namespace H4H_API.Controllers
             _logger = logger;
         }
 
-
         /// <summary>
         /// Checks the application's ability to connect to the database and retrieves information about the available
         /// tables.
@@ -41,14 +40,12 @@ namespace H4H_API.Controllers
         /// Sensitive information is not exposed in the response.</remarks>
         /// <returns>An HTTP 200 response containing the database name, connection status, table count, table names, and a
         /// timestamp if the check succeeds; otherwise, an HTTP 400 response with error details.</returns>
-
         [HttpGet("database")]
         public IActionResult CheckDatabase()
         {
             try
             {
                 _logger.LogInformation("Testing database connection...");
-
 
                 // Test czy można połączyć się z bazą
                 var canConnect = _context.Database.CanConnect();
@@ -180,9 +177,7 @@ namespace H4H_API.Controllers
             {
                 var users = await _context.users
 
-
                     .Select(u => new // Projektowanie danych - nie zwracamy hash hasła!
-
                     {
                         u.Id,
                         u.Email,
@@ -262,9 +257,7 @@ namespace H4H_API.Controllers
                     Id = Guid.NewGuid(),
                     Email = "admin@health4home.pl",
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
-
                     Role = "super_admin", // Rola super administratora
-
                     FullName = "Test Administrator",
                     IsActive = true,
                     CreatedAt = DateTime.Now

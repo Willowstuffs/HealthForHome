@@ -1,5 +1,4 @@
 ﻿using H4H.Core.Helpers;
-
 using H4H_API.Helpers; 
 
 namespace H4H_API.DTOs.Common
@@ -16,6 +15,7 @@ namespace H4H_API.DTOs.Common
     {
         public bool Success { get; set; }
         public string Message { get; set; } = string.Empty;
+
 
         public string? ErrorCode { get; set; } // Opcjonalny kod błędu
 
@@ -42,7 +42,6 @@ namespace H4H_API.DTOs.Common
         /// <summary>
         /// Creates an error response with the specified message and optional list of error details.
         /// </summary>
-
         /// <param name="message">The error message describing the reason for the failure. Cannot be null.</param>
         /// <param name="errorCode">Optional error code for categorization.</param>
         /// <param name="errors">An optional list of error details to include in the response. If null, an empty list is used.</param>
@@ -54,8 +53,8 @@ namespace H4H_API.DTOs.Common
                 Success = false,
                 Message = message,
                 ErrorCode = errorCode,
-
                 Errors = errors ?? new List<string>()
+
 
             };
         }
@@ -85,7 +84,6 @@ namespace H4H_API.DTOs.Common
             return new ApiResponse { Success = true, Message = message };
         }
 
-
         /// <summary>
         /// Creates an error response with the specified message and optional list of error details.
         /// </summary>
@@ -101,7 +99,6 @@ namespace H4H_API.DTOs.Common
                 Success = false,
                 Message = message,
                 ErrorCode = errorCode,
-
                 Errors = errors ?? new List<string>()
             };
         }

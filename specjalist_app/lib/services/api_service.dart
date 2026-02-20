@@ -4,7 +4,7 @@ import 'package:dio/io.dart';
 import '../services/login_response.dart';
 import '../services/token_storage.dart';
 import '../services/specjalist_service.dart';
-
+import 'package:http_parser/http_parser.dart'; // dla MediaType
 
 class ApiService {
   static const bool isEmulator = true;
@@ -52,6 +52,18 @@ class ApiService {
     );
   }
 
+Future<String?> sendTestNotification(String fcmToken) async {
+    try {
+      final response = await _dio.post(
+        '/api/specialist/send-test-notification',
+        data: '"$fcmToken"', // <-- FCM token jako string JSON
+      );
+      return response.data['MessageId'] as String?;
+    } catch (e) {
+      print('Błąd wysyłania powiadomienia: $e');
+      return null;
+    }
+  }
   // register
 
   Future<void> registerSpecialist({
@@ -318,6 +330,62 @@ Future<void> confirmAppointment(String appointmentId) async {
 // DELETE /services/{id}
 Future<void> deleteService(String id) async {
   await _dio.delete('/api/specialist/services/$id');
+}
+Future<void> sendDeviceToken(String token) async {
+  await _dio.post(
+    '/api/auth/device-token',
+    data: {
+      "token": token,
+    },
+  );
+}
+Future<void> updateProfile({
+  required String firstName,
+  required String lastName,
+  required String email,
+  String? phoneNumber,
+  String? professionalTitle,
+  String? bio,
+  double? hourlyRate,
+  File? avatar,
+}) async {
+  final formDataMap = <String, dynamic>{
+    "FirstName": firstName,
+    "LastName": lastName,
+    "Email": email,
+    if (phoneNumber != null) "PhoneNumber": phoneNumber,
+    if (professionalTitle != null) "ProfessionalTitle": professionalTitle,
+    if (bio != null) "Bio": bio,
+    if (hourlyRate != null) "HourlyRate": hourlyRate,
+  };
+
+  if (avatar != null) {
+    formDataMap["Avatar"] = await MultipartFile.fromFile(
+      avatar.path,
+      filename: "avatar.jpg",
+      contentType: MediaType("image", "jpeg"),
+    );
+  }
+
+  final formData = FormData.fromMap(formDataMap);
+
+  try {
+    final response = await _dio.put(
+      '/api/specialist/profile',
+      data: formData,
+      options: Options(
+        contentType: 'multipart/form-data', // nagłówek Content-Type dla multipart
+      ),
+    );
+
+    if (response.statusCode == 200) {
+      print('Profil updated successfully!');
+    } else {
+      print('Failed to update profile: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('Error updating profile: $e');
+  }
 }
   // ERROR HANDLING
 

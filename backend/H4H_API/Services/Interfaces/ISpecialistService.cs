@@ -48,7 +48,6 @@ namespace H4H_API.Services.Interfaces
         /// </summary>
         /// <returns></returns>
         Task<List<ServiceTypeDto>> GetServiceTypesAsync();
-
         /// <summary>Zmienia status wizyty u specjalisty na potwierdzony (confirmed)</summary>
         Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId);
         /// <summary>
@@ -61,7 +60,12 @@ namespace H4H_API.Services.Interfaces
         /// </summary>
         /// <param name="filters">Parametr tener zawiera opcjonalne filtry do zastosowania przy pobieraniu zapytań</param>
         Task<List<InquiryListItemDto>> GetArchiveInquiriesAsync(Guid userId, InquiryFilterDto filters);
-
-
+        /// <summary>
+        /// Pozwala na edycje danych osobowych zdjęcia itd
+        /// </summary>
+        /// <param name="userId"> przyjmuje id urzytkownika</param>
+        /// <param name="dto"> przyjmuje parametry do zmiany</param>
+        /// <returns></returns>
+        Task UpdateProfileAsync(Guid userId, UpdateSpecialistProfileDto dto);
     }
 }

@@ -350,4 +350,70 @@ CREATE TABLE appointments_specialists (
 -- Kto ostatecznie wziął to zlecenie (PIERWSZY który zaakceptował)
 ALTER TABLE appointments ADD COLUMN selected_specialist_id UUID REFERENCES specialists(id);
 
+
 SELECT * FROM "__EFMigrationsHistory"
+
+
+-- Aktualizacja 08.02.26
+
+--czesc1
+
+-- 1. Dodanie tabeli dla tokenów urządzeń (FCM) - Kasia
+CREATE TABLE device_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    fcm_token TEXT NOT NULL,
+    last_used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, fcm_token) 
+);
+
+-- 2. Indeksy dla wydajności wyszukiwania
+CREATE INDEX idx_device_tokens_user ON device_tokens(user_id);
+CREATE INDEX idx_device_tokens_fcm_token ON device_tokens(fcm_token);
+
+SELECT * FROM device_tokens
+SELECT * FROM "__EFMigrationsHistory"
+
+-- czesc 2
+
+-- Tabela ogłoszeń (Giełda zleceń / Zapytania o usługę)
+CREATE TABLE service_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    
+    -- ClientId jest NULLable, aby umożliwić zapytania od gości
+    client_id UUID REFERENCES clients(id) ON DELETE SET NULL,
+    service_type_id UUID NOT NULL REFERENCES service_types(id) ON DELETE CASCADE,
+    
+    -- Dane kontaktowe (szczególnie ważne dla gości)
+    contact_name VARCHAR(255),
+    phone_number VARCHAR(20),
+    email VARCHAR(255),
+    
+    -- Opis i uwagi
+    description TEXT NOT NULL,
+    
+    -- Zakres dat
+    date_from TIMESTAMP NOT NULL,
+    date_to TIMESTAMP NOT NULL,
+    
+    -- Opcjonalna cena maksymalna
+    max_price DECIMAL(10,2),
+    
+    -- Lokalizacja i PostGIS
+    address TEXT NOT NULL,
+    location geography(Point, 4326), 
+    
+    -- Statusy: open, assigned, closed, expired
+    status VARCHAR(20) DEFAULT 'open' 
+        CHECK (status IN ('open', 'assigned', 'closed', 'expired')),
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- Indeksy dla wydajności
+CREATE INDEX idx_service_requests_location ON service_requests USING GIST(location);
+CREATE INDEX idx_service_requests_status ON service_requests(status);
+CREATE INDEX idx_service_requests_client ON service_requests(client_id);

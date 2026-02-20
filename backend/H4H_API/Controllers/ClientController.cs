@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.Authorization;
 using H4H_API.Services.Interfaces;
 using H4H_API.DTOs.Common;
 using H4H_API.DTOs.Client;
+using H4H_API.DTOs.Appointments;
+using System.Security.Claims;
+
 
 
 namespace H4H_API.Controllers
@@ -45,5 +48,70 @@ namespace H4H_API.Controllers
             var updatedProfile = await _clientService.UpdateProfileAsync(userId, dto);
             return Ok(ApiResponse<ClientProfileDto>.SuccessResponse(updatedProfile, "Profil zaktualizowany"));
         }
+
+
+        // Pobiera listę wizyt klienta z opcjonalnym filtrowaniem po statusie
+        [HttpGet("appointments")]
+        public async Task<IActionResult> GetAppointments([FromQuery] PagedRequest request, [FromQuery] string? status)
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            var result = await _clientService.GetAppointmentsAsync(userId, request, status);
+            return Ok(ApiResponse<PagedResponse<AppointmentDto>>.SuccessResponse(result));
+        }
+
+        // Pobiera szczegóły konkretnej wizyty
+        [HttpGet("appointments/{id}")]
+        public async Task<ActionResult<ApiResponse<AppointmentDto>>> GetDetails(Guid id)
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            var result = await _clientService.GetAppointmentDetailsAsync(userId, id);
+            return Ok(ApiResponse<AppointmentDto>.SuccessResponse(result));
+        }
+
+        // Anuluje wizytę
+        [HttpPost("appointments/{id}/cancel")]
+        public async Task<ActionResult<ApiResponse>> Cancel(Guid id)
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            var success = await _clientService.CancelAppointmentAsync(userId, id);
+
+            if (success)
+                return Ok(ApiResponse.SuccessResponse("Wizyta została anulowana"));
+
+            return BadRequest(ApiResponse.ErrorResponse("Nie można anulować tej wizyty"));
+        }
+
+        // Tworzy nową prośbę o usługę (ogłoszenie) - dostępne również dla gości (niezalogowanych)
+        [HttpPost("service-requests")]
+        [AllowAnonymous] // Pozwala gościom dodawać ogłoszenia (bez tokena JWT)
+        public async Task<ActionResult<ApiResponse<Guid>>> CreateRequest([FromBody] CreateServiceRequestDto dto)
+        {
+            Console.WriteLine("=== START CreateRequest ===");
+            // Jeśli token jest przesłany, wyciągamy userId, jeśli nie - null
+            Guid? userId = null;
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (!string.IsNullOrEmpty(userIdClaim))
+            {
+                userId = Guid.Parse(userIdClaim);
+            }
+            Console.WriteLine($"Opis: {dto.Description}");
+            Console.WriteLine($"Adres: {dto.Address}");
+
+            var requestId = await _clientService.CreateServiceRequestAsync(dto, userId);
+            Console.WriteLine($"Utworzono ServiceRequest o ID: {requestId}");
+            Console.WriteLine("=== END CreateRequest ===");
+            return Ok(ApiResponse<Guid>.SuccessResponse(requestId));
+        }
+
+        // Pobiera listę ogłoszeń (prośb o usługę) utworzonych przez zalogowanego klienta.
+        [HttpGet("service-requests")]
+        public async Task<ActionResult<ApiResponse<List<ServiceRequestDto>>>> GetMyRequests()
+        {
+            var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value!);
+            var requests = await _clientService.GetMyServiceRequestsAsync(userId);
+            return Ok(ApiResponse<List<ServiceRequestDto>>.SuccessResponse(requests));
+        }
+
     }
 }

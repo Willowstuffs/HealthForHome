@@ -50,7 +50,7 @@ class MainScreen extends StatefulWidget {
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         backgroundColor: AppColors.primary,
-        selectedItemColor: AppColors.onSurface,
+        selectedItemColor: AppColors.onBackground,
         unselectedItemColor: Colors.white70,
         items: [
           BottomNavigationBarItem(

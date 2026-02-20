@@ -15,6 +15,10 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 
 var builder = WebApplication.CreateBuilder(args);
 
+
+// aby unikn¹æ problemów z datami w Npgsql (np. przy DateTimeOffset), ustawiamy legacy timestamp behavior
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 // Add services to the container.
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -68,7 +72,6 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Add logging
 builder.Services.AddLogging();
 
-
 // JWT Authentication 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -93,7 +96,7 @@ builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<ISpecialistService, SpecialistService>();
 builder.Services.AddScoped<IGeocoder, Geocoder>();
 builder.Services.AddHttpClient();
-
+builder.Services.AddSingleton<FirebaseNotificationService>();
 
 // CORS dla frontendu jeœli Flutter debuguje przez przegl¹darkê
 builder.Services.AddCors(options =>
@@ -131,19 +134,18 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-
 // Middleware 
 app.UseMiddleware<ErrorHandlingMiddleware>();
 
 app.UseHttpsRedirection();
 app.UseCors("AllowFlutter");
+app.UseStaticFiles();
 app.UseAuthentication();
-
 app.UseAuthorization();
 app.MapControllers();
 
-app.Run();
 
+app.Run();
 
 
 
@@ -177,3 +179,4 @@ public class SecurityRequirementsOperationFilter : IOperationFilter
         }
     }
 }
+

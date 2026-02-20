@@ -32,6 +32,10 @@ namespace H4H.Data
         public DbSet<AddressGeocache> address_geocache { get; set; }
         public DbSet<AppointmentSpecialist> appointments_specialists { get; set; }
 
+        public DbSet<DeviceToken> device_tokens { get; set; }
+        public DbSet<ServiceRequest> service_requests { get; set; }
+
+
         // dla PostGIS i NetTopologySuite
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -263,7 +267,6 @@ namespace H4H.Data
 
                 entity.HasIndex(r => r.AppointmentId).IsUnique();
 
-
                 // Constraint w bazie: ocena musi być między 1 a 5
                 entity.ToTable(tb => tb.HasCheckConstraint("CK_Review_Rating", "\"Rating\" >= 1 AND \"Rating\" <= 5"));
             });
@@ -422,6 +425,46 @@ namespace H4H.Data
                 // Unikalna para appointment + specialist
                 entity.HasIndex(a => new { a.AppointmentId, a.SpecialistId }).IsUnique();
             });
+
+
+            // Konfiguracja tabeli DeviceToken dla powiadomień push
+            modelBuilder.Entity<DeviceToken>(entity =>
+            {
+                entity.ToTable("device_tokens");
+
+                entity.HasKey(e => e.Id);
+
+                // Relacja z użytkownikiem
+                entity.HasOne(e => e.User)
+                      .WithMany(u => u.DeviceTokens)
+                      .HasForeignKey(e => e.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => e.UserId).HasDatabaseName("idx_device_tokens_user");
+                entity.HasIndex(e => e.FcmToken).HasDatabaseName("idx_device_tokens_fcm_token");
+
+                entity.HasIndex(e => new { e.UserId, e.FcmToken }).IsUnique();
+            });
+
+            // Konfiguracja tabeli ServiceRequest dla ogłoszeń o usługę
+            modelBuilder.Entity<ServiceRequest>(entity =>
+            {
+                entity.ToTable("service_requests");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.DateFrom).IsRequired();
+                entity.Property(e => e.DateTo).IsRequired();
+                entity.Property(e => e.Location).HasColumnType("geography(Point, 4326)");
+                entity.Property(e => e.Status).HasDefaultValue("open");
+
+                // Klient jest opcjonalny (HasOne -> WithMany -> IsRequired(false))
+                entity.HasOne(d => d.Client)
+                      .WithMany()
+                      .HasForeignKey(d => d.ClientId)
+                      .IsRequired(false)
+                      .OnDelete(DeleteBehavior.SetNull); // Jeśli klient usunie konto, ogłoszenie zostaje jako "gość"
+            });
+
         }
     }
 }

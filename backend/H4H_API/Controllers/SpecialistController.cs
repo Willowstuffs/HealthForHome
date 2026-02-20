@@ -1,5 +1,7 @@
 ﻿using H4H_API.DTOs.Common;
 using H4H_API.DTOs.Specialist;
+using H4H_API.Services.Implementations;
+
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -180,6 +182,21 @@ namespace H4H_API.Controllers
             var inquiries = await _specialistService.GetArchiveInquiriesAsync(userId, filters);
 
             return Ok(ApiResponse<List<InquiryListItemDto>>.SuccessResponse(inquiries, "Pobrano listę zapytań."));
+        }
+        
+      
+        /// <summary>
+        /// Aktualizuje wszystkie dane profilu specjalisty
+        /// </summary>
+        [HttpPut("profile")]
+        public async Task<ActionResult<ApiResponse<object>>> UpdateProfile([FromForm] UpdateSpecialistProfileDto dto)
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+
+            await _specialistService.UpdateProfileAsync(userId, dto);
+
+            return Ok(ApiResponse<object?>
+                .SuccessResponse(null, "Profil został zaktualizowany."));
         }
     }
 }

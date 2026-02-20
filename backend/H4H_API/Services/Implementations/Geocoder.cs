@@ -94,7 +94,9 @@ namespace H4H_API.Services.Implementations
 
                 var httpClient = _httpClientFactory.CreateClient("Nominatim");
 
-                // UŻYJ KROPEK zamiast przecinków! To ważne!
+
+                // UŻYJ KROPEK zamiast przecinków
+
                 var url = $"https://nominatim.openstreetmap.org/reverse?format=json" +
                          $"&lat={latitude.ToString(_invariantCulture)}" +
                          $"&lon={longitude.ToString(_invariantCulture)}" +

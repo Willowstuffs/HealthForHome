@@ -1,0 +1,85 @@
+Testy swagger 08.02.26  
+
+Logujemy sie
+POST /api/Auth/login
+{
+  "email": "testklient@health4home.pl",
+  "password": "Test123!"
+}
+i autoryzujemy
+
+
+TEST 1: POST /api/Auth/device-token
+{
+  "token": "fcm_test_token_123456789_qwerty"
+}
+
+TEST 2:GET /api/Client/appointments
+Page 1
+PageSize 10
+
+TEST 3:GET /api/Client/appointments/{id}
+id 2421ca34-22c1-4e63-84d1-07f134f7aba9
+(u mnie)
+
+TEST 4:POST /api/Client/appointments/{id}/cancel
+id 2421ca34-22c1-4e63-84d1-07f134f7aba9
+jak chcemy przetestowac po raz kolejny (u mnie) to tu juz inne id bo ta juz zostala anulowana i wiecej nie zadziala
+
+
+
+Testy ofert i odleglosci:
+
+TEST 1: POST /api/Client/service-requests
+{
+  "serviceTypeId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "description": "Test automatycznego geokodowania adresu Opery",
+  "dateFrom": "2026-02-20T12:00:00.000Z",
+  "dateTo": "2026-02-20T15:00:00.000Z",
+  "contactName": "Marek Testowy (Gość)",
+  "phoneNumber": "555666777",
+  "email": "marek.opera@example.com",
+  "address": "Marszałka Focha 5, Bydgoszcz",
+  "maxPrice": 200
+}
+jak dodajemy request bez zalogowania to jestesmy jako gosc a jak dodajemy zalogowani to przypisuje nam to do tego konta
+
+TEST 2: GET /api/Client/service-requests
+tylko dla zalogowanych uzytkownikow: pokazuje nam wyslane oferty zwiazane z naszym profilem
+
+TEST 3: GET /api/Geolocation/distance/{specialistId}
+specialistId 11111111-1111-1111-1111-111111111111
+serviceRequestId 6ae2547c-2adc-49cb-aef3-12ec96c82636
+
+od
+
+{
+  "serviceTypeId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "description": "Test automatycznego geokodowania adresu Opery",
+  "dateFrom": "2026-02-20T12:00:00.000Z",
+  "dateTo": "2026-02-20T15:00:00.000Z",
+  "contactName": "Marek Testowy (Gość)",
+  "phoneNumber": "555666777",
+  "email": "marek.opera@example.com",
+  "address": "Marszałka Focha 5, Bydgoszcz",
+  "maxPrice": 200
+}
+
+do specjalisty 11111111-1111-1111-1111-111111111111 ktory jest w okolicy placu poznanskiego
+
+{
+  "success": true,
+  "message": "Dystans obliczony pomyślnie",
+  "errorCode": null,
+  "data": {
+    "distanceKm": 1.19,
+    "distanceMiles": 0.74,
+    "isWithinRange": true,
+    "estimatedTravelTime": "6 min"
+  },
+  "errors": null,
+  "timestamp": "2026-02-08T23:48:16.263339+01:00"
+}
+
+odleglosc google maps z placu poznanskiego do Marszałka Focha 5 wyswietla sie pieszo jako 1,1 km
+wiec chyba sie zgadza

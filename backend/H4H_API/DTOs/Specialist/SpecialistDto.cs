@@ -13,8 +13,10 @@
         public string LastName { get; set; } = string.Empty;
         public string? ProfessionalTitle { get; set; }
         public string? Bio { get; set; }
+
         public string Email { get; set; } = string.Empty;
         public string? PhoneNumber { get; set; }
+        
         public decimal? HourlyRate { get; set; }
         public bool IsVerified { get; set; }
         /// <summary>Średnia ocen z tabeli reviews</summary>
@@ -22,6 +24,7 @@
         public int TotalReviews { get; set; }
         public List<SpecialistServiceDto> Services { get; set; } = [];
         public List<ServiceAreaDto> ServiceAreas { get; set; } = [];
+        public string? AvatarUrl { get; set; }
     }
 
     /// <summary>
@@ -37,7 +40,9 @@
         public string ServiceName { get; set; } = string.Empty;
         public string Category { get; set; } = string.Empty;
         public int DurationMinutes { get; set; }
+
         public Guid ServiceTypeId { get; set; }
+
         public decimal Price { get; set; }
         public string? Description { get; set; }
     }
@@ -71,4 +76,18 @@ namespace H4H_API.DTOs.Specialist
         public DateTime? AvailableFrom { get; set; }
         public DateTime? AvailableTo { get; set; }
     }
+}
+//update danych specjalisty
+public class UpdateSpecialistProfileDto
+{
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+
+    public string Email { get; set; } = string.Empty;
+    public string? PhoneNumber { get; set; }
+
+    public string? ProfessionalTitle { get; set; }
+    public string? Bio { get; set; }
+    public decimal? HourlyRate { get; set; }
+    public IFormFile? Avatar { get; set; }
 }

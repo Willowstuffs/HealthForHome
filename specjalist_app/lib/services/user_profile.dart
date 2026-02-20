@@ -29,6 +29,7 @@ class UserProfile {
   final String email;
   final String? phone;
   final String? postalCode;
+  final String? avatarUrl; 
   final List<ServiceArea>? serviceAreas;
   final List<String> specializations; 
 
@@ -39,6 +40,7 @@ class UserProfile {
     required this.email,
     this.phone,
     this.postalCode,
+    this.avatarUrl, 
     this.serviceAreas,
     required this.specializations,
   });
@@ -49,8 +51,10 @@ class UserProfile {
       firstName: json['firstName'] ?? '',
       lastName: json['lastName'] ?? '',
       email: json['email'] ?? '',
-      phone: json['phone'] ?? '',
-      postalCode: json['postalCode']?? '',
+      phone: json['phoneNumber']?.toString() ?? '',
+      
+      postalCode: json['postalCode']?.toString() ?? '',
+      avatarUrl:  json['avatarUrl'],
        serviceAreas: json['serviceAreas'] != null
           ? (json['serviceAreas'] as List<dynamic>)
               .map((e) => ServiceArea.fromJson(Map<String, dynamic>.from(e)))
@@ -87,6 +91,7 @@ class UserProfile {
         'postalCode': postalCode,
         'serviceAreas': serviceAreas?.map((e) => e.toJson()).toList(),
         'specializations': specializations,
+        'avatarUrl':avatarUrl,
       };
 }
 class ServiceArea {

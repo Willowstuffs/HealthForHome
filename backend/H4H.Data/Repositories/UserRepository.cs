@@ -117,7 +117,6 @@ namespace H4H.Data.Repositories
                 .FirstOrDefaultAsync(u => u.Email == email);
         }
 
-
         // Aktualizuje dane użytkownika
         public async Task<bool> UpdateUserAsync(User user)
         {

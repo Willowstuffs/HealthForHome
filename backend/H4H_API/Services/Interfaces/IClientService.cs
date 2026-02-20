@@ -1,6 +1,7 @@
 ﻿using H4H_API.DTOs.Appointments;
 using H4H_API.DTOs.Client;
 using H4H_API.DTOs.Common;
+using H4H_API.DTOs.Geolocation;
 using H4H_API.DTOs.Specialist;
 
 namespace H4H_API.Services.Interfaces
@@ -15,7 +16,7 @@ namespace H4H_API.Services.Interfaces
         // Geolokalizacja
         Task<bool> GeocodeClientAddressAsync(Guid userId);
         Task<(double Latitude, double Longitude)?> GetClientCoordinatesAsync(Guid userId);
-        Task<bool> IsClientWithinSpecialistRangeAsync(Guid clientUserId, Guid specialistId);
+        Task<DistanceInfoDto> GetDistanceToServiceRequestAsync(Guid specialistId, Guid serviceRequestId);
 
         // Zarządzanie wizytami
         Task<PagedResponse<AppointmentDto>> GetAppointmentsAsync(Guid userId, PagedRequest request, string? status = null);
@@ -25,5 +26,10 @@ namespace H4H_API.Services.Interfaces
 
         // Wyszukiwanie specjalistów
         Task<PagedResponse<SpecialistDto>> SearchSpecialistsAsync(SearchSpecialistsDto filters, PagedRequest request);
+
+        // Zarządzanie prośbami o usługę
+        Task<Guid> CreateServiceRequestAsync(CreateServiceRequestDto dto, Guid? userId = null);
+        Task<List<ServiceRequestDto>> GetMyServiceRequestsAsync(Guid userId);
+
     }
 }

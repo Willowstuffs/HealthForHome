@@ -22,7 +22,7 @@ void initState() {
 
 Future<void> _fetchData() async {
   setState(() {
-    isLoading = false; // konieczne, żeby przestało się kręcić
+    isLoading = false; 
   });
 }
  
@@ -34,6 +34,7 @@ Widget build(BuildContext context) {
       child: isLoading
           ? const CircularProgressIndicator()
           : SingleChildScrollView(
+            padding: const EdgeInsets.only(top: 50),
               child: Column(
                 children: [
                   const SizedBox(height: 20),
@@ -50,7 +51,7 @@ Widget build(BuildContext context) {
                                 AppColors.onBackground,
                               ],
                             ),
-                            borderRadius: BorderRadius.circular(12), // opcjonalnie zaokrąglone rogi
+                            borderRadius: BorderRadius.circular(12), 
                           ),
                           child: _buildSection(),
                         ),
@@ -70,12 +71,31 @@ Widget _buildSection() {
   final lastName = UserSession.lastName ?? '';
   final email = UserSession.email ?? '';
   final areas = UserSession.profile?.serviceAreas;
+  final avatarPath = UserSession.profile?.avatarUrl;
 
+  // Korzystamy z portu HTTPS, bo mamy HttpOverrides w main.dart
+  const String baseUrl = "https://192.168.100.24:7026"; 
+  
+  final String? fullAvatarUrl = (avatarPath != null && avatarPath.isNotEmpty)
+      ? (avatarPath.startsWith('http') ? avatarPath : '$baseUrl$avatarPath')
+      : null;
    return ConstrainedBox(
     constraints: const BoxConstraints(maxWidth: 400),
     child: Column(
       children: [
         const SizedBox(height: 16),
+         Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: CircleAvatar(
+              radius: 50,
+              backgroundImage: fullAvatarUrl != null 
+                ? NetworkImage(fullAvatarUrl) 
+                : null,
+            child: fullAvatarUrl == null 
+                ? const Icon(Icons.person, size: 50, color: Colors.white) 
+                : null,
+            ),
+          ),
 
         _buildInfoCard(
           title: 'Imię',
@@ -102,7 +122,7 @@ Widget _buildSection() {
 
         const SizedBox(height: 16),
 
-        // Przycisk akcji
+        
         const SizedBox(height: 16),
         _buildButton('Edytuj', () {
           Navigator.push(
@@ -128,7 +148,7 @@ Widget _buildSection() {
   );
 }
 
-// Pomocniczy widget do wyświetlania informacji w Card
+
 Widget _buildInfoCard({required String title, required String content}) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 12),

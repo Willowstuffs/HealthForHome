@@ -216,7 +216,9 @@ namespace H4H.Data.Migrations
                         .HasColumnName("appointment_id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+
+                        .HasColumnType("timestamp without time zone")
+
                         .HasColumnName("created_at");
 
                     b.Property<Guid>("SpecialistId")
@@ -332,6 +334,45 @@ namespace H4H.Data.Migrations
                         {
                             t.ExcludeFromMigrations();
                         });
+                });
+
+
+            modelBuilder.Entity("H4H.Core.Models.DeviceToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("FcmToken")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("fcm_token");
+
+                    b.Property<DateTime>("LastUsedAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("last_used_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FcmToken")
+                        .HasDatabaseName("idx_device_tokens_fcm_token");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("idx_device_tokens_user");
+
+                    b.HasIndex("UserId", "FcmToken")
+                        .IsUnique();
+
+                    b.ToTable("device_tokens", (string)null);
                 });
 
             modelBuilder.Entity("H4H.Core.Models.Message", b =>
@@ -594,6 +635,69 @@ namespace H4H.Data.Migrations
                         {
                             t.ExcludeFromMigrations();
                         });
+                });
+
+
+            modelBuilder.Entity("H4H.Core.Models.ServiceRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContactName")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("DateFrom")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("DateTo")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("text");
+
+                    b.Property<Point>("Location")
+                        .HasColumnType("geography(Point, 4326)");
+
+                    b.Property<decimal?>("MaxPrice")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ServiceTypeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("open");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("ServiceTypeId");
+
+                    b.ToTable("service_requests", (string)null);
                 });
 
             modelBuilder.Entity("H4H.Core.Models.ServiceType", b =>
@@ -1081,6 +1185,19 @@ namespace H4H.Data.Migrations
                     b.Navigation("User");
                 });
 
+
+            modelBuilder.Entity("H4H.Core.Models.DeviceToken", b =>
+                {
+                    b.HasOne("H4H.Core.Models.User", "User")
+                        .WithMany("DeviceTokens")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+
             modelBuilder.Entity("H4H.Core.Models.Message", b =>
                 {
                     b.HasOne("H4H.Core.Models.Appointment", "Appointment")
@@ -1165,6 +1282,25 @@ namespace H4H.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Specialist");
+                });
+
+
+            modelBuilder.Entity("H4H.Core.Models.ServiceRequest", b =>
+                {
+                    b.HasOne("H4H.Core.Models.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("H4H.Core.Models.ServiceType", "ServiceType")
+                        .WithMany()
+                        .HasForeignKey("ServiceTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Client");
+
+                    b.Navigation("ServiceType");
                 });
 
             modelBuilder.Entity("H4H.Core.Models.Specialist", b =>
@@ -1311,6 +1447,10 @@ namespace H4H.Data.Migrations
             modelBuilder.Entity("H4H.Core.Models.User", b =>
                 {
                     b.Navigation("Client");
+
+
+                    b.Navigation("DeviceTokens");
+
 
                     b.Navigation("Notifications");
 
