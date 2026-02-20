@@ -92,6 +92,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<ISpecialistService, SpecialistService>();
 builder.Services.AddScoped<IGeocoder, Geocoder>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddHttpClient();
 
 

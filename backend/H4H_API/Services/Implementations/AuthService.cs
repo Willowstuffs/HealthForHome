@@ -1,10 +1,13 @@
-﻿using H4H_API.DTOs.Auth;
-using H4H.Core.Models;
-using H4H_API.Services.Interfaces;
-using Microsoft.EntityFrameworkCore;
+﻿using H4H.Core.Models;
 using H4H.Data;
+using H4H_API.DTOs.Auth;
 using H4H_API.DTOs.Client;
 using H4H_API.DTOs.Specialist;
+using H4H_API.Exceptions;
+using H4H_API.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
+using ErrorCodes = H4H_API.Helpers.ErrorCodes;
+
 
 namespace H4H_API.Services.Implementations
 {
@@ -21,16 +24,18 @@ namespace H4H_API.Services.Implementations
     {
         private readonly ApplicationDbContext _context;
         private readonly IJwtService _jwtService;
+        private readonly IEmailService _emailService; //wstrzykniecie serwisu email do wysylania kodow weryfikacyjnych
 
         /// <summary>
         /// Initializes a new instance of the AuthService class using the specified database context and JWT service.
         /// </summary>
         /// <param name="context">The database context used to access application data for authentication operations. Cannot be null.</param>
         /// <param name="jwtService">The JWT service used to generate and validate JSON Web Tokens for authentication. Cannot be null.</param>
-        public AuthService(ApplicationDbContext context, IJwtService jwtService)
+        public AuthService(ApplicationDbContext context, IJwtService jwtService, IEmailService emailService)
         {
             _context = context;
             _jwtService = jwtService;
+            _emailService = emailService;
         }
 
         /// <summary>
@@ -124,7 +129,7 @@ namespace H4H_API.Services.Implementations
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
                 UserType = "client",
                 PhoneNumber = request.PhoneNumber,
-                IsActive = true,
+                IsActive = false, // Zmienione z true żeby zablokować dostęp do czasu weryfikacji kodu!!!
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now
             };
@@ -336,6 +341,86 @@ namespace H4H_API.Services.Implementations
         {
             // Implementacja resetu hasła
             return await Task.FromResult(true);
+        }
+
+        /// <summary>
+        /// Sends a verification code to the specified email address for account registration verification.
+        /// </summary>
+        /// <remarks>This method generates a new 6-digit verification code and sends it to the provided
+        /// email address if the associated user account exists and is not already active. Any previously issued, unused
+        /// verification codes for the user are invalidated before the new code is created. The verification code is
+        /// valid for 30 minutes from the time of generation.</remarks>
+        /// <param name="email">The email address to which the verification code will be sent. Cannot be null or empty.</param>
+        /// <returns></returns>
+        /// <exception cref="AppException">Thrown if no user with the specified email exists, or if the user account is already verified.</exception>
+        public async Task SendVerificationCodeAsync(string email)
+        {
+            var user = await _context.users.FirstOrDefaultAsync(u => u.Email == email)
+                ?? throw new AppException("Uzytkownik nie istnieje.", ErrorCodes.UserNotFound);
+
+            if (user.IsActive)
+                throw new AppException("Konto jest już zweryfikowane.", ErrorCodes.AccountAlreadyVerified);
+
+            //Wygeneruj 6-cyfrowy kod
+            var random = new Random();
+            var code = random.Next(100000, 999999).ToString();
+
+            //Unieważnij poprzednie kody dla tego usera
+            var existingCodes = await _context.verification_codes
+                .Where(vc => vc.UserId == user.Id && !vc.IsUsed)
+                .ToListAsync();
+
+            foreach (var existingCode in existingCodes)
+            {
+                existingCode.IsUsed = true;
+            }
+
+            //Zapisz nowy kod w bazie
+            var verificationCode = new VerificationCode //encja z postgresika
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                Email = email,
+                Code = code,
+                Purpose = "registration",
+                IsUsed = false,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(30),
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.verification_codes.Add(verificationCode);
+            await _context.SaveChangesAsync();
+
+            //Wyślij email
+            var emailBody = $"<h3>Witaj!</h3><p>Twój kod weryfikacyjny to: <b>{code}</b></p><p>Kod jest ważny przez 30 minut.</p>";
+            await _emailService.SendEmailAsync(email, "Kod weryfikacyjny Health4Home", emailBody);
+        }
+
+        public async Task VerifyCodeAsync(VerifyCodeDto request)
+        {
+            var user = await _context.users.FirstOrDefaultAsync(u => u.Email == request.Email)
+                ?? throw new AppException("Użytkownik nie istnieje.", ErrorCodes.UserNotFound);
+
+            // Znajdź najnowszy aktywny kod
+            var verificationCode = await _context.verification_codes
+                .Where(vc => vc.UserId == user.Id && vc.Code == request.Code && !vc.IsUsed && vc.Purpose == "registration")
+                .OrderByDescending(vc => vc.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            if (verificationCode != null)
+            {
+                if (verificationCode.ExpiresAt < DateTime.UtcNow)
+                    throw new AppException("Kod weryfikacyjny wygasł.", ErrorCodes.VerificationCodeExpired);
+
+                // Oznacz kod jako użyty i aktywuj konto
+                verificationCode.IsUsed = true;
+                user.IsActive = true;
+                user.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+            }
+            else
+                throw new AppException("Nieprawidłowy kod weryfikacyjny.", ErrorCodes.WrongVerificationCode);
         }
     }
 }
