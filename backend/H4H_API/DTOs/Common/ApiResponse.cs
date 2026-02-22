@@ -51,6 +51,7 @@ namespace H4H_API.DTOs.Common
                 Message = message,
                 ErrorCode = errorCode,
                 Errors = errors ?? new List<string>()
+
             };
         }
     }

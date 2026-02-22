@@ -1,4 +1,4 @@
-﻿using H4H_API.Helpers;
+﻿using H4H.Core.Helpers;
 using H4H.Core.Models;
 using H4H.Data;
 using H4H_API.DTOs.Specialist;
@@ -6,7 +6,9 @@ using H4H_API.Exceptions;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using SpecialistServiceEntity = H4H.Core.Models.SpecialistService;
-using H4H_API.DTOs.Client;
+using H4H_API.Helpers;
+using ErrorCodes = H4H_API.Helpers.ErrorCodes;
+using NetTopologySuite;
 
 namespace H4H_API.Services.Implementations
 {
@@ -32,7 +34,6 @@ namespace H4H_API.Services.Implementations
             return spec == null
                 ? throw new KeyNotFoundException($"Nie znaleziono specjalisty dla użytkownika {userId}")
                 : new SpecialistDto
-
                 {
                     Id = spec.Id,
                     FirstName = spec.FirstName,
@@ -157,12 +158,13 @@ namespace H4H_API.Services.Implementations
                 .Include(s => s.Qualifications) //relacja do kwalifikacji
                 .FirstOrDefaultAsync(s => s.UserId == userId);
 
-            if (specialist == null)
+            if (specialist != null)
+            {
+                var qualification = specialist.Qualifications.FirstOrDefault();
+                return qualification?.LicenseNumber;
+            }
 
-                throw new KeyNotFoundException($"Nie znaleziono profilu specjalisty dla użytkownika {userId}");
-
-            var qualification = specialist.Qualifications.FirstOrDefault();
-            return qualification?.LicenseNumber;
+            throw new KeyNotFoundException($"Nie znaleziono profilu specjalisty dla użytkownika {userId}");
         }
         public async Task<List<SpecialistServiceDto>> GetServicesAsync(Guid userId)
         {
@@ -238,16 +240,18 @@ namespace H4H_API.Services.Implementations
             var service = await _context.specialist_services
                 .FirstOrDefaultAsync(ss => ss.Id == serviceId && ss.SpecialistId == specialist.Id);
 
-            if (service == null) throw new KeyNotFoundException("Usługa nie znaleziona.");
+            if (service != null)
+            {
+                // Aktualizacja pól
+                service.Price = dto.Price;
+                service.DurationMinutes = dto.DurationMinutes;
+                service.Description = dto.Description;
+                service.ServiceTypeId = dto.ServiceTypeId;
 
-            // Aktualizacja pól
-            service.Price = dto.Price;
-            service.DurationMinutes = dto.DurationMinutes;
-            service.Description = dto.Description;
-            service.ServiceTypeId = dto.ServiceTypeId;
-
-
-            await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
+            }
+            else
+                throw new KeyNotFoundException("Usługa nie znaleziona.");
         }
 
         public async Task DeleteServiceAsync(Guid userId, Guid serviceId)
@@ -257,10 +261,13 @@ namespace H4H_API.Services.Implementations
             var service = await _context.specialist_services
                 .FirstOrDefaultAsync(ss => ss.Id == serviceId && ss.SpecialistId == specialist!.Id);
 
-            if (service == null) throw new KeyNotFoundException("Usługa nie znaleziona.");
-
-            _context.specialist_services.Remove(service);
-            await _context.SaveChangesAsync();
+            if (service != null)
+            {
+                _context.specialist_services.Remove(service);
+                await _context.SaveChangesAsync();
+            }
+            else
+                throw new KeyNotFoundException("Usługa nie znaleziona.");
         }
 
         public async Task UpdateServiceAreaAsync(Guid userId, ServiceAreaManageDto dto)
@@ -288,23 +295,25 @@ namespace H4H_API.Services.Implementations
             area.PostalCode = dto.PostalCode;
             area.MaxDistanceKm = dto.MaxDistanceKm;
 
-            // --- PRZYSZŁA IMPLEMENTACJA GEOLOKALIZACJI ---
-            /*
+            //PostGIS
             if (dto.Latitude.HasValue && dto.Longitude.HasValue)
             {
-                 area.Latitude = dto.Latitude.Value;
-                 area.Longitude = dto.Longitude.Value;
+                // Tworzymy punkt geograficzny (SRID 4326 = WGS 84, standard GPS)
+                var geometryFactory = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
+                area.Location = geometryFactory.CreatePoint(new NetTopologySuite.Geometries.Coordinate(dto.Longitude.Value, dto.Latitude.Value));
+                area.LocationUpdatedAt = DateTime.UtcNow;
+            } else {
+                //Majac tylko miasto i kod pocztowy, mozna zrobic geokodowanie (kiedys)
+                area.Location = null;
             }
-            */
             await _context.SaveChangesAsync();
         }
-
-
 
         public async Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId)
         {
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
                 ?? throw new AppException("Profil nie istnieje.", ErrorCodes.SpecialistNotFound);
+
 
             var appointment = await _context.appointments
                 .FirstOrDefaultAsync(a => a.Id == appointmentId);
@@ -333,6 +342,7 @@ namespace H4H_API.Services.Implementations
         {
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
                 ?? throw new AppException("Profil nie istnieje.", ErrorCodes.SpecialistNotFound);
+
 
             // Szukamy wizyty, która należy do tego specjalisty i ma status pending
             var appointment = await _context.appointments
@@ -514,6 +524,7 @@ namespace H4H_API.Services.Implementations
             // Zapis wszystkich zmian w jednej transakcji
             await _context.SaveChangesAsync();
             Console.WriteLine("----koniec----");
+
         }
 
     }

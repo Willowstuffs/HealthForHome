@@ -15,7 +15,6 @@
         public string? Bio { get; set; }
         public string Email { get; set; } = string.Empty;
         public string? PhoneNumber { get; set; }
-        
         public decimal? HourlyRate { get; set; }
         public bool IsVerified { get; set; }
         /// <summary>Średnia ocen z tabeli reviews</summary>
@@ -41,7 +40,6 @@
         public string Category { get; set; } = string.Empty;
         public int DurationMinutes { get; set; }
         public Guid ServiceTypeId { get; set; }
-
         public decimal Price { get; set; }
         public string? Description { get; set; }
     }

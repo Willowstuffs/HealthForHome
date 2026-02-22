@@ -387,6 +387,37 @@ Future<void> updateProfile({
     print('Error updating profile: $e');
   }
 }
+// POST: wyślij kod ponownie
+Future<void> sendVerificationCode(String email) async {
+  try {
+    await _dio.post(
+      '/api/auth/send-verification-code',
+      data: {
+        "email": email,
+      },
+    );
+  } on DioException catch (e) {
+    throw _handleDioError(e);
+  }
+}
+
+// POST: weryfikacja kodu
+Future<void> verifyCode({
+  required String email,
+  required String code,
+}) async {
+  try {
+    await _dio.post(
+      '/api/auth/verify-code',
+      data: {
+        "email": email,
+        "code": code,
+      },
+    );
+  } on DioException catch (e) {
+    throw _handleDioError(e);
+  }
+}
   // ERROR HANDLING
 
   Exception _handleDioError(DioException e) {

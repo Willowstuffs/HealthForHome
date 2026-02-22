@@ -61,3 +61,27 @@ Dodano nowe metody do SpecialistController.
 COMMIT 4: 14.01.2026
 (I)SpecialistService(Controller): Dodano sygnature i logike metody od zatwierdzania statusu wizyty. Dodano do kontrolera.
 Dodano E-mail i nr telefonu do SpecialistDto
+<<<<<<< HEAD
+=======
+
+Commit 5: 20.02.2026
+Poprawiono elementy związane z geolokalizacją
+
+Zmodyfikowano IAuthService.cs i AuthService.cs dodając logikę generowania, sprawdzania i wygasania 6-cyfrowego kodu OTP, oraz obsługę maili poprzez API SMTP GMaila pod adresem h4h.noreply@gmail.com
+
+W kontrolerze Auth dodano endpointy odnośnie wysyłania i sprawdzania kodów OTP
+
+Zmieniono domyślny status IsActive na false przy rejestracji (!!!)
+
+Zarejestrowano EmailService w Program.cs
+
+Utworzono stosowne Data Transfer Object do emaili: VerifyCodeDto i SendVerificationCodeDto
+
+W AppSettings dodano pole z informacjami o e-mailu
+
+Auth004 do 006 zaklepane do weryfikacji
+
+
+
+
+>>>>>>> origin/Wiktor

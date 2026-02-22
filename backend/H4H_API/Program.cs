@@ -72,6 +72,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Add logging
 builder.Services.AddLogging();
 
+
 // JWT Authentication 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -95,8 +96,10 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<ISpecialistService, SpecialistService>();
 builder.Services.AddScoped<IGeocoder, Geocoder>();
-builder.Services.AddHttpClient();
 builder.Services.AddSingleton<FirebaseNotificationService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddHttpClient();
+
 
 
 // CORS dla frontendu jeœli Flutter debuguje przez przegl¹darkê
@@ -107,6 +110,7 @@ builder.Services.AddCors(options =>
             .AllowAnyOrigin()  // Ka¿de Ÿród³o
             .AllowAnyMethod()
             .AllowAnyHeader());
+
 });
 
 // Dependency Injection dla Repository
@@ -134,6 +138,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+
 // Middleware 
 app.UseMiddleware<ErrorHandlingMiddleware>();
 
@@ -141,10 +146,12 @@ app.UseHttpsRedirection();
 app.UseCors("AllowFlutter");
 app.UseStaticFiles();
 app.UseAuthentication();
+
 app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
 
 
 
@@ -177,5 +184,4 @@ public class SecurityRequirementsOperationFilter : IOperationFilter
             };
         }
     }
-
 }

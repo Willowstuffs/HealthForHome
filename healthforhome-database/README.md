@@ -36,6 +36,7 @@ Kompletny (prawie) schemat bazy danych PostgreSQL dla platformy HealthForHome.
 * <code>appointments_specialists</code> - relacja wiele-do-wielu między wizytami a specjalistami
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 * <code>device_tokens</code> - przechowywanie tokenów FCM (Firebase Cloud Messaging) dla systemu powiadomień
 * <code>service_requests</code> - przechowywanie ofert zgłoszeń wysyłanych przez klientów
@@ -43,11 +44,14 @@ Kompletny (prawie) schemat bazy danych PostgreSQL dla platformy HealthForHome.
 =======
 * <code>device_tokens</code> - przechowywanie tokenów FCM (Firebase Cloud Messaging) dla systemu powiadomień
 >>>>>>> origin/justyna
+=======
+>>>>>>> origin/Wiktor
 * <code>__EFMigrationsHistory</code> - tabelka z migracjami
 
 ## Diagram relacji
 * diagrams/schemat.png
 * diagrams/schemat.svg
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
@@ -56,6 +60,8 @@ na diagramach brakuje jeszcze najnowszej tabelki (device_tokens i service_reques
 =======
 na diagramach brakuje jeszcze najnowszej tabelki (device_tokens)
 >>>>>>> origin/justyna
+=======
+>>>>>>> origin/Wiktor
 
 ## Jak uruchomić bazę danych
 ### Wymagania:

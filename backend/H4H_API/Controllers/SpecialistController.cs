@@ -156,6 +156,7 @@ namespace H4H_API.Controllers
             await _specialistService.ConfirmAppointmentAsync(userId, id);
             return Ok(ApiResponse<object?>.SuccessResponse(null, "Wizyta została potwierdzona."));
         }
+
         /// <summary>Pobiera listę nadchodzących wizyt dla zalogowanego specjalisty</summary>
         [HttpGet("inquiries/comming")]
         [ProducesResponseType(typeof(ApiResponse<List<InquiryListItemDto>>), 200)]
@@ -197,5 +198,6 @@ namespace H4H_API.Controllers
             return Ok(ApiResponse<object?>
                 .SuccessResponse(null, "Profil został zaktualizowany."));
         }
+
     }
 }

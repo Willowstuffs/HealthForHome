@@ -15,7 +15,12 @@ namespace H4H_API.Services.Interfaces
         Task<bool> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword);
         Task<bool> RequestPasswordResetAsync(string email);
         Task<bool> ResetPasswordAsync(string token, string newPassword);
+
         Task UpdateDeviceTokenAsync(Guid userId, string token);
+
+
+        Task SendVerificationCodeAsync(string email);
+        Task VerifyCodeAsync(VerifyCodeDto request);
 
     }
 }

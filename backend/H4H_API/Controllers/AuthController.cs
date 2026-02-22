@@ -1,6 +1,6 @@
 ﻿using H4H_API.DTOs.Auth;
-using H4H_API.DTOs.Common;
 using H4H_API.DTOs.Client;
+using H4H_API.DTOs.Common;
 using H4H_API.DTOs.Specialist;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -34,7 +34,6 @@ namespace H4H_API.Controllers
             _authService = authService;
         }
 
-
     ////Rejestracja specjalisty - endpoint publiczny
     [HttpPost("register/specialist")]
     public async Task<ActionResult<ApiResponse<RegisterResponse>>> RegisterSpecialist([FromBody] SpecialistRegisterDto request)
@@ -42,7 +41,6 @@ namespace H4H_API.Controllers
         var result = await _authService.RegisterSpecialistAsync(request);
         return Ok(ApiResponse<RegisterResponse>.SuccessResponse(result, "Zarejestrowano pomyślnie. Oczekiwanie na weryfikacje."));
     }
-
 
 
         /// <summary>
@@ -66,6 +64,7 @@ namespace H4H_API.Controllers
             {
                 return BadRequest(ApiResponse<RegisterResponse>.ErrorResponse(ex.Message));
             }
+
         }
 
         /// <summary>
@@ -135,7 +134,6 @@ namespace H4H_API.Controllers
             await _authService.LogoutAsync(token);
             return Ok(ApiResponse.SuccessResponse("Wylogowano pomyślnie"));
         }
-
         /// <summary>
         /// Aktualizuje token urządzenia dla zalogowanego użytkownika, umożliwiając otrzymywanie powiadomień push
         /// </summary>
@@ -156,5 +154,25 @@ namespace H4H_API.Controllers
                 return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
             }
         }
+        /// <summary>
+        /// Wysyła 6-cyfrowy kod weryfikacyjny na podany adres e-mail (jeśli konto jest nieaktywne).
+        /// </summary>
+        [HttpPost("send-verification-code")]
+        public async Task<ActionResult<ApiResponse>> SendVerificationCode([FromBody] SendVerificationCodeDto request)
+        {
+            await _authService.SendVerificationCodeAsync(request.Email);
+            return Ok(ApiResponse.SuccessResponse("Kod weryfikacyjny został wysłany. Sprawdź swoją skrzynkę (również folder SPAM)."));
+        }
+
+        /// <summary>
+        /// Weryfikuje 6-cyfrowy kod i aktywuje konto użytkownika.
+        /// </summary>
+        [HttpPost("verify-code")]
+        public async Task<ActionResult<ApiResponse>> VerifyCode([FromBody] VerifyCodeDto request)
+        {
+            await _authService.VerifyCodeAsync(request);
+            return Ok(ApiResponse.SuccessResponse("Konto zostało pomyślnie zweryfikowane i aktywowane. Możesz się teraz zalogować."));
+        }
+
     }
 }

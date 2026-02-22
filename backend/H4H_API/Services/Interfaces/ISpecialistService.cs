@@ -71,9 +71,5 @@ namespace H4H_API.Services.Interfaces
         /// <returns></returns>
         Task UpdateProfileAsync(Guid userId, UpdateSpecialistProfileDto dto);
 
-
-
-
-
     }
 }

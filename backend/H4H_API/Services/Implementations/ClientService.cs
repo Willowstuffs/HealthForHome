@@ -52,7 +52,6 @@ namespace H4H_API.Services.Implementations
         /// <returns>A task that represents the asynchronous operation. The task result contains a <see cref="ClientProfileDto"/>
         /// representing the client's profile.</returns>
         /// <exception cref="AppException">Thrown when no client profile is found for the specified <paramref name="userId"/>.</exception>
-
         public async Task<ClientProfileDto> GetProfileAsync(Guid userId)
         {
             var client = await _context.clients
@@ -240,6 +239,24 @@ namespace H4H_API.Services.Implementations
                 return null;
 
             return (client.AddressPoint.Y, client.AddressPoint.X); // Y = latitude, X = longitude
+        }
+
+        /// <summary>
+        /// Sprawdza czy klient jest w zasięgu specjalisty
+        /// </summary>
+        public async Task<bool> IsClientWithinSpecialistRangeAsync(Guid clientUserId, Guid specialistId)
+        {
+            try
+            {
+                return await _geocoder.IsWithinServiceAreaAsync(
+                    await GetClientIdFromUserId(clientUserId),
+                    specialistId
+                );
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         /// <summary>

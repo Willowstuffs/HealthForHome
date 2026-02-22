@@ -176,7 +176,6 @@ namespace H4H.Data.Migrations
                         .HasColumnName("service_type_id");
 
                     b.Property<Guid?>("SpecialistId")
-
                         .HasColumnType("uuid")
                         .HasColumnName("specialist_id");
 

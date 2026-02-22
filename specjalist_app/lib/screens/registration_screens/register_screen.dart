@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:specjalist_app/screens/registration_screens/login_screen.dart';
+import '../registration_screens/verify_code_scren.dart';
 import '../../theme/app_theme.dart';
 
 import '../../services/api_service.dart';
@@ -49,10 +49,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         context,
       ).showSnackBar(const SnackBar(content: Text('Konto zostało utworzone')));
 
-      Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => LoginScreen()),
-            );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => VerifyCodeScreen(
+            email: emailController.text.trim(),
+          ),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
 

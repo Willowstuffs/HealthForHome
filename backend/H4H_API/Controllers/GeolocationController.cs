@@ -8,6 +8,7 @@ using H4H.Data;
 using Microsoft.EntityFrameworkCore;
 using H4H_API.Exceptions;
 
+
 namespace H4H_API.Controllers
 {
     [ApiController]
@@ -82,28 +83,33 @@ namespace H4H_API.Controllers
         }
 
         /// <summary>
-        /// Oblicza odległość między konkretnym ogłoszeniem a obszarem pracy specjalisty
+        /// Oblicza odległość między adresem klienta a specjalistą
         /// </summary>
         [HttpGet("distance/{specialistId}")]
-        [AllowAnonymous]
-        public async Task<ActionResult<ApiResponse<DistanceInfoDto>>> CalculateDistanceToSpecialist(
-            Guid specialistId,
-            [FromQuery] Guid serviceRequestId) 
+        [Authorize(Roles = "client")]
+        public async Task<ActionResult<ApiResponse<DistanceInfoDto>>> CalculateDistanceToSpecialist(Guid specialistId)
         {
             try
             {
-                // Sprawdź, czy klient jest w zasięgu specjalisty
-                var result = await _clientService.GetDistanceToServiceRequestAsync(specialistId, serviceRequestId);
+                var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value!);
 
-                return Ok(ApiResponse<DistanceInfoDto>.SuccessResponse(result, "Dystans obliczony pomyślnie"));
-            }
-            catch (AppException ex)
-            {
-                return BadRequest(ApiResponse<DistanceInfoDto>.ErrorResponse(ex.Message, ex.ErrorCode));
+                var isWithinRange = await _clientService.IsClientWithinSpecialistRangeAsync(userId, specialistId);
+
+                // Przykładowe dane - później zastąpimy rzeczywistymi obliczeniami
+                return Ok(ApiResponse<DistanceInfoDto>.SuccessResponse(new DistanceInfoDto
+                {
+                    IsWithinRange = isWithinRange,
+                    DistanceKm = isWithinRange ? 5.2 : 25.7,
+                    DistanceMiles = isWithinRange ? 3.2 : 16.0,
+                    EstimatedTravelTime = isWithinRange ? "15 minut" : "45 minut"
+                }));
             }
             catch (Exception ex)
             {
-                return BadRequest(ApiResponse<DistanceInfoDto>.ErrorResponse(ex.Message, ErrorCodes.DistanceCalculationFailed));
+                return BadRequest(ApiResponse<DistanceInfoDto>.ErrorResponse(
+                    ex.Message,
+                    ErrorCodes.DistanceCalculationFailed
+                ));
             }
         }
 
