@@ -112,7 +112,7 @@ class _EditServicesScreenState extends State<EditServicesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.onBackground,
+      backgroundColor: AppColors.background,
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -128,7 +128,7 @@ class _EditServicesScreenState extends State<EditServicesScreen> {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            AppColors.background,
+                            AppColors.secondary,
                             AppColors.onBackground,
                           ],
                         ),

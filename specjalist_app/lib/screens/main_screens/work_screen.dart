@@ -53,7 +53,7 @@ class _WorkScreenState extends State<WorkScreen> {
 @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.onBackground,
+      backgroundColor: AppColors.background,
       body: Center(
         child: isLoading
             ? const CircularProgressIndicator()
@@ -70,7 +70,7 @@ class _WorkScreenState extends State<WorkScreen> {
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
                               colors: [
-                                AppColors.background,
+                                AppColors.secondary,
                                 AppColors.onBackground,
                               ],
                             ),
@@ -87,7 +87,7 @@ class _WorkScreenState extends State<WorkScreen> {
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              AppColors.background,
+                              AppColors.secondary,
                               AppColors.onBackground,
                             ],
                           ),

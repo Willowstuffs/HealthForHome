@@ -1,15 +1,26 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static const Color primary = Color(0xFF0C403B); //ciemny background
-  static const Color background = Color(0xFFF9F5EE); //grdient
+  static const Color primary = Color(0xFF2E4438); //ciemny background
+  static const Color background = Color(0xFFEECDC4); //grdient
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color onPrimary = Color(0xFFF6EEE7); //pola tektowe
-  static const Color onBackground = Color(0xFF1EA69A); //gradient
-  static const Color onSurface = Color(0xFF043B36); //tekst, przyciski
-  static const Color secondary = Color(0xFF8AA39B);
-  static const Color outline = Color(0xFFD1D5DB);
+  static const Color onPrimary = Color(0xFFDFC2BC); //pola tektowe
+  static const Color onBackground = Color(0xFF778F81); //gradient
+  static const Color onSurface = Color(0xFF2E4438); //tekst, przyciski
+  static const Color secondary = Color(0xFFA3B7AB);
+  static const Color outline = Color(0xFF778F81);
 }
+//0xFF2E4438
+
+//0xFF435B4D
+
+//0xFF778F81
+
+//0xFFA3B7AB
+
+//0xFFDFC2BC
+
+//0xFFEECDC4
 class AppTheme {
   static final lightTheme = ThemeData(
     primaryColor: AppColors.primary,

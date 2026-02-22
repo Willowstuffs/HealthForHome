@@ -29,7 +29,7 @@ Future<void> _fetchData() async {
 @override
 Widget build(BuildContext context) {
   return Container(
-    color: AppColors.onBackground,
+    color: AppColors.background,
     child: Center(
       child: isLoading
           ? const CircularProgressIndicator()
@@ -47,7 +47,7 @@ Widget build(BuildContext context) {
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
                               colors: [
-                                AppColors.background,
+                                AppColors.secondary,
                                 AppColors.onBackground,
                               ],
                             ),

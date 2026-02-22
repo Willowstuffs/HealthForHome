@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
-import 'login_screen.dart';
+import '../registration_screens/login_screen.dart';
 
 class VerifyCodeScreen extends StatefulWidget {
   final String email;
@@ -14,15 +15,17 @@ class VerifyCodeScreen extends StatefulWidget {
 
 class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
   final TextEditingController codeController = TextEditingController();
+
   bool isLoading = false;
   bool canResend = false;
   int secondsLeft = 60;
   Timer? timer;
 
   @override
-  void initState() {
-    super.initState();
-    _startTimer();
+    void initState() {
+      super.initState();
+      _sendInitialCode(); 
+      _startTimer();
   }
 
   void _startTimer() {
@@ -31,18 +34,33 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
 
     timer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (secondsLeft == 0) {
-        setState(() {
-          canResend = true;
-        });
+        setState(() => canResend = true);
         t.cancel();
       } else {
-        setState(() {
-          secondsLeft--;
-        });
+        setState(() => secondsLeft--);
       }
     });
   }
+  Future<void> _sendInitialCode() async {
+  try {
+    final api = ApiService();
+    await api.sendVerificationCode(widget.email);
 
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Kod weryfikacyjny został wysłany")),
+    );
+  } catch (e) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(
+        e.toString().replaceAll('Exception: ', ''),
+      )),
+    );
+  }
+}
   Future<void> _verify() async {
     if (codeController.text.length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -107,65 +125,140 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async => false, // blokada cofania
+    return PopScope(
+      canPop: false,
       child: Scaffold(
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          title: const Text("Weryfikacja konta"),
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                "Wpisz 6-cyfrowy kod wysłany na email:",
-                textAlign: TextAlign.center,
+        body: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppColors.onBackground,
+                AppColors.primary,
+              ],
+            ),
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                children: [
+                  const SizedBox(height: 40),
+                  _buildLogoSection(),
+                  const SizedBox(height: 16),
+
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          "Wpisz 6-cyfrowy kod wysłany na email:",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          widget.email,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        TextField(
+                          controller: codeController,
+                          keyboardType: TextInputType.number,
+                          maxLength: 6,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            letterSpacing: 8,
+                          ),
+                          decoration: InputDecoration(
+                            counterText: "",
+                            filled: true,
+                            fillColor: AppColors.onPrimary,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        SizedBox(
+                          width: 250,
+                          height: 53,
+                          child: ElevatedButton(
+                            onPressed: isLoading ? null : _verify,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.onSurface,
+                              foregroundColor: AppColors.surface,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: isLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text(
+                                    "Zweryfikuj",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        TextButton(
+                          onPressed: canResend ? _resend : null,
+                          child: Text(
+                            canResend
+                                ? "Wyślij kod ponownie"
+                                : "Wyślij ponownie za $secondsLeft s",
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+                ],
               ),
-              const SizedBox(height: 12),
-              Text(
-                widget.email,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 24),
-              TextField(
-                controller: codeController,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 24,
-                  letterSpacing: 8,
-                ),
-                decoration: const InputDecoration(
-                  counterText: "",
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: isLoading ? null : _verify,
-                  child: isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text("Zweryfikuj"),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: canResend ? _resend : null,
-                child: Text(
-                  canResend
-                      ? "Wyślij kod ponownie"
-                      : "Wyślij ponownie za $secondsLeft s",
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildLogoSection() {
+    return Column(
+      children: [
+        Image.asset(
+          'lib/images/aaa.png',
+          width: 150,
+          height: 150,
+        ),
+        const SizedBox(height: 16),
+      ],
     );
   }
 }
