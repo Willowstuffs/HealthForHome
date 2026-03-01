@@ -91,14 +91,14 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Utwórz ogłoszenie"),
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.surface,
         elevation: 0,
         actions: [
           if (!ApiService().isLoggedIn)
             IconButton(
               icon: const Icon(
                 Icons.person_outline,
-                color: AppColors.onBackground,
+                color: AppColors.onSurface,
               ),
               onPressed: () {
                 Navigator.push(

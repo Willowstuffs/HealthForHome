@@ -1,57 +1,61 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static const Color livingColor10 = Color(0xFFA3B18A);
-  static const Color livingColor20 = Color(0xFFD5C0A8);
-  static const Color livingColor30 = Color(0xFFF2D7D5);
-  static const Color livingColor40 = Color(0xFFF2E9E4);
-  
+  static const Color livingColor10 = Color(0xFF2E4438);
+  static const Color livingColor20 = Color(0xFF435B4D);
+  static const Color livingColor30 = Color(0xFF778F81);
+  static const Color livingColor40 = Color(0xFFA3B7AB);
+  static const Color livingColor50 = Color(0xFFDFC2BC);
+  static const Color livingColor60 = Color(0xFFEECDC4);
+
   static const Color primary = livingColor10;
   static const Color accent = Color.fromARGB(255, 10, 139, 38);
-  static const Color background = livingColor40;
-  static const Color surface = livingColor30;
-  static const Color surfaceVariant = Color(0xFFFFFFFF);
-  static const Color secondary = livingColor20;
-  
+  static const Color surface = livingColor60;
+  static const Color surfaceContainerHighest = livingColor50;
+  static const Color surfaceContainer = Color(0xFFFFFFFF);
+  static const Color secondary = livingColor30;
+
   static const Color onPrimary = Color(0xFFFFFFFF);
-  static const Color onBackground = Color(0xFF2D2D2D);
   static const Color onSurface = Color(0xFF2D2D2D);
   static const Color textSecondary = Color(0xFF6B7280);
-  
+
   static const Color outline = Color(0xFFE5E7EB);
   static const Color outlineVariant = Color(0xFFF3F4F6);
-  
+
   static const Color error = Color(0xFFEF4444);
 }
 
 class AppTheme {
   static final lightTheme = ThemeData(
     primaryColor: AppColors.primary,
-    scaffoldBackgroundColor: AppColors.background,
+    scaffoldBackgroundColor: AppColors.surface,
     appBarTheme: AppBarTheme(
       backgroundColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
-      iconTheme: IconThemeData(color: AppColors.onBackground),
+      iconTheme: IconThemeData(color: AppColors.onSurface),
       titleTextStyle: TextStyle(
-        color: AppColors.onBackground,
+        color: AppColors.onSurface,
         fontSize: 18,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.2,
       ),
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
-      backgroundColor: AppColors.surfaceVariant,
+      backgroundColor: AppColors.surfaceContainer,
       selectedItemColor: AppColors.primary,
       unselectedItemColor: AppColors.textSecondary,
       elevation: 0,
       type: BottomNavigationBarType.fixed,
       selectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-      unselectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+      unselectedLabelStyle: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+      ),
     ),
 
     cardTheme: CardThemeData(
-      color: AppColors.surface,
+      color: AppColors.surfaceContainerHighest,
       elevation: 0,
       shadowColor: Colors.black.withValues(alpha: 0.05),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -60,7 +64,7 @@ class AppTheme {
 
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: AppColors.surfaceVariant,
+      fillColor: AppColors.surfaceContainer,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide.none,
@@ -85,7 +89,7 @@ class AppTheme {
       labelStyle: TextStyle(color: AppColors.textSecondary, fontSize: 14),
       contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 18),
     ),
-    
+
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primary,
@@ -101,17 +105,20 @@ class AppTheme {
         ),
       ),
     ),
-    
+
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: AppColors.primary,
-        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.7), width: 1.5),
+        side: BorderSide(
+          color: AppColors.primary.withValues(alpha: 0.7),
+          width: 1.5,
+        ),
         padding: EdgeInsets.symmetric(horizontal: 32, vertical: 18),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
       ),
     ),
-    
+
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: AppColors.primary,
@@ -119,38 +126,38 @@ class AppTheme {
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
     ),
-    
+
     textTheme: TextTheme(
       headlineLarge: TextStyle(
-        color: AppColors.onBackground,
+        color: AppColors.onSurface,
         fontSize: 28,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.5,
       ),
       headlineMedium: TextStyle(
-        color: AppColors.onBackground,
+        color: AppColors.onSurface,
         fontSize: 22,
         fontWeight: FontWeight.w600,
         letterSpacing: -0.2,
       ),
       titleLarge: TextStyle(
-        color: AppColors.onBackground,
+        color: AppColors.onSurface,
         fontSize: 18,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.1,
       ),
       titleMedium: TextStyle(
-        color: AppColors.onBackground,
+        color: AppColors.onSurface,
         fontSize: 16,
         fontWeight: FontWeight.w600,
       ),
       bodyLarge: TextStyle(
-        color: AppColors.onBackground, 
+        color: AppColors.onSurface,
         fontSize: 16,
         height: 1.5,
       ),
       bodyMedium: TextStyle(
-        color: AppColors.onSurface, 
+        color: AppColors.onSurface,
         fontSize: 14,
         height: 1.4,
       ),
@@ -172,12 +179,11 @@ class AppTheme {
       surface: AppColors.surface,
       onSurface: AppColors.onSurface,
       secondary: AppColors.secondary,
-      onSecondary: AppColors.onBackground,
-      background: AppColors.background,
-      onBackground: AppColors.onBackground,
+      onSecondary: AppColors.onSurface,
+      surfaceContainerHighest: AppColors.surfaceContainerHighest,
+      surfaceContainer: AppColors.surfaceContainer,
       outline: AppColors.outline,
       outlineVariant: AppColors.outlineVariant,
-      surfaceVariant: AppColors.surfaceVariant,
     ),
 
     dividerTheme: DividerThemeData(

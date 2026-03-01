@@ -12,9 +12,9 @@ class LoginRegisterScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.surface,
         elevation: 0,
-        iconTheme: IconThemeData(color: AppColors.onBackground),
+        iconTheme: IconThemeData(color: AppColors.onSurface),
       ),
       body: SafeArea(
         child: Padding(

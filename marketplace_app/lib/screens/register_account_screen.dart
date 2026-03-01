@@ -84,7 +84,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.surface,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
@@ -95,7 +95,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: [
                 Container(
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
+                    color: AppColors.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: IconButton(
@@ -112,7 +112,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Text(
                       'Utwórz konto',
                       style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                        color: AppColors.onBackground,
+                        color: AppColors.onSurface,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -303,7 +303,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           style: TextStyle(fontSize: 16, color: AppColors.onSurface),
           decoration: InputDecoration(
             filled: true,
-            fillColor: AppColors.surfaceVariant,
+            fillColor: AppColors.surfaceContainer,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide.none,

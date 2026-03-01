@@ -51,7 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.surface,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
@@ -62,7 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 Container(
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
+                    color: AppColors.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: IconButton(
@@ -79,7 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Text(
                       'Witaj ponownie!',
                       style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                        color: AppColors.onBackground,
+                        color: AppColors.onSurface,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -206,7 +206,7 @@ class _LoginScreenState extends State<LoginScreen> {
           style: TextStyle(fontSize: 16, color: AppColors.onSurface),
           decoration: InputDecoration(
             filled: true,
-            fillColor: AppColors.surfaceVariant,
+            fillColor: AppColors.surfaceContainer,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide.none,

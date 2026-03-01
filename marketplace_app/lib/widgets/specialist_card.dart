@@ -17,7 +17,7 @@ class SpecialistCard extends StatelessWidget {
     return Container(
       margin: EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -84,7 +84,7 @@ class SpecialistCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.primary,
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.surface, width: 3),
+                border: Border.all(color: AppColors.surfaceContainerHighest, width: 3),
               ),
               child: const Icon(Icons.check, size: 12, color: Colors.white),
             ),
@@ -115,7 +115,7 @@ class SpecialistCard extends StatelessWidget {
             Container(
               padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppColors.background,
+                color: AppColors.surface,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(Icons.favorite_border, size: 18, color: AppColors.textSecondary),

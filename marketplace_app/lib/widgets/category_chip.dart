@@ -18,7 +18,7 @@ class CategoryChip extends StatelessWidget {
     return Container(
       margin: EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(

@@ -45,7 +45,7 @@ class CustomSearchBar extends StatelessWidget {
             borderSide: BorderSide(color: AppColors.primary, width: 2),
           ),
           filled: true,
-          fillColor: AppColors.surfaceVariant,
+          fillColor: AppColors.surfaceContainer,
           contentPadding: EdgeInsets.symmetric(vertical: 18, horizontal: 20),
           hintStyle: TextStyle(
             color: AppColors.textSecondary, 

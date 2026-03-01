@@ -72,7 +72,7 @@ class HomeScreenState extends State<HomeScreen> {
 
   Widget _buildGuestScaffold() {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.surface,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
@@ -89,7 +89,7 @@ class HomeScreenState extends State<HomeScreen> {
                         Text(
                           'HealthForHome',
                           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            color: AppColors.onBackground,
+                            color: AppColors.onSurface,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -104,7 +104,7 @@ class HomeScreenState extends State<HomeScreen> {
                     ),
                     Container(
                       decoration: BoxDecoration(
-                        color: AppColors.surface,
+                        color: AppColors.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
@@ -164,11 +164,11 @@ class HomeScreenState extends State<HomeScreen> {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.surface,
       body: SafeArea(child: bodyContent),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: AppColors.surfaceVariant,
+          color: AppColors.surfaceContainer,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.02),
@@ -249,8 +249,8 @@ class HomeScreenState extends State<HomeScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppColors.surface,
-            AppColors.surface.withValues(alpha: 0.7),
+            AppColors.surfaceContainerHighest,
+            AppColors.surfaceContainerHighest.withValues(alpha: 0.7),
           ],
         ),
         borderRadius: BorderRadius.circular(24),
@@ -368,7 +368,7 @@ class HomeScreenState extends State<HomeScreen> {
                     'Moje ogłoszenia',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: AppColors.onBackground,
+                      color: AppColors.onSurface,
                     ),
                   ),
                 ],
@@ -418,7 +418,7 @@ class HomeScreenState extends State<HomeScreen> {
                   'Twoje ogłoszenia',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: AppColors.onBackground,
+                    color: AppColors.onSurface,
                   ),
                 ),
               ],
@@ -428,7 +428,7 @@ class HomeScreenState extends State<HomeScreen> {
               Container(
                 padding: EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: AppColors.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: AppColors.outlineVariant),
                 ),
@@ -453,7 +453,7 @@ class HomeScreenState extends State<HomeScreen> {
                 return Container(
                   padding: EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
+                    color: AppColors.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
@@ -543,7 +543,7 @@ class HomeScreenState extends State<HomeScreen> {
                     'Moje wizyty',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: AppColors.onBackground,
+                      color: AppColors.onSurface,
                     ),
                   ),
                 ],
@@ -593,7 +593,7 @@ class HomeScreenState extends State<HomeScreen> {
                   'Nadchodzące wizyty',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: AppColors.onBackground,
+                    color: AppColors.onSurface,
                   ),
                 ),
               ],
@@ -603,7 +603,7 @@ class HomeScreenState extends State<HomeScreen> {
               Container(
                 padding: EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: AppColors.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: AppColors.outlineVariant),
                 ),
@@ -643,7 +643,7 @@ class HomeScreenState extends State<HomeScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
@@ -679,7 +679,7 @@ class HomeScreenState extends State<HomeScreen> {
             style: Theme.of(context).textTheme.headlineLarge?.copyWith(
               fontSize: 28,
               fontWeight: FontWeight.w800,
-              color: AppColors.onBackground,
+              color: AppColors.onSurface,
               letterSpacing: -0.5,
             ),
             textAlign: TextAlign.center,
@@ -721,7 +721,7 @@ class HomeScreenState extends State<HomeScreen> {
               'Wybierz kategorię',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: AppColors.onBackground,
+                color: AppColors.onSurface,
               ),
             ),
           ],
