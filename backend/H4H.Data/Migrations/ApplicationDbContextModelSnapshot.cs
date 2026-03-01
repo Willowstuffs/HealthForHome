@@ -142,7 +142,7 @@ namespace H4H.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("client_address");
 
-                    b.Property<Guid?>("ClientId")
+                    b.Property<Guid>("ClientId")
                         .HasColumnType("uuid")
                         .HasColumnName("client_id");
 

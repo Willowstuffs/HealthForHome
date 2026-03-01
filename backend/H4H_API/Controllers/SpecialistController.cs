@@ -147,6 +147,14 @@ namespace H4H_API.Controllers
             return Ok(ApiResponse<object?>.SuccessResponse(null, "Zasięg został zaktualizowany."));
         }
 
+        /// <summary>Potwierdza oczekującą wizytę przez specjalistę.</summary>
+        [HttpPatch("appointments/{id}/confirm")]
+        public async Task<ActionResult<ApiResponse<object?>>> ConfirmAppointment(Guid id)
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            await _specialistService.ConfirmAppointmentAsync(userId, id);
+            return Ok(ApiResponse<object?>.SuccessResponse(null, "Wizyta została potwierdzona."));
+        }
 
 
         /// <summary>
@@ -167,5 +175,6 @@ namespace H4H_API.Controllers
 
             return Ok(ApiResponse<List<ServiceRequestDto>>.SuccessResponse(requests, "Pobrano dostępne zgłoszenia w okolicy."));
         }
+
     }
 }

@@ -17,6 +17,7 @@ namespace H4H_API.Services.Interfaces
         Task<bool> GeocodeClientAddressAsync(Guid userId);
         Task<(double Latitude, double Longitude)?> GetClientCoordinatesAsync(Guid userId);
         Task<DistanceInfoDto> GetDistanceToServiceRequestAsync(Guid specialistId, Guid serviceRequestId);
+        Task<bool> IsClientWithinSpecialistRangeAsync(Guid clientUserId, Guid specialistId);
 
         // Zarządzanie wizytami
         Task<PagedResponse<AppointmentDto>> GetAppointmentsAsync(Guid userId, PagedRequest request, string? status = null);

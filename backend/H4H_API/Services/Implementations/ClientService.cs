@@ -237,6 +237,24 @@ namespace H4H_API.Services.Implementations
         }
 
         /// <summary>
+        /// Sprawdza czy klient jest w zasięgu specjalisty
+        /// </summary>
+        public async Task<bool> IsClientWithinSpecialistRangeAsync(Guid clientUserId, Guid specialistId)
+        {
+            try
+            {
+                return await _geocoder.IsWithinServiceAreaAsync(
+                    await GetClientIdFromUserId(clientUserId),
+                    specialistId
+                );
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Attempts to change the password for the specified user using the provided current and new passwords.
         /// </summary>
         /// <param name="userId">The unique identifier of the user whose password is to be changed.</param>

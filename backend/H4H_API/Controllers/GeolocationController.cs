@@ -85,7 +85,7 @@ namespace H4H_API.Controllers
         /// Oblicza odległość między konkretnym ogłoszeniem a obszarem pracy specjalisty
         /// </summary>
         [HttpGet("distance/{specialistId}")]
-        [AllowAnonymous]
+        [Authorize(Roles = "client")] // nie zezwalamy juz na anonimowosc - gosci
         public async Task<ActionResult<ApiResponse<DistanceInfoDto>>> CalculateDistanceToSpecialist(
             Guid specialistId,
             [FromQuery] Guid serviceRequestId) 

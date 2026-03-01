@@ -1,6 +1,6 @@
 ﻿using H4H_API.DTOs.Auth;
-using H4H_API.DTOs.Common;
 using H4H_API.DTOs.Client;
+using H4H_API.DTOs.Common;
 using H4H_API.DTOs.Specialist;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -33,6 +33,15 @@ namespace H4H_API.Controllers
         {
             _authService = authService;
         }
+
+    ////Rejestracja specjalisty - endpoint publiczny
+    [HttpPost("register/specialist")]
+    public async Task<ActionResult<ApiResponse<RegisterResponse>>> RegisterSpecialist([FromBody] SpecialistRegisterDto request)
+    {
+        var result = await _authService.RegisterSpecialistAsync(request);
+        return Ok(ApiResponse<RegisterResponse>.SuccessResponse(result, "Zarejestrowano pomyślnie. Oczekiwanie na weryfikacje."));
+    }
+
 
         /// <summary>
         /// Registers a new client account using the provided registration details.
@@ -145,5 +154,49 @@ namespace H4H_API.Controllers
                 return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
             }
         }
+
+        /// <summary>
+        /// Exchanges a valid refresh token for a new access token and refresh token pair.
+        /// </summary>
+        /// <remarks>This endpoint should be called when the current access token has expired and a valid refresh
+        /// token is available. The client must provide a valid, unexpired refresh token in the request body. If the refresh
+        /// token is invalid or expired, the response will indicate an unauthorized error.</remarks>
+        /// <param name="request">The refresh token request containing the current refresh token and related information. Cannot be null.</param>
+        /// <returns>An <see cref="ActionResult{T}"/> containing an <see cref="ApiResponse{T}"/> with the new access and refresh
+        /// tokens if the request is valid; otherwise, an error response indicating the reason for failure.</returns>
+        [HttpPost("refresh-token")]
+        public async Task<ActionResult<ApiResponse<LoginResponse>>> RefreshToken([FromBody] RefreshTokenRequest request)
+        {
+            try
+            {
+                var result = await _authService.RefreshTokenAsync(request);
+                return Ok(ApiResponse<LoginResponse>.SuccessResponse(result));
+            }
+            catch (UnauthorizedAccessException ex) // Token nieprawidłowy lub wygasły
+            {
+                return Unauthorized(ApiResponse<LoginResponse>.ErrorResponse(ex.Message));
+            }
+        }
+
+        /// <summary>
+        /// Wysyła 6-cyfrowy kod weryfikacyjny na podany adres e-mail (jeśli konto jest nieaktywne).
+        /// </summary>
+        [HttpPost("send-verification-code")]
+        public async Task<ActionResult<ApiResponse>> SendVerificationCode([FromBody] SendVerificationCodeDto request)
+        {
+            await _authService.SendVerificationCodeAsync(request.Email);
+            return Ok(ApiResponse.SuccessResponse("Kod weryfikacyjny został wysłany. Sprawdź swoją skrzynkę (również folder SPAM)."));
+        }
+
+        /// <summary>
+        /// Weryfikuje 6-cyfrowy kod i aktywuje konto użytkownika.
+        /// </summary>
+        [HttpPost("verify-code")]
+        public async Task<ActionResult<ApiResponse>> VerifyCode([FromBody] VerifyCodeDto request)
+        {
+            await _authService.VerifyCodeAsync(request);
+            return Ok(ApiResponse.SuccessResponse("Konto zostało pomyślnie zweryfikowane i aktywowane. Możesz się teraz zalogować."));
+        }
+
     }
 }
