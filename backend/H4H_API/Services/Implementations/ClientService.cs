@@ -517,11 +517,15 @@ namespace H4H_API.Services.Implementations
 
             var geocoded = await _geocoder.GeocodeAddressAsync(cleanAddress);
 
+            // Jeśli użytkownik jest zalogowany, ale nie znaleziono klienta, to jest błąd - nie można stworzyć ogłoszenia bez klienta
+            if (!finalClientId.HasValue)
+                throw new AppException("Musisz być zalogowany, aby stworzyć ogłoszenie", ErrorCodes.ClientNotFound);
+
             // Tworzenie wizyty (ogłoszenia)
             var appointment = new Appointment
             {
                 Id = Guid.NewGuid(),
-                ClientId = finalClientId, // Może być null dla gościa
+                ClientId = finalClientId.Value, // Może być null dla gościa
                 SpecialistId = null, // To jest ogłoszenie otwarte
                 ServiceTypeId = serviceType.Id,
 

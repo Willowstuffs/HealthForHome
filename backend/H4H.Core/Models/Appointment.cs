@@ -57,7 +57,7 @@ namespace H4H.Core.Models
         public Guid? SelectedSpecialistId { get; set; }
 
 
-        public virtual Client Client = null!;
+        public virtual Client Client { get; set; } = null!;
         public virtual Specialist? Specialist { get; set; } 
         public virtual SpecialistService? SpecialistService { get; set; }
         public virtual ServiceType ServiceType { get; set; } = null!;
