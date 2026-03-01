@@ -88,17 +88,17 @@ class HomeScreenState extends State<HomeScreen> {
                       children: [
                         Text(
                           'HealthForHome',
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            color: AppColors.onSurface,
-                            fontWeight: FontWeight.w700,
-                          ),
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(
+                                color: AppColors.onSurface,
+                                fontWeight: FontWeight.w700,
+                              ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'Twoje zdrowie w domu',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: AppColors.textSecondary),
                         ),
                       ],
                     ),
@@ -122,7 +122,9 @@ class HomeScreenState extends State<HomeScreen> {
                         onPressed: () async {
                           await Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => const LoginRegisterScreen()),
+                            MaterialPageRoute(
+                              builder: (_) => const LoginRegisterScreen(),
+                            ),
                           );
                           _checkLoginAndLoadProfile();
                         },
@@ -185,8 +187,14 @@ class HomeScreenState extends State<HomeScreen> {
           showUnselectedLabels: true,
           onTap: _onBottomNavTapped,
           items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Start'),
-            BottomNavigationBarItem(icon: Icon(Icons.search_rounded), label: 'Szukaj'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_rounded),
+              label: 'Start',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.search_rounded),
+              label: 'Szukaj',
+            ),
             BottomNavigationBarItem(
               icon: Icon(Icons.map_outlined),
               label: 'Mapa',
@@ -361,7 +369,11 @@ class HomeScreenState extends State<HomeScreen> {
                       color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(Icons.list_alt_rounded, color: AppColors.primary, size: 20),
+                    child: Icon(
+                      Icons.list_alt_rounded,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Text(
@@ -379,7 +391,9 @@ class HomeScreenState extends State<HomeScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.error.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+                  border: Border.all(
+                    color: AppColors.error.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -398,7 +412,12 @@ class HomeScreenState extends State<HomeScreen> {
           );
         }
 
-        final requests = snapshot.data ?? [];
+        var requests = snapshot.data ?? [];
+        requests = requests.where((r) => r.status == 'open').toList();
+        requests.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        if (requests.length > 3) {
+          requests = requests.sublist(0, 3);
+        }
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -411,7 +430,11 @@ class HomeScreenState extends State<HomeScreen> {
                     color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.list_alt_rounded, color: AppColors.primary, size: 20),
+                  child: Icon(
+                    Icons.list_alt_rounded,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Text(
@@ -434,7 +457,10 @@ class HomeScreenState extends State<HomeScreen> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline_rounded, color: AppColors.textSecondary),
+                    Icon(
+                      Icons.info_outline_rounded,
+                      color: AppColors.textSecondary,
+                    ),
                     const SizedBox(width: 12),
                     Text(
                       'Brak aktywnych ogłoszeń.',
@@ -455,6 +481,10 @@ class HomeScreenState extends State<HomeScreen> {
                   decoration: BoxDecoration(
                     color: AppColors.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      width: 1,
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.03),
@@ -465,6 +495,19 @@ class HomeScreenState extends State<HomeScreen> {
                   ),
                   child: Row(
                     children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Icon(
+                          Icons.assignment_rounded,
+                          color: AppColors.primary,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -473,30 +516,71 @@ class HomeScreenState extends State<HomeScreen> {
                               req.serviceTypeName,
                               style: TextStyle(
                                 fontSize: 16,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w700,
                                 color: AppColors.onSurface,
                               ),
                             ),
                             const SizedBox(height: 6),
-                            Text(
-                              'Status: ${req.status}',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: AppColors.textSecondary,
-                              ),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    req.status == 'open'
+                                        ? 'Otwarte'
+                                        : req.status,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Data: ${req.dateFrom.day}.${req.dateFrom.month} - ${req.dateTo.day}.${req.dateTo.month}',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: AppColors.textSecondary,
-                              ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.date_range_rounded,
+                                  size: 16,
+                                  color: AppColors.textSecondary,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '${req.dateFrom.day.toString().padLeft(2, '0')}.${req.dateFrom.month.toString().padLeft(2, '0')} - ${req.dateTo.day.toString().padLeft(2, '0')}.${req.dateTo.month.toString().padLeft(2, '0')}',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
                       ),
-                      Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.textSecondary),
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
                     ],
                   ),
                 );
@@ -536,7 +620,11 @@ class HomeScreenState extends State<HomeScreen> {
                       color: AppColors.accent.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(Icons.calendar_today_rounded, color: AppColors.accent, size: 20),
+                    child: Icon(
+                      Icons.calendar_today_rounded,
+                      color: AppColors.accent,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Text(
@@ -554,7 +642,9 @@ class HomeScreenState extends State<HomeScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.error.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+                  border: Border.all(
+                    color: AppColors.error.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -573,7 +663,16 @@ class HomeScreenState extends State<HomeScreen> {
           );
         }
 
-        final appointments = snapshot.data ?? [];
+        var appointments = snapshot.data ?? [];
+        appointments = appointments
+            .where((a) => a.appointmentStatus == 'confirmed')
+            .toList();
+        appointments.sort(
+          (a, b) => a.scheduledStart.compareTo(b.scheduledStart),
+        );
+        if (appointments.length > 3) {
+          appointments = appointments.sublist(0, 3);
+        }
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -586,7 +685,11 @@ class HomeScreenState extends State<HomeScreen> {
                     color: AppColors.accent.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.calendar_today_rounded, color: AppColors.accent, size: 20),
+                  child: Icon(
+                    Icons.calendar_today_rounded,
+                    color: AppColors.accent,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Text(
@@ -609,7 +712,10 @@ class HomeScreenState extends State<HomeScreen> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline_rounded, color: AppColors.textSecondary),
+                    Icon(
+                      Icons.info_outline_rounded,
+                      color: AppColors.textSecondary,
+                    ),
                     const SizedBox(width: 12),
                     Text(
                       'Brak nadchodzących wizyt',
@@ -710,11 +816,18 @@ class HomeScreenState extends State<HomeScreen> {
               padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [AppColors.primary.withValues(alpha: 0.1), AppColors.accent.withValues(alpha: 0.05)],
+                  colors: [
+                    AppColors.primary.withValues(alpha: 0.1),
+                    AppColors.accent.withValues(alpha: 0.05),
+                  ],
                 ),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(Icons.medical_services_rounded, color: AppColors.primary, size: 20),
+              child: Icon(
+                Icons.medical_services_rounded,
+                color: AppColors.primary,
+                size: 20,
+              ),
             ),
             const SizedBox(width: 12),
             Text(
@@ -729,9 +842,9 @@ class HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 8),
         Text(
           'Znajdź specjalistę odpowiedniego dla Twoich potrzeb',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: AppColors.textSecondary,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
         ),
         const SizedBox(height: 20),
         ListView.separated(

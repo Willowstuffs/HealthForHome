@@ -165,7 +165,7 @@ class _AccountScreenState extends State<AccountScreen> {
                         : '?',
                     style: TextStyle(
                       fontSize: 40,
-                      color: AppColors.primary,
+                      color: AppColors.textSecondary,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -176,7 +176,7 @@ class _AccountScreenState extends State<AccountScreen> {
                 child: Text(
                   _profile?.email ?? '',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.secondary,
+                    color: AppColors.textSecondary,
                   ),
                 ),
               ),

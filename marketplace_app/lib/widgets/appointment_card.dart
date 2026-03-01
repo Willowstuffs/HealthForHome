@@ -84,7 +84,7 @@ class AppointmentCard extends StatelessWidget {
                         appointment.specialistName ?? 'Specjalista',
                         style: TextStyle(
                           fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                           color: AppColors.onSurface,
                           letterSpacing: 0.1,
                         ),
@@ -97,6 +97,31 @@ class AppointmentCard extends StatelessWidget {
                           color: AppColors.textSecondary,
                           height: 1.2,
                         ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.accent.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              appointment.appointmentStatus == 'confirmed'
+                                  ? 'Potwierdzona'
+                                  : appointment.appointmentStatus,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.accent,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 8),
                       Row(
@@ -111,8 +136,8 @@ class AppointmentCard extends StatelessWidget {
                             '${_formatTime(appointment.scheduledStart)} - ${_formatTime(appointment.scheduledEnd)}',
                             style: TextStyle(
                               fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.primary.withValues(alpha: 0.8),
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary.withValues(alpha: 0.9),
                             ),
                           ),
                         ],
@@ -127,8 +152,8 @@ class AppointmentCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
-                    Icons.arrow_forward_ios_rounded, 
-                    size: 14, 
+                    Icons.arrow_forward_ios_rounded,
+                    size: 14,
                     color: AppColors.textSecondary,
                   ),
                 ),

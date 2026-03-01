@@ -7,17 +7,19 @@ class AppColors {
   static const Color livingColor40 = Color(0xFFA3B7AB);
   static const Color livingColor50 = Color(0xFFDFC2BC);
   static const Color livingColor60 = Color(0xFFEECDC4);
+  static const Color livingColor70 = Color(0xFFF5DFD7);
+  static const Color livingColor80 = Color(0xFFFBF2EE);
 
-  static const Color primary = livingColor10;
+  static const Color primary = livingColor30;
   static const Color accent = Color.fromARGB(255, 10, 139, 38);
-  static const Color surface = livingColor60;
-  static const Color surfaceContainerHighest = livingColor50;
+  static const Color surface = livingColor80;
+  static const Color surfaceContainerHighest = livingColor70;
   static const Color surfaceContainer = Color(0xFFFFFFFF);
-  static const Color secondary = livingColor30;
+  static const Color secondary = livingColor50;
 
   static const Color onPrimary = Color(0xFFFFFFFF);
   static const Color onSurface = Color(0xFF2D2D2D);
-  static const Color textSecondary = Color(0xFF6B7280);
+  static const Color textSecondary = Color.fromARGB(255, 110, 110, 110);
 
   static const Color outline = Color(0xFFE5E7EB);
   static const Color outlineVariant = Color(0xFFF3F4F6);
@@ -43,7 +45,7 @@ class AppTheme {
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: AppColors.surfaceContainer,
-      selectedItemColor: AppColors.primary,
+      selectedItemColor: AppColors.livingColor10,
       unselectedItemColor: AppColors.textSecondary,
       elevation: 0,
       type: BottomNavigationBarType.fixed,
