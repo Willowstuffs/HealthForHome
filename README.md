@@ -91,5 +91,12 @@ Dodano interfejs dla Admina, na razie korzysta z Guid AdminId zamiast tokenu JWT
 
 Stworzono kontroler i wpisano w niego te cztery elementy.
 
+02.03.2026
+Dodano funkcje czyszczącą przedawnione kody i konta do bazy danych i funkcji wysyłającej emaile (co 50 maili, przedawnione, konta niepotwierdzone starsze niz 30 dni)
+
+
+
+
+
 
 
