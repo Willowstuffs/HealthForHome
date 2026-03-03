@@ -222,7 +222,7 @@ class HomeScreenState extends State<HomeScreen> {
               foregroundColor: Colors.white,
               elevation: 0,
               label: const Text(
-                "Nowe zgłoszenie",
+                "Nowe ogłoszenie",
                 style: TextStyle(fontWeight: FontWeight.w600),
               ),
               icon: const Icon(Icons.add_rounded),

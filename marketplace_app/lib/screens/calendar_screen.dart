@@ -73,15 +73,28 @@ class _CalendarScreenState extends State<CalendarScreen> {
         continue;
       }
 
-      final date = DateTime(
+      final start = DateTime(
         appt.scheduledStart.year,
         appt.scheduledStart.month,
         appt.scheduledStart.day,
       );
-      if (_appointmentsMap[date] == null) {
-        _appointmentsMap[date] = [];
+      final end = DateTime(
+        appt.scheduledEnd.year,
+        appt.scheduledEnd.month,
+        appt.scheduledEnd.day,
+      );
+
+      // add appointment for every day between start and end inclusive
+      for (
+        var d = start;
+        d.isBefore(end.add(const Duration(days: 1)));
+        d = d.add(const Duration(days: 1))
+      ) {
+        if (_appointmentsMap[d] == null) {
+          _appointmentsMap[d] = [];
+        }
+        _appointmentsMap[d]!.add(appt);
       }
-      _appointmentsMap[date]!.add(appt);
     }
   }
 
@@ -139,7 +152,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     bottom: 8.0,
                   ),
                   child: Text(
-                    'Kalendarz Wizyt',
+                    'Kalendarz',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: AppColors.onSurface,
@@ -310,7 +323,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ),
               SizedBox(width: 12),
               Text(
-                'Wizyty w wybranym dniu',
+                'Ogłoszenia w wybranym dniu',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: AppColors.onSurface,
@@ -335,7 +348,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   ),
                   SizedBox(width: 12),
                   Text(
-                    'Brak wizyt w tym dniu.',
+                    'Brak ogłoszeń w tym dniu.',
                     style: TextStyle(color: AppColors.textSecondary),
                   ),
                 ],
@@ -376,7 +389,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header indicator
               Center(
                 child: Container(
                   width: 40,
@@ -389,7 +401,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
               ),
               Text(
-                'Szczegóły Wizyty',
+                'Szczegóły ogłoszenia',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: AppColors.onSurface,
@@ -414,9 +426,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
               _buildDetailRow(
                 Icons.calendar_today,
                 'Termin:',
-                '${appt.scheduledStart.day.toString().padLeft(2, '0')}.${appt.scheduledStart.month.toString().padLeft(2, '0')}.${appt.scheduledStart.year}  '
-                    '${appt.scheduledStart.hour.toString().padLeft(2, '0')}:${appt.scheduledStart.minute.toString().padLeft(2, '0')} - '
-                    '${appt.scheduledEnd.hour.toString().padLeft(2, '0')}:${appt.scheduledEnd.minute.toString().padLeft(2, '0')}',
+                appt.scheduledStart.year == appt.scheduledEnd.year &&
+                        appt.scheduledStart.month == appt.scheduledEnd.month &&
+                        appt.scheduledStart.day == appt.scheduledEnd.day
+                    ? '${appt.scheduledStart.day.toString().padLeft(2, '0')}.${appt.scheduledStart.month.toString().padLeft(2, '0')}.${appt.scheduledStart.year}  '
+                          '${appt.scheduledStart.hour.toString().padLeft(2, '0')}:${appt.scheduledStart.minute.toString().padLeft(2, '0')} - '
+                          '${appt.scheduledEnd.hour.toString().padLeft(2, '0')}:${appt.scheduledEnd.minute.toString().padLeft(2, '0')}'
+                    : 'Początek: ${appt.scheduledStart.day.toString().padLeft(2, '0')}.${appt.scheduledStart.month.toString().padLeft(2, '0')}.${appt.scheduledStart.year} '
+                          '${appt.scheduledStart.hour.toString().padLeft(2, '0')}:${appt.scheduledStart.minute.toString().padLeft(2, '0')}\n'
+                          'Koniec: ${appt.scheduledEnd.day.toString().padLeft(2, '0')}.${appt.scheduledEnd.month.toString().padLeft(2, '0')}.${appt.scheduledEnd.year} '
+                          '${appt.scheduledEnd.hour.toString().padLeft(2, '0')}:${appt.scheduledEnd.minute.toString().padLeft(2, '0')}',
               ),
               if (appt.clientAddress != null && appt.clientAddress!.isNotEmpty)
                 _buildDetailRow(
