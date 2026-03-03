@@ -111,9 +111,7 @@ class AppointmentCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              appointment.appointmentStatus == 'confirmed'
-                                  ? 'Potwierdzona'
-                                  : appointment.appointmentStatus,
+                              _formatStatusLabel(appointment.appointmentStatus),
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
@@ -181,6 +179,23 @@ class AppointmentCard extends StatelessWidget {
       'GRU',
     ];
     return months[month - 1];
+  }
+
+  String _formatStatusLabel(String status) {
+    switch (status) {
+      case 'open':
+        return 'Otwarte';
+      case 'confirmed':
+        return 'Potwierdzone';
+      case 'cancelled':
+        return 'Anulowane';
+      case 'completed':
+        return 'Zakończone';
+      case 'pending':
+        return 'Oczekujące';
+      default:
+        return status;
+    }
   }
 
   String _formatTime(DateTime date) {

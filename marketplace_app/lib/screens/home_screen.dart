@@ -10,6 +10,7 @@ import '../../models/client_profile.dart';
 import '../../models/appointment.dart';
 import '../../theme/app_theme.dart';
 import '../../screens/map_screen.dart';
+import '../../screens/calendar_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -159,7 +160,7 @@ class HomeScreenState extends State<HomeScreen> {
         bodyContent = const MapScreen();
         break;
       case 3:
-        bodyContent = const Center(child: Text("Kalendarz (Wkrótce)"));
+        bodyContent = const CalendarScreen();
         break;
       default:
         bodyContent = _buildDashboard();
