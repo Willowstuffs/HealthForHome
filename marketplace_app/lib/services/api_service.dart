@@ -6,6 +6,7 @@ import '../models/client_profile.dart';
 import '../models/client_update_dto.dart';
 import '../models/appointment.dart';
 import '../models/specialist.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   // 10.0.2.2 - bridge localhost dla emulatora Android
@@ -64,12 +65,21 @@ class ApiService {
     );
   }
 
-  void setToken(String token) {
-    _token = token;
+  Future<void> initToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    _token = prefs.getString('auth_token');
   }
 
-  void clearToken() {
+  Future<void> setToken(String token) async {
+    _token = token;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('auth_token', token);
+  }
+
+  Future<void> clearToken() async {
     _token = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('auth_token');
   }
 
   Future<void> register({
@@ -115,7 +125,7 @@ class ApiService {
       );
 
       final loginResponse = LoginResponse.fromJson(response.data['data']);
-      setToken(loginResponse.accessToken);
+      await setToken(loginResponse.accessToken);
       return loginResponse;
     } on DioException catch (e) {
       throw _handleDioError(e);
@@ -130,7 +140,7 @@ class ApiService {
     } catch (_) {
       // Ignore errors on logout
     } finally {
-      clearToken();
+      await clearToken();
     }
   }
 
@@ -228,13 +238,13 @@ class ApiService {
         '/api/Client/service-requests',
         data: dto.toJson(),
       );
-      
+
       // The backend returns the GUID as a string in the data field
       final requestId = response.data['data']?.toString();
       if (requestId == null || requestId.isEmpty) {
         throw Exception('Niepoprawna odpowiedź serwera');
       }
-      
+
       return requestId;
     } on DioException catch (e) {
       throw _handleDioError(e);
@@ -246,11 +256,11 @@ class ApiService {
   Future<List<ServiceRequest>> getMyServiceRequests() async {
     try {
       final response = await _dio.get('/api/Client/service-requests');
-      
+
       // Handle the response data structure
       final data = response.data;
       List<dynamic> list;
-      
+
       if (data is Map<String, dynamic>) {
         // If response is wrapped in ApiResponse format
         list = data['data'] ?? [];
@@ -260,7 +270,7 @@ class ApiService {
       } else {
         throw Exception('Niepoprawny format odpowiedzi serwera');
       }
-      
+
       return list.map((e) => ServiceRequest.fromJson(e)).toList();
     } on DioException catch (e) {
       throw _handleDioError(e);
@@ -279,9 +289,8 @@ class ApiService {
       // Try to extract error message from response
       String errorMessage = 'Wystąpił błąd';
       if (responseData is Map<String, dynamic>) {
-        errorMessage = responseData['message'] ?? 
-                      responseData['error'] ?? 
-                      errorMessage;
+        errorMessage =
+            responseData['message'] ?? responseData['error'] ?? errorMessage;
       }
 
       switch (statusCode) {
@@ -290,7 +299,7 @@ class ApiService {
         case 401:
           return Exception('Brak autoryzacji. Zaloguj się ponownie.');
         case 403:
-          return Exception('Brak uprawnień: $errorMessage'); 
+          return Exception('Brak uprawnień: $errorMessage');
         case 404:
           return Exception('Nie znaleziono zasobu: $errorMessage');
         case 409:
@@ -303,7 +312,7 @@ class ApiService {
           return Exception('Błąd HTTP $statusCode: $errorMessage');
       }
     } else {
-      if (e.type == DioExceptionType.connectionTimeout || 
+      if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
         return Exception('Przekroczono limit czasu połączenia');
       } else if (e.type == DioExceptionType.connectionError) {

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
 import 'theme/app_theme.dart';
+import 'services/api_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await ApiService().initToken();
   runApp(MyApp());
 }
 

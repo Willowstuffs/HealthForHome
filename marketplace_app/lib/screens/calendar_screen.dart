@@ -214,8 +214,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
         padding: EdgeInsets.all(8),
         child: TableCalendar<Appointment>(
-          firstDay: DateTime.now().subtract(const Duration(days: 365)),
-          lastDay: DateTime.now().add(const Duration(days: 365)),
+          firstDay: DateTime.now().subtract(Duration(days: 365)),
+          lastDay: DateTime.now().add(Duration(days: 365)),
           focusedDay: _focusedDay,
           selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
           onDaySelected: (selectedDay, focusedDay) {
@@ -348,11 +348,151 @@ class _CalendarScreenState extends State<CalendarScreen> {
               itemCount: selectedAppointments.length,
               separatorBuilder: (context, index) => SizedBox(height: 12),
               itemBuilder: (context, index) {
+                final appt = selectedAppointments[index];
                 return AppointmentCard(
-                  appointment: selectedAppointments[index],
+                  appointment: appt,
+                  onTap: () => _showAppointmentDetails(context, appt),
                 );
               },
             ),
+        ],
+      ),
+    );
+  }
+
+  void _showAppointmentDetails(BuildContext context, Appointment appt) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header indicator
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: EdgeInsets.only(bottom: 24),
+                  decoration: BoxDecoration(
+                    color: AppColors.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Text(
+                'Szczegóły Wizyty',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.onSurface,
+                ),
+              ),
+              SizedBox(height: 24),
+              _buildDetailRow(
+                Icons.person,
+                'Specjalista:',
+                appt.specialistName ?? 'Brak danych',
+              ),
+              _buildDetailRow(
+                Icons.medical_services,
+                'Usługa:',
+                appt.serviceName ?? 'Brak danych',
+              ),
+              _buildDetailRow(
+                Icons.info_outline,
+                'Status:',
+                _formatStatusLabel(appt.appointmentStatus),
+              ),
+              _buildDetailRow(
+                Icons.calendar_today,
+                'Termin:',
+                '${appt.scheduledStart.day.toString().padLeft(2, '0')}.${appt.scheduledStart.month.toString().padLeft(2, '0')}.${appt.scheduledStart.year}  '
+                    '${appt.scheduledStart.hour.toString().padLeft(2, '0')}:${appt.scheduledStart.minute.toString().padLeft(2, '0')} - '
+                    '${appt.scheduledEnd.hour.toString().padLeft(2, '0')}:${appt.scheduledEnd.minute.toString().padLeft(2, '0')}',
+              ),
+              if (appt.clientAddress != null && appt.clientAddress!.isNotEmpty)
+                _buildDetailRow(
+                  Icons.location_on,
+                  'Adres:',
+                  appt.clientAddress!,
+                ),
+              if (appt.totalPrice != null)
+                _buildDetailRow(
+                  Icons.attach_money,
+                  'Cena:',
+                  '${appt.totalPrice!.toStringAsFixed(2)} PLN',
+                ),
+              if (appt.clientNotes != null && appt.clientNotes!.isNotEmpty)
+                _buildDetailRow(
+                  Icons.note,
+                  'Twoje notatki:',
+                  appt.clientNotes!,
+                ),
+              SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: Text(
+                    'Zamknij',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String title, String value) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 16.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: AppColors.primary, size: 20),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  value,
+                  style: TextStyle(
+                    color: AppColors.onSurface,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

@@ -15,6 +15,7 @@ dependencies:
   latlong2: ^0.9.1
   table_calendar: ^3.2.0
   intl: ^0.20.2
+  shared_preferences: 2.4.0
 
 dev_dependencies:
   flutter_test:
