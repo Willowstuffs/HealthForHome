@@ -7,13 +7,13 @@ namespace H4H_API.DTOs.Client
         // Ekran 0 i 1: Wybór kategorii/usługi
         // Klient wybiera: "nursing" lub "physiotherapy"
         [Required]
-        public string Category { get; set; }
+        public string Category { get; set; } = string.Empty;
 
         // Ekran 1: Dane kontaktowe i adres
         public string? ContactName { get; set; }  // "Imię (opcjonalnie)"
         public string? PhoneNumber { get; set; } // "Telefon"
         public string? Email { get; set; }       // "Email"
-        public string Address { get; set; }      // "Adres zamieszkania"
+        public string Address { get; set; } = string.Empty;      // "Adres zamieszkania"
 
         // Ekran 1: Wybierz datę od do
         [Required]
@@ -22,7 +22,7 @@ namespace H4H_API.DTOs.Client
         public DateTime DateTo { get; set; }
 
         // Ekran 1: Uwagi
-        public string Description { get; set; } // "Uwagi"
+        public string Description { get; set; } = string.Empty; // "Uwagi"
 
         public decimal? MaxPrice { get; set; }
     }

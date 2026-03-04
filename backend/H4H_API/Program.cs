@@ -155,7 +155,7 @@ public class SecurityRequirementsOperationFilter : IOperationFilter
 {
     public void Apply(OpenApiOperation operation, OperationFilterContext context)
     {
-        var authAttributes = context.MethodInfo.DeclaringType.GetCustomAttributes(true)
+        var authAttributes = (context.MethodInfo.DeclaringType?.GetCustomAttributes(true) ?? Array.Empty<object>())
             .Union(context.MethodInfo.GetCustomAttributes(true))
             .OfType<AuthorizeAttribute>();
 

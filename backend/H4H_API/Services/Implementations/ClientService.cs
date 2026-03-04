@@ -297,7 +297,7 @@ namespace H4H_API.Services.Implementations
                 .Include(a => a.Client) // Ważne dla ClientName
                 .Include(a => a.Specialist) // Ważne dla SpecialistName
                 .Include(a => a.SpecialistService) // Ważne dla ServiceName
-                    .ThenInclude(ss => ss.ServiceType)
+                    .ThenInclude(ss => ss!.ServiceType)
                 .Where(a => a.ClientId == client.Id)
                 .AsQueryable();
 
@@ -342,7 +342,7 @@ namespace H4H_API.Services.Implementations
                 .Include(a => a.Client)
                 .Include(a => a.Specialist)
                 .Include(a => a.SpecialistService)
-                    .ThenInclude(ss => ss.ServiceType)
+                    .ThenInclude(ss => ss!.ServiceType)
                 .FirstOrDefaultAsync(a => a.Id == appointmentId && a.ClientId == client.Id);
 
             if (appointment == null)
@@ -354,6 +354,7 @@ namespace H4H_API.Services.Implementations
 
         public async Task<AppointmentDto> CreateAppointmentAsync(Guid userId, CreateAppointmentDto dto)
         {
+            await Task.CompletedTask; //usuwam warning o braku await
             // TODO: Zaimplementować z walidacją odległości
             throw new NotImplementedException("CreateAppointmentAsync not implemented yet");
         }
@@ -461,6 +462,7 @@ namespace H4H_API.Services.Implementations
 
         public async Task<PagedResponse<SpecialistDto>> SearchSpecialistsAsync(SearchSpecialistsDto filters, PagedRequest request)
         {
+            await Task.CompletedTask; //usuwam warning o braku await
             // TODO: Zaimplementować z filtrowaniem po odległości
             // Na razie zwróć pustą listę
             return new PagedResponse<SpecialistDto>
