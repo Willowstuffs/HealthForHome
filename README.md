@@ -79,6 +79,24 @@ W AppSettings dodano pole z informacjami o e-mailu
 
 Auth004 do 006 zaklepane do weryfikacji
 
+28.02.2026
+Utworzono folder Admin w DTOs. Tam dałem DTO:
+- AdminSpecialistFilterDto*
+- AdminSpecialistListItemDto
+- AdminSpecialistDetailsDto*
+- RejectSpecialistDto
+*Korzystają z zrobionego w commit 2 dto do paginacji strony
+
+Dodano interfejs dla Admina, na razie korzysta z Guid AdminId zamiast tokenu JWT, to następnym razem się poprawi. Następnie implementacje tych czterech DataTransferObject.
+
+Stworzono kontroler i wpisano w niego te cztery elementy.
+
+02.03.2026
+Dodano funkcje czyszczącą przedawnione kody i konta do bazy danych i funkcji wysyłającej emaile (co 50 maili, przedawnione, konta niepotwierdzone starsze niz 30 dni)
+
+
+
+
 
 
 

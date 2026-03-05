@@ -375,6 +375,15 @@ namespace H4H_API.Services.Implementations
                 existingCode.IsUsed = true;
             }
 
+            // Wywołanie funkcji SQL: sprzątanie bazy danych z nieużywanych kodów weryfikacyjnych i nieaktywnych użytkowników
+            await _context.Database.ExecuteSqlRawAsync("SELECT delete_expired_codes();"); // Kody czyścimy zawsze - to szybka operacja
+            if (new Random().Next(1, 50) == 1) // Konta czyścimy tylko raz na 50 wysłanych maili (średnio)
+            {
+                await _context.Database.ExecuteSqlRawAsync("SELECT cleanup_inactive_users();");
+            }
+            // <3 
+            //re: dzieki dzastina
+
             //Zapisz nowy kod w bazie
             var verificationCode = new VerificationCode //encja z postgresika
             {
