@@ -10,7 +10,7 @@ const DEFAULT_QUERY = {
   specialization: "",
   createdFrom: "",
   createdTo: "",
-  sort: "CREATED_ASC",
+  sort: "",
   page: 1,
   pageSize: 20,
 };
@@ -36,7 +36,16 @@ function ListaSpecjalistow() {
 
     listSpecialists(query)
       .then((res) => {
-        if (!cancelled) setData(res);
+        const payload = res?.data ?? res;
+
+        if (cancelled) return;
+
+        setData({
+          items: payload?.items ?? [],
+          total: payload?.totalCount ?? payload?.total ?? 0,
+          page: payload?.page ?? query.page,
+          pageSize: payload?.pageSize ?? query.pageSize,
+        });
       })
       .catch((e) => {
         if (!cancelled) setError(e?.message || "Błąd pobierania listy");
@@ -119,6 +128,7 @@ function ListaSpecjalistow() {
               value={query.sort}
               onChange={(e) => setQuery((q) => ({ ...q, sort: e.target.value, page: 1 }))}
             >
+              <option value="">Domyślne</option>
               <option value="CREATED_ASC">Najstarsze</option>
               <option value="CREATED_DESC">Najnowsze</option>
             </select>

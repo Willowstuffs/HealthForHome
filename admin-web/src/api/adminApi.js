@@ -1,37 +1,35 @@
 import { apiFetch } from "./httpClient";
 
-/**
- * API dla panelu admina (mock -> backend-ready)
- * - listSpecialists(query)
- * - getSpecialist(id)
- * - approveSpecialist(id)
- * - rejectSpecialist(id, payload)
- */
+function cleanQuery(query) {
+  const out = {};
+  Object.entries(query || {}).forEach(([k, v]) => {
+    if (v === undefined || v === null) return;
+    if (typeof v === "string" && v.trim() === "") return;
+    out[k] = v;
+  });
+  return out;
+}
 
-export async function listSpecialists(query) {
-  // Docelowo:
-  // return apiFetch(`/admin/specialists?${new URLSearchParams(cleanQuery(query))}`);
-  return mockListSpecialists(query);
+export async function listSpecialists() {
+  return apiFetch(`/api/Admin/specialists`);
 }
 
 export async function getSpecialist(id) {
-  // Docelowo:
-  // return apiFetch(`/admin/specialists/${id}`);
-  return mockGetSpecialist(id);
+  return apiFetch(`/api/Admin/specialists/${id}`);
 }
 
 export async function approveSpecialist(id) {
-  // Docelowo:
-  // return apiFetch(`/admin/specialists/${id}/approve`, { method: "POST" });
-  return mockApprove(id);
+  return apiFetch(`/api/Admin/specialists/${id}/approve`, {
+    method: "POST",
+  });
 }
 
 export async function rejectSpecialist(id, payload) {
-  // Docelowo:
-  // return apiFetch(`/admin/specialists/${id}/reject`, { method: "POST", body: JSON.stringify(payload) });
-  return mockReject(id, payload);
+  return apiFetch(`/api/Admin/specialists/${id}/reject`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
-
 export async function listUsers(query) {
   // Docelowo:
   // return apiFetch(`/admin/users?${new URLSearchParams(cleanQuery(query))}`);
@@ -58,84 +56,12 @@ export async function listOrders(query) {
   return mockListOrders(query);
 }
 
-
 export async function getOrder(id) {
   return mockGetOrder(id);
 }
 
 export async function getAdminStats() {
   return mockGetAdminStats();
-}
-
-/*  MOCK  */
-
-let DB = [
-  {
-    id: "1",
-    firstName: "Anna",
-    lastName: "Nowak",
-    email: "anna.nowak@test.pl",
-    specialization: "PIELEGNIARKA",
-    status: "PENDING",
-    nip: "1234567890",
-    registryBookNumber: "KR-10001",
-    voivodeship: "Mazowieckie",
-    city: "Warszawa",
-    address: "ul. Testowa 1",
-    licenseNumber: "PWZ1234567",
-    createdAt: "2026-01-01T10:00:00.000Z",
-    licenseStatus: "VALID",
-    licenseValidUntil: "2027-12-31",
-  },
-  {
-    id: "2",
-    firstName: "Jan",
-    lastName: "Kowalski",
-    email: "jan.kowalski@test.pl",
-    specialization: "FIZJOTERAPEUTA",
-    status: "APPROVED",
-    nip: "0987654321",
-    registryBookNumber: "KR-10002",
-    voivodeship: "Małopolskie",
-    city: "Kraków",
-    address: "ul. Testowa 2",
-    licenseNumber: "PWZ7654321",
-    createdAt: "2026-01-02T10:00:00.000Z",
-    licenseStatus: "EXPIRED",
-    licenseValidUntil: "2020-01-01",
-  },
-];
-let USERS = [
-  {
-    id: "u1",
-    firstName: "Kasia",
-    lastName: "Wiśniewska",
-    email: "kasia@test.pl",
-    phone: "500600700",
-    createdAt: "2026-01-10T09:00:00.000Z",
-    ordersCount: 2,
-    ordersTotalValue: 320,
-  },
-  {
-    id: "u2",
-    firstName: "Marek",
-    lastName: "Kowalski",
-    email: "marek@test.pl",
-    phone: "501111222",
-    createdAt: "2026-01-20T12:00:00.000Z",
-    ordersCount: 0,
-    ordersTotalValue: 0,
-  },
-];
-
-function cleanQuery(query) {
-  const out = {};
-  Object.entries(query || {}).forEach(([k, v]) => {
-    if (v === undefined || v === null) return;
-    if (typeof v === "string" && v.trim() === "") return;
-    out[k] = v;
-  });
-  return out;
 }
 
 function mockListSpecialists(query) {
