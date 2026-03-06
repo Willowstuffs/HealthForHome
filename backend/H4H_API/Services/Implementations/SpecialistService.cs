@@ -100,7 +100,7 @@ namespace H4H_API.Services.Implementations
                 );
             }
             //filtrowanie po statusie
-            query = query.Where(a => a.AppointmentStatus == "pending");
+            query = query.Where(a => a.AppointmentStatus == "open");
 
 
 
@@ -321,7 +321,7 @@ namespace H4H_API.Services.Implementations
             if (appointment == null)
                 throw new AppException("Wizyta nie znaleziona.", ErrorCodes.AppointmentNotFound);
 
-            if (appointment.AppointmentStatus != "pending")
+            if (appointment.AppointmentStatus != "open")
                 throw new AppException("Można potwierdzić tylko wizyty oczekujące.", ErrorCodes.AppointmentCancelForbidden);
 
 
@@ -334,7 +334,7 @@ namespace H4H_API.Services.Implementations
             };
             _context.appointments_specialists.Add(appointmentSpecialist);
 
-            appointment.AppointmentStatus = "confirmed";
+            appointment.AppointmentStatus = "pending";
 
             await _context.SaveChangesAsync();
         }

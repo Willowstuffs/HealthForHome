@@ -108,7 +108,15 @@ class _WorkScreenState extends State<WorkScreen> {
                             DropdownButtonFormField<ServiceType>(
                               initialValue: selectedServiceType,
                               isExpanded: true,
+                              dropdownColor: AppColors.onPrimary,
                               hint: const Text('Wybierz usługę'),
+                                decoration: InputDecoration(
+                                filled: true,
+                                fillColor: AppColors.onPrimary, 
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
                               items: servicesFromDb.map((type) {
                                 return DropdownMenuItem<ServiceType>(
                                   value: type,

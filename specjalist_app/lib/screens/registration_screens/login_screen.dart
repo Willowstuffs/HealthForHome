@@ -3,6 +3,7 @@ import 'package:specjalist_app/screens/registration_screens/certfikate_nurse_scr
 import 'package:specjalist_app/screens/registration_screens/certyficate_notnurse_screen.dart';
 import 'package:specjalist_app/screens/main_screens/maintoolbar_screen.dart';
 import 'package:specjalist_app/screens/registration_screens/waiting_screen.dart';
+import 'package:specjalist_app/services/notification_services.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../services/token_storage.dart';
@@ -41,11 +42,11 @@ class _LoginScreenState extends State<LoginScreen> {
         accessToken: loginResponse.accessToken,
         refreshToken: loginResponse.refreshToken,
       );
-
+      await NotificationService().uploadTokenToServer();
       if (!mounted) return;
       //pobieranie danych o użytkownku
       final profile = await apiService.getProfile();
-      UserSession.setProfileFromApi(profile);
+      UserSession.setProfileFromApi(profile,UserSession.token ?? '');
       print("📦📦 w profile zostało zapisane $profile");
       final String specialization = (profile['professionalTitle'] ?? profile['ProfessionalTitle'] ?? '').toString().toLowerCase();
 

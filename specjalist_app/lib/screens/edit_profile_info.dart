@@ -33,7 +33,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
     try {
       final api = ApiService();
       final profileData = await api.getProfile();
-      UserSession.setProfileFromApi(profileData);
+      UserSession.setProfileFromApi(profileData, UserSession.token ?? '');
 
       // Wypełnianie kontrolerów
       firstNameController.text = UserSession.profile?.firstName ?? '';
@@ -98,7 +98,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
 
       // Pobranie zaktualizowanego profilu i zapis do UserSession
       final updatedProfile = await api.getProfile();
-      UserSession.setProfileFromApi(updatedProfile);
+      UserSession.setProfileFromApi(updatedProfile,UserSession.token ?? '');
 
       setState(() {}); // odśwież UI
 

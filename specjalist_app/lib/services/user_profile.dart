@@ -1,7 +1,7 @@
 class UserSession {
   static Map<String, dynamic>? rawProfile;
   static UserProfile? profile;
-
+  static String? token;
   // GETTERY POD UI
   static String? get firstName => profile?.firstName;
   static String? get lastName => profile?.lastName;
@@ -11,15 +11,17 @@ class UserSession {
   static List<String> get specializations => profile?.specializations ?? [];
 
   // ZAPIS PO LOGOWANIU
-  static void setProfileFromApi(Map<String, dynamic> json) {
+  static void setProfileFromApi(Map<String, dynamic> json, String jwtToken) {
     rawProfile = json;
     profile = UserProfile.fromApi(json);
+    token = jwtToken;
   }
 
   // WYCZYŚĆ (logout)
   static void clear() {
     rawProfile = null;
     profile = null;
+    token = null;
   }
 }
 class UserProfile {

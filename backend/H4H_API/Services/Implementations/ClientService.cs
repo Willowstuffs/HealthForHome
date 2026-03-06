@@ -558,7 +558,8 @@ namespace H4H_API.Services.Implementations
                     specialistTokens,
                     "Nowa oferta!",
                     $"Nowe zapytanie: {appointment.ServiceType}," +
-                    $"od: {appointment.ScheduledStart} do: {appointment.ScheduledEnd}"
+                    $"od: {appointment.ScheduledStart} do: {appointment.ScheduledEnd}",
+                    appointment.Id.ToString()
                 );
             }
             return appointment.Id;

@@ -5,6 +5,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'theme/app_theme.dart';
 import 'screens/home_screen.dart';
 import 'firebase_options.dart';
+import 'services/notification_services.dart';
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 class MyHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext? context) {
@@ -29,24 +31,24 @@ void main() async {
 
   // Rejestracja handlera powiadomień w tle
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  await NotificationService().setupInteractions(navigatorKey);
+  runApp(MyApp());
 
-  runApp(const MyApp());
+
 }
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Pop-up powiadomienia na pierwszym planie
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('Otrzymano powiadomienie na pierwszym planie: ${message.notification?.title}');
-      print('Treść: ${message.notification?.body}');
-    });
+    
 
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'HealthForHome',
       theme: AppTheme.lightTheme,
       home: const HomeScreen(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }

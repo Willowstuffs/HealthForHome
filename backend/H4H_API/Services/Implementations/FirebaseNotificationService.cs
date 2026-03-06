@@ -1,6 +1,9 @@
 ﻿using FirebaseAdmin;
 using FirebaseAdmin.Messaging;
 using Google.Apis.Auth.OAuth2;
+using H4H.Core.Models;
+using Message = FirebaseAdmin.Messaging.Message;
+using Notification = FirebaseAdmin.Messaging.Notification;
 
 namespace H4H_API.Services.Implementations
 {
@@ -14,7 +17,7 @@ namespace H4H_API.Services.Implementations
             // Sprawdzenie, czy domyślny app już istnieje
             _app = FirebaseApp.DefaultInstance ?? FirebaseApp.Create(new AppOptions()
             {
-                Credential = GoogleCredential.FromFile("Firebase/test-e1dc5-firebase-adminsdk-fbsvc-a347aae077.json"),
+                Credential = GoogleCredential.FromFile("Firebase/test-e1dc5-firebase-adminsdk-fbsvc-1ab20af410.json"),
                 ProjectId = "test-e1dc5" // dokładnie jak w pliku JSON i projekcie Firebase
             });
         }
@@ -46,25 +49,32 @@ namespace H4H_API.Services.Implementations
             var result = await FirebaseMessaging.DefaultInstance.SendAsync(message);
             return result; // Zwraca messageId
         }
-        public async Task SendNotificationToManyAsync(List<string> fcmTokens,string title,string body)
+        public async Task SendNotificationToManyAsync(List<string> fcmTokens,string title,string body,string appointmentId)
         {
-            
             if (fcmTokens == null || !fcmTokens.Any())
                 return;
 
             var messages = fcmTokens.Select(token => new Message()
             {
                 Token = token,
-               
+
                 Notification = new Notification()
                 {
                     Title = title,
                     Body = body
                 },
+
+                Data = new Dictionary<string, string>
+                {
+                    { "appointmentId", appointmentId },
+                    { "screen", "offer" }
+                },
+
                 Android = new AndroidConfig()
                 {
                     Priority = Priority.High
                 },
+
                 Apns = new ApnsConfig()
                 {
                     Aps = new Aps()
@@ -72,16 +82,13 @@ namespace H4H_API.Services.Implementations
                         ContentAvailable = true
                     }
                 }
-            }).ToList();
-            var response = await FirebaseMessaging.DefaultInstance.SendEachAsync(messages);
-            Console.WriteLine($"Success: {response.SuccessCount}, Failure: {response.FailureCount}");
-            foreach (var r in response.Responses)
-            {
-                if (!r.IsSuccess) Console.WriteLine(r.Exception);
-            }
 
-            // Możesz tutaj np. logować ile powiodło się, ile nie:
-            Console.WriteLine($"Wysłano {response.SuccessCount} powiadomień, {response.FailureCount} niepowodzeń.");
+            }).ToList();
+
+            var response = await FirebaseMessaging.DefaultInstance.SendEachAsync(messages);
+
+            Console.WriteLine(
+                $"Success: {response.SuccessCount}, Failure: {response.FailureCount}");
         }
 
     }
