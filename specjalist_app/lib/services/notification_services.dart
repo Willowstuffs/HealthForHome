@@ -69,7 +69,7 @@ class NotificationService {
           patientName: message.data['patientName'] ?? '',
           startDate: message.data['startDate'] ?? '',
           endDate: message.data['endDate'] ?? '',
-          serviceName: message.data['serviceName'] ?? '',
+          description: message.data['description'] ?? '',
         ),
       ),
     );

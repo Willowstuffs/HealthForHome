@@ -110,106 +110,163 @@ class _EditServicesScreenState extends State<EditServicesScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.only(top: 80),
-              child: Column(
-                children: [
-                  ...services.map((service) {
-                    return Container(
-                      width: 350,
-                      margin: const EdgeInsets.all(30),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            AppColors.secondary,
-                            AppColors.onBackground,
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // NAZWA
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  service.name,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete,
-                                      color: Colors.black),
-                                  onPressed: () => _removeService(service.id),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            // CENA
-                            TextField(
-                              controller: priceControllers[service.id],
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                labelText: 'Cena (zł)',
-                                border: OutlineInputBorder(),
-                              ),
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            // CZAS
-                            TextField(
-                              controller: durationControllers[service.id],
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                labelText: 'Czas trwania (min)',
-                                border: OutlineInputBorder(),
-                              ),
-                            ),
-                          ],
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: AppColors.surface,
+    appBar: AppBar(
+      title: const Text("Twoje usługi"),
+      centerTitle: true,
+    ),
+    body: isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : RefreshIndicator(
+            onRefresh: _loadServices,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(24),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Column(
+                    children: [
+                      _buildServicesList(),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _saveChanges,
+                          child: const Text("Zapisz zmiany"),
                         ),
                       ),
-                    );
-                  }),
-
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: 174,
-                    height: 37,
-                    child: ElevatedButton(
-                      onPressed: _saveChanges,
-                      child: const Text('Zapisz zmiany'),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
-      bottomNavigationBar: MainBottomBar(
-        currentIndex: 1, // Usługi
-        onTap: (index) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(
-              builder: (_) => MainScreen(startIndex: index),
-            ),
-            (route) => false,
-          );
-        },
+          ),
+    bottomNavigationBar: MainBottomBar(
+      currentIndex: 1,
+      onTap: (index) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (_) => MainScreen(startIndex: index),
+          ),
+          (route) => false,
+        );
+      },
+    ),
+  );
+}
+Widget _buildServicesList() {
+  if (services.isEmpty) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainer,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.outlineVariant),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.medical_services_outlined,
+            size: 48,
+            color: AppColors.textSecondary.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 16),
+          const Text("Brak usług"),
+        ],
       ),
     );
   }
+
+  return ListView.separated(
+    shrinkWrap: true,
+    physics: const NeverScrollableScrollPhysics(),
+    itemCount: services.length,
+    separatorBuilder: (_, __) => const SizedBox(height: 16),
+    itemBuilder: (context, index) {
+      final service = services[index];
+      return _buildServiceCard(service);
+    },
+  );
+}
+Widget _buildServiceCard(SpecialistService service) {
+  return Container(
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: AppColors.surfaceContainer,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: AppColors.outlineVariant),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.03),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                service.name,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              color: AppColors.error,
+              onPressed: () => _removeService(service.id),
+            )
+          ],
+        ),
+
+        const SizedBox(height: 16),
+
+        _buildField(
+          label: "Cena (zł)",
+          controller: priceControllers[service.id]!,
+        ),
+
+        const SizedBox(height: 12),
+
+        _buildField(
+          label: "Czas trwania (min)",
+          controller: durationControllers[service.id]!,
+          keyboardType: TextInputType.number,
+        ),
+      ],
+    ),
+  );
+}
+Widget _buildField({
+  required String label,
+  required TextEditingController controller,
+  TextInputType? keyboardType,
+}) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        label,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+      ),
+      const SizedBox(height: 8),
+      TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        decoration: const InputDecoration(),
+      ),
+    ],
+  );
+}
 }

@@ -22,8 +22,8 @@ class HomeScreenState extends State<HomeScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors:  [
-              AppColors.background,
-              AppColors.onBackground
+              AppColors.primary,
+              AppColors.secondary
             ],
           ),
         ),
@@ -63,7 +63,7 @@ class HomeScreenState extends State<HomeScreen> {
   return Column(
     children: [
       SizedBox(
-        width: 200,
+        width: 220,
         child: ElevatedButton(
           onPressed: () {
             Navigator.push(
@@ -71,20 +71,14 @@ class HomeScreenState extends State<HomeScreen> {
               MaterialPageRoute(builder: (_) => LoginScreen()),
             );
           },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.onSurface,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
           child: const Text('Zaloguj się'),
         ),
       ),
+
       const SizedBox(height: 16),
+
       SizedBox(
-        width: 200,
+        width: 220,
         child: OutlinedButton(
           onPressed: () {
             Navigator.push(
@@ -92,14 +86,6 @@ class HomeScreenState extends State<HomeScreen> {
               MaterialPageRoute(builder: (_) => RegisterScreen()),
             );
           },
-          style: OutlinedButton.styleFrom(
-            backgroundColor: AppColors.onSurface,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
           child: const Text('Zarejestruj się'),
         ),
       ),

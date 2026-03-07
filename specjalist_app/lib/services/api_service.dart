@@ -320,9 +320,20 @@ Future<void> updateArea(Map<String, dynamic> dto) async {
   }
 }
 // PATCH: potwierdzenie wizyty przez specjalistę
-Future<void> confirmAppointment(String appointmentId) async {
+//TO DO: DO POPRAWIENIA PO UPDACIE BAZY I BACKENDU
+Future<void> confirmAppointment(
+  String appointmentId,
+  String serviceId,
+  double price,
+) async {
   try {
-    await _dio.patch('/api/specialist/appointments/$appointmentId/confirm');
+    await _dio.patch(
+      '/api/specialist/appointments/$appointmentId/confirm',
+      data: {
+        "serviceId": serviceId,
+        "price": price,
+      },
+    );
   } on DioException catch (e) {
     throw _handleDioError(e);
   }

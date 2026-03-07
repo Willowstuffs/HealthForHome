@@ -52,7 +52,7 @@ namespace H4H_API.Services.Interfaces
         Task<List<ServiceTypeDto>> GetServiceTypesAsync();
 
         /// <summary>Zmienia status wizyty u specjalisty na potwierdzony (confirmed)</summary>
-        Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId);
+        Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId, Guid serviceId, decimal price);
         /// <summary>
         /// Pobiera listę nadchodzących usług (inquiries) dla specjalisty z opcjonalnymi filtrami
         /// </summary>

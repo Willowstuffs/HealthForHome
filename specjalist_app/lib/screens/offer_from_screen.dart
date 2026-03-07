@@ -8,7 +8,7 @@ class OfferFormScreen extends StatefulWidget {
   final String patientName;
   final String startDate;
   final String endDate;
-  final String serviceName;
+  final String description;
 
   const OfferFormScreen({
     super.key,
@@ -16,7 +16,7 @@ class OfferFormScreen extends StatefulWidget {
     required this.patientName,
     required this.startDate,
     required this.endDate,
-    required this.serviceName,
+    required this.description,
   });
 
   @override
@@ -28,10 +28,11 @@ class _OfferFormScreenState extends State<OfferFormScreen> {
 
   List<SpecialistService> services = [];
   List<SpecialistService> selectedServices = [];
+  SpecialistService? selectedServiceTYMCZASOWE;
+
   SpecialistService? selectedService;
 
-  final TextEditingController finalPriceController =
-      TextEditingController();
+  final TextEditingController finalPriceController = TextEditingController();
   double totalPrice = 0;
   bool isLoading = true;
 
@@ -53,100 +54,178 @@ class _OfferFormScreenState extends State<OfferFormScreen> {
       setState(() => isLoading = false);
     }
   }
+  Future<void> _confirmOffer() async {
+    if (selectedServices.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Wybierz usługę')),
+      );
+      return;
+    }
+
+    final price = double.tryParse(finalPriceController.text);
+    if (price == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Podaj poprawną wycenę')),
+      );
+      return;
+    }
+
+    try {
+      selectedServiceTYMCZASOWE = selectedServices.first;
+      await _apiService.confirmAppointment(
+        widget.appointmentId,
+        selectedServiceTYMCZASOWE!.id,
+        price,
+      );
+
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.surface,
+
       appBar: AppBar(
         title: const Text("Nowa oferta"),
-        backgroundColor: AppColors.secondary,
+        centerTitle: true,
       ),
+
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              child: Center(
-                child: Column(
-                  children: [
-                    const SizedBox(height: 30),
-                    _buildDetailsCard(),
-                    const SizedBox(height: 20),
-                    _buildServiceMultiSelect(),
-                    const SizedBox(height: 20),
-                    _buildPriceField(),
-                    const SizedBox(height: 30),
-                    _buildConfirmButton(),
-                    const SizedBox(height: 40),
-                  ],
+          : RefreshIndicator(
+              onRefresh: _fetchService,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(24),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    child: Column(
+                      children: [
+                        _buildDetailsCard(),
+                        const SizedBox(height: 20),
+                        _buildServiceMultiSelect(),
+                        const SizedBox(height: 20),
+                        _buildPriceField(),
+                        const SizedBox(height: 28),
+
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _confirmOffer,
+                            child: const Text("Potwierdź ofertę"),
+                          ),
+                        ),
+
+                        const SizedBox(height: 40),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
     );
   }
 
-  Widget _buildDetailsCard() {
-    return Container(
-      width: 350,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.secondary, AppColors.onBackground],
-        ),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Text(widget.patientName,
-              style:
-                  const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text("Dane"),
-          Text("Od: ${widget.startDate}"),
-          Text("Do: ${widget.endDate}"),
-          Text("Opis: ${widget.serviceName}"),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildServiceMultiSelect() {
+ Widget _buildDetailsCard() {
   return Container(
-    width: 350,
-    padding: const EdgeInsets.all(16),
+    width: double.infinity,
+    padding: const EdgeInsets.all(20),
     decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [AppColors.secondary, AppColors.onBackground],
-      ),
-      borderRadius: BorderRadius.circular(12),
+      color: AppColors.surfaceContainer,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: AppColors.outlineVariant),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.03),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
+        ),
+      ],
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "Wybierz usługi",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        Text(
+          widget.patientName,
+          style: Theme.of(context).textTheme.titleLarge,
         ),
+
         const SizedBox(height: 12),
+
+        _buildInfoText("Od: ${widget.startDate}"),
+        _buildInfoText("Do: ${widget.endDate}"),
+        const SizedBox(height: 12),
+
+        if (widget.description.isNotEmpty) ...[
+          const Divider(),
+          const SizedBox(height: 8),
+
+          Text(
+            "Opis wizyty",
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+
+          const SizedBox(height: 6),
+
+          Text(
+            widget.description,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
+  Widget _buildServiceMultiSelect() {
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: AppColors.surfaceContainer,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: AppColors.outlineVariant),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Wybierz usługi",
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+
+        const SizedBox(height: 16),
 
         ...services.map((service) {
           final isSelected = selectedServices.contains(service);
 
           return Container(
             margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.onPrimary,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade400),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.outlineVariant),
             ),
             child: CheckboxListTile(
               title: Text(
                 service.name,
                 overflow: TextOverflow.ellipsis,
               ),
+              subtitle: Text(
+                "${service.price.toStringAsFixed(2)} zł • ${service.duration} min",
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
               value: isSelected,
-              activeColor: AppColors.onSurface,
+              activeColor: AppColors.primary,
               controlAffinity: ListTileControlAffinity.leading,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               onChanged: (value) {
                 setState(() {
                   if (value == true) {
@@ -163,71 +242,42 @@ class _OfferFormScreenState extends State<OfferFormScreen> {
               },
             ),
           );
-        })
+        }),
       ],
     ),
   );
 }
 
   Widget _buildPriceField() {
-    return Container(
-      width: 350,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.secondary, AppColors.onBackground],
-        ),
-        borderRadius: BorderRadius.circular(12),
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        "Wycena końcowa (zł)",
+        style: Theme.of(context).textTheme.bodyMedium,
       ),
-      child: TextField(
+
+      const SizedBox(height: 8),
+
+      TextField(
         controller: finalPriceController,
         keyboardType: TextInputType.number,
-        decoration: const InputDecoration(
-          labelText: 'Wycena końcowa (zł)',
-          border: OutlineInputBorder(),
-          filled: true,
-          fillColor: AppColors.onPrimary,
-        ),
+        decoration: const InputDecoration(),
       ),
-    );
-  }
+    ],
+  );
+}
 
-  Widget _buildConfirmButton() {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.onSurface,
-        foregroundColor: Colors.white,
-        fixedSize: const Size(200, 40),
-      ),
-      onPressed: () async {
-        if (selectedService == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Wybierz usługę')),
-          );
-          return;
-        }
+  Widget _buildInfoText(String text) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Text(
+      text,
+      style: Theme.of(context).textTheme.bodyMedium,
+    ),
+  );
+}
 
-        if (finalPriceController.text.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Podaj wycenę')),
-          );
-          return;
-        }
-
-        try {
-          await _apiService.confirmAppointment(widget.appointmentId);
-
-          Navigator.pop(context);
-
-        } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.toString())),
-          );
-        }
-      },
-      child: const Text("Potwierdź ofertę"),
-    );
-  }
 
   @override
   void dispose() {

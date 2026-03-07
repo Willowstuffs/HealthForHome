@@ -61,7 +61,7 @@ Widget build(BuildContext context) {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            AppColors.onBackground,
+            AppColors.surface,
             AppColors.primary,
           ],
         ),

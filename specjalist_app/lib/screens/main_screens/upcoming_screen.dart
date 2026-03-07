@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import 'package:intl/intl.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 class UpcomingScreen extends StatefulWidget {
   const UpcomingScreen({super.key});
@@ -11,258 +12,294 @@ class UpcomingScreen extends StatefulWidget {
 }
 
 class _UpcomingScreenState extends State<UpcomingScreen> {
-
   List<Map<String, dynamic>> upcoming = [];
   List<Map<String, dynamic>> archive = [];
   bool isLoading = true;
+  final displayFormatter = DateFormat('dd.MM.yyyy HH:mm');
+  final now = DateTime.now();
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
+
+  Map<DateTime, List<Map<String, dynamic>>> _upcomingMap = {};
   @override
   void initState() {
     super.initState();
     _fetchData();
   }
-  final displayFormatter = DateFormat('dd-MM-yyyy HH:mm');
-  final now = DateTime.now();
+
   Future<void> _fetchData() async {
     try {
       final fetchedUpcoming = await ApiService().getCommingInquiries(
-        patientName: "", // przykładowy filtr
-        dateFrom: DateTime(now.year, now.month, now.day), // dziś od 00:00
+        patientName: "",
+        dateFrom: DateTime(now.year, now.month, now.day),
         dateTo: DateTime(now.year, now.month, now.day).add(const Duration(days: 30)),
       );
       final fetchedArchive = await ApiService().getArchiveInquiries();
+
+      if (!mounted) return;
+
       setState(() {
-        upcoming = fetchedUpcoming.map((i) {
-        // Sprawdzamy oba warianty: małe 'a' i duże 'A'
-          final id = i['appointmentId'] ?? i['AppointmentId'];
-          DateTime? start = i['scheduledStart'] != null
-      ? DateTime.tryParse(i['scheduledStart'])
-      : (i['ScheduledStart'] != null ? DateTime.tryParse(i['ScheduledStart']) : null);
+        upcoming = _mapInquiries(fetchedUpcoming);
+        archive = _mapInquiries(fetchedArchive);
 
-  DateTime? end = i['scheduledEnd'] != null
-      ? DateTime.tryParse(i['scheduledEnd'])
-      : (i['ScheduledEnd'] != null ? DateTime.tryParse(i['ScheduledEnd']) : null);
+        _updateUpcomingMap();
 
-          return {
-            'id': id?.toString() ?? '', 
-           'name': i['patientName'] ?? i['PatientName'] ?? '',
-           'startDate': start != null ? displayFormatter.format(start) : '',
-    'endDate': end != null ? displayFormatter.format(end) : '',
-            'service': i['serviceName'] ?? i['ServiceName'] ?? '',
-            'distance': i['patientAddress'] ?? i['PatientAddress'] ?? '',
-            'price': i['price'] ?? i['Price'] ?? '',
-         };
-        }).toList();
-      });
-      setState(() {
-        archive = fetchedArchive.map((i) {
-          // Sprawdzamy oba warianty: małe 'a' i duże 'A'
-          final id = i['appointmentId'] ?? i['AppointmentId'];
-          DateTime? start = i['scheduledStart'] != null
-      ? DateTime.tryParse(i['scheduledStart'])
-      : (i['ScheduledStart'] != null ? DateTime.tryParse(i['ScheduledStart']) : null);
-
-  DateTime? end = i['scheduledEnd'] != null
-      ? DateTime.tryParse(i['scheduledEnd'])
-      : (i['ScheduledEnd'] != null ? DateTime.tryParse(i['ScheduledEnd']) : null);
-
-          return {
-            'id': id?.toString() ?? '', 
-            'name': i['patientName'] ?? i['PatientName'] ?? '',
-            'startDate': start != null ? displayFormatter.format(start) : '',
-    'endDate': end != null ? displayFormatter.format(end) : '',
-            'service': i['serviceName'] ?? i['ServiceName'] ?? '',
-          };
-        }).toList();
         isLoading = false;
       });
-
-  } catch (e) {
-    print('Błąd pobierania zapytań: $e');
-    setState(() => isLoading = false);
-  }
-}
-  
-@override
-Widget build(BuildContext context) {
-  return Container(
-    color: AppColors.background,
-    child: Center(
-      child: isLoading
-          ? const CircularProgressIndicator()
-          : SingleChildScrollView(
-              child: Column(
-                children: [
-                  const SizedBox(height: 40),// margines od dołu
-                    Column(
-                      children: [
-                        Container(
-                          width: 350,
-                          decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                AppColors.secondary,
-                                AppColors.onBackground,
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(12), // opcjonalnie zaokrąglone rogi
-                          ),
-                          child: _buildSection('Nadchodzące wizyty', upcoming, isUpcoming: true),
-                        ),
-                        const SizedBox(height: 16),
-                        Container(
-                          width: 350,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                              AppColors.secondary,
-                              AppColors.onBackground,
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: _buildSection('Archiwum', archive),
-                        ),
-                      ],
-                    )
-                  ],
-                ),
-              ),
-      ),
-      
-    );
+    } catch (e) {
+      debugPrint('Błąd pobierania zapytań: $e');
+      if (mounted) setState(() => isLoading = false);
+    }
   }
 
-  Widget _buildSection(String title,  List<Map<String, dynamic>> items,
-    {bool isUpcoming = false}) {
-  return ConstrainedBox(
-    constraints: const BoxConstraints(maxWidth: 400), // maksymalna szerokość
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        const SizedBox(height: 16),
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: AppColors.onSurface,
-              ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 16),
-        Column(
-          children: items.map((item) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-                child: Card(
-                  color: AppColors.onPrimary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  elevation: 3,
-                  child: SizedBox(
-                    width: 310,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          item['name'] ?? '',
-                          style: const TextStyle(
-                              fontSize: 20),
-                        ),
-                        const SizedBox(height: 8),
-                        if (isUpcoming) ...[
-                          Text('Od: ${item['startDate']}',
-                          style: const TextStyle(
-                              fontSize: 15),
-                        ),
-                        Text('do: ${item['endDate']}',
-                          style: const TextStyle(
-                              fontSize: 15),
-                        ),
-                          Text('Usługa: ${item['service']}',
-                          style: const TextStyle(
-                              fontSize: 15),
-                        ),
-                          Text('Koszt: ${item['price']}',
-                          style: const TextStyle(
-                              fontSize: 15),
-                        ),
-                          Text('adres: ${item['distance']}',
-                          style: const TextStyle(
-                              fontSize: 15),
-                        ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              ElevatedButton(
-                                onPressed: () {},
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.onSurface,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 0),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    fixedSize: const Size(125, 29),
-                                  ),
-                                  child: const Text('Wiadomość'),
-                                ),
+  List<Map<String, dynamic>> _mapInquiries(List<dynamic> data) {
+    return data.map((i) {
+      final id = i['appointmentId'] ?? i['AppointmentId'];
+      DateTime? start = DateTime.tryParse(i['scheduledStart'] ?? i['ScheduledStart'] ?? '');
+      DateTime? end = DateTime.tryParse(i['scheduledEnd'] ?? i['ScheduledEnd'] ?? '');
 
-                                const SizedBox(width: 8), // odstęp między przyciskami
+      return {
+        'id': id?.toString() ?? '',
+        'name': i['patientName'] ?? i['PatientName'] ?? 'Nieznany pacjent',
+        'startDate': start != null ? displayFormatter.format(start) : '--',
+        'endDate': end != null ? displayFormatter.format(end) : '--',
+        'service': i['serviceName'] ?? i['ServiceName'] ?? 'Brak usługi',
+        'distance': i['patientAddress'] ?? i['PatientAddress'] ?? '',
+        'price': i['price'] ?? i['Price'] ?? '0.00',
+      };
+    }).toList();
+  }
+  void _updateUpcomingMap() {
+    _upcomingMap.clear();
 
-                              ElevatedButton(
-                                onPressed: () {},
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.onSurface,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 0),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    fixedSize: const Size(125, 29),
-                                  ),
-                                child: const Text('Zrezygnuj'),
-                              ),
-                            ],
-                          ),
-                        ] else ...[
-                          
-                          Text('Od: ${item['startDate']}',
-                          style: const TextStyle(
-                              fontSize: 15),
-                        ),
-                        Text('do: ${item['endDate']}',
-                          style: const TextStyle(
-                              fontSize: 15),
-                        ),
-                          Text('Usługa: ${item['service']}',
-                          style: const TextStyle(
-                              fontSize: 15),
-                        ),
-                        ],
-                        
-                      ],
-                    ),
-                  ),
-                ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
+    for (var item in upcoming) {
+      final startString = item['startDate'];
+      final start = displayFormatter.parse(startString);
+
+      final day = DateTime(start.year, start.month, start.day);
+
+      if (_upcomingMap[day] == null) {
+        _upcomingMap[day] = [];
+      }
+
+      _upcomingMap[day]!.add(item);
+    }
+  }
+  List<Map<String, dynamic>> _getEventsForDay(DateTime day) {
+    final date = DateTime(day.year, day.month, day.day);
+    return _upcomingMap[date] ?? [];
   }
 
   @override
-  void dispose() {
-    super.dispose();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.surface,
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation(AppColors.primary)))
+          : SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Wizyty',
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.onSurface,
+                          ),
+                    ),
+                    const SizedBox(height: 24),
+                    _buildSectionHeader('Nadchodzące', Icons.calendar_today_rounded),
+                    const SizedBox(height: 16),
+                    _buildCalendar(),
+                    const SizedBox(height: 16),
+                    _buildSelectedDayAppointments(),
+                    const SizedBox(height: 32),
+                    _buildSectionHeader('Archiwum', Icons.history_rounded),
+                    const SizedBox(height: 16),
+                    _buildList(archive, isUpcoming: false),
+                    const SizedBox(height: 100), // Spacing dla BottomNav
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+  Widget _buildCalendar() {
+    return TableCalendar<Map<String, dynamic>>(
+      firstDay: DateTime.now().subtract(const Duration(days: 365)),
+      lastDay: DateTime.now().add(const Duration(days: 365)),
+      focusedDay: _focusedDay,
+      selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+      onDaySelected: (selectedDay, focusedDay) {
+        setState(() {
+          _selectedDay = selectedDay;
+          _focusedDay = focusedDay;
+        });
+      },
+      eventLoader: _getEventsForDay,
+      startingDayOfWeek: StartingDayOfWeek.monday,
+    );
+  }
+  Widget _buildSelectedDayAppointments() {
+    final items =
+        _selectedDay != null ? _getEventsForDay(_selectedDay!) : [];
+
+    if (items.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(16),
+        child: Text("Brak wizyt w tym dniu"),
+      );
+    }
+
+    return Column(
+      children: items
+          .map((item) => _buildInquiryCard(item, true))
+          .toList(),
+    );
+  }
+  Widget _buildSectionHeader(String title, IconData icon) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: AppColors.primary, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildList(List<Map<String, dynamic>> items, {required bool isUpcoming}) {
+    if (items.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.outlineVariant),
+        ),
+        child: Text(
+          'Brak wizyt w tej sekcji',
+          style: TextStyle(color: AppColors.textSecondary),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+
+    return Column(
+      children: items.map((item) => _buildInquiryCard(item, isUpcoming)).toList(),
+    );
+  }
+
+  Widget _buildInquiryCard(Map<String, dynamic> item, bool isUpcoming) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      // Używamy koloru z AppTheme (surfaceContainer) dla czystego wyglądu
+      color: AppColors.surfaceContainer, 
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: AppColors.outlineVariant.withValues(alpha: 0.5),),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    item['name'],
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                ),
+                if (isUpcoming)
+                  Text(
+                    '${item['price']} zł',
+                    style: TextStyle(
+                      color: AppColors.accent,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
+                  ),
+              ],
+            ),
+            const Divider(height: 24),
+            _buildInfoRow(Icons.access_time_rounded, '${item['startDate']} - ${item['endDate']}'),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.medical_services_outlined, item['service']),
+            if (isUpcoming && item['distance'].isNotEmpty) ...[
+              const SizedBox(height: 8),
+              _buildInfoRow(Icons.location_on_outlined, item['distance']),
+            ],
+            if (isUpcoming) ...[
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {},
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        minimumSize: Size.zero,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('Wiadomość', style: TextStyle(fontSize: 14)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {},
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.livingColor10,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        minimumSize: Size.zero,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('Zrezygnuj', style: TextStyle(fontSize: 14)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: AppColors.textSecondary),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.onSurface.withValues(alpha: 0.5),
+                ),
+          ),
+        ),
+      ],
+    );
   }
 }

@@ -116,7 +116,8 @@ namespace H4H_API.Services.Implementations
                     ServiceName = a.SpecialistService!.ServiceType.Name,
                     Status = a.AppointmentStatus,
                     PatientAddress = a.ClientAddress ?? a.Client.Address ?? "Brak adresu",
-                    Price = a.TotalPrice ?? 0
+                    Price = a.TotalPrice ?? 0,
+                    Description = a.ClientNotes
                 })
                 .ToListAsync();
             return result;
@@ -309,7 +310,7 @@ namespace H4H_API.Services.Implementations
             await _context.SaveChangesAsync();
         }
 
-        public async Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId)
+        public async Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId,Guid serviceId, decimal price)
         {
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
                 ?? throw new AppException("Profil nie istnieje.", ErrorCodes.SpecialistNotFound);
@@ -334,6 +335,8 @@ namespace H4H_API.Services.Implementations
             };
             _context.appointments_specialists.Add(appointmentSpecialist);
 
+            appointment.TotalPrice = price;
+            appointment.SpecialistServiceId = serviceId;
             appointment.AppointmentStatus = "pending";
 
             await _context.SaveChangesAsync();

@@ -148,12 +148,14 @@ namespace H4H_API.Controllers
         }
 
 
-        /// <summary>Potwierdza oczekującą wizytę przez specjalistę.</summary>
+        /// <summary>Potwierdza oczekującą wizytę przez specjalistę. 
+        /// !!! DO POPRAWIENIA GDY BEDZIE UPDATE BAZY !!!
+        /// </summary>
         [HttpPatch("appointments/{id}/confirm")]
-        public async Task<ActionResult<ApiResponse<object?>>> ConfirmAppointment(Guid id)
+        public async Task<ActionResult<ApiResponse<object?>>> ConfirmAppointment(Guid id, Guid serviceId, decimal price)
         {
             var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
-            await _specialistService.ConfirmAppointmentAsync(userId, id);
+            await _specialistService.ConfirmAppointmentAsync(userId, id,serviceId,price);
             return Ok(ApiResponse<object?>.SuccessResponse(null, "Wizyta została potwierdzona."));
         }
 

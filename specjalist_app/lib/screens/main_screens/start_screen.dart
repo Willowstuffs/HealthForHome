@@ -81,7 +81,8 @@ class _StartScreenState extends State<StartScreen> {
       'startDate': start != null ? displayFormatter.format(start) : '',
       'endDate': end != null ? displayFormatter.format(end) : '',
       'service': i['serviceName'] ?? i['ServiceName'] ?? '',
-      'distance': i['patientAddress'] ?? i['PatientAddress'] ?? '',
+      'address': i['patientAddress'] ?? i['PatientAddress'] ?? '',
+      'description': i['description'] ?? i['Description'] ?? '',
     };
   }).toList();
   isLoading = false;
@@ -94,172 +95,248 @@ class _StartScreenState extends State<StartScreen> {
 }
   
 @override
-Widget build(BuildContext context) {
-  return Container(
-    color: AppColors.background,
-    child: Center(
-      child: isLoading
-          ? const CircularProgressIndicator()
-          : SingleChildScrollView(
-              child: Column(
-                children: [
-                  const SizedBox(height: 40),
-                  SizedBox(
-                    width: 335,
-                    child: Text(
-                      'Witaj, $firstName!',
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineLarge!
-                          .copyWith(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.onSurface,
-                          ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                    const SizedBox(height: 40), // margines od dołu
-                    Column(
-                      children: [
-                        Container(
-                          width: 350,
-                          decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                AppColors.secondary,
-                                AppColors.onBackground,
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(12), // opcjonalnie zaokrąglone rogi
-                          ),
-                          child: _buildSection('Zapytania', inquiries, isZapytania: true),
-                        ),
-                      ],
-                    )
-                  ],
-                ),
-              ),
-      ),
-      
-    );
-  }
-
-  Widget _buildSection(String title, List<Map<String, dynamic>> items, {bool isZapytania = false}) {
-  return ConstrainedBox(
-    constraints: const BoxConstraints(maxWidth: 400), // maksymalna szerokość
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        const SizedBox(height: 16),
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: AppColors.onSurface,
-              ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 16),
-         // Jeżeli lista jest pusta
-        if (items.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            child: Text(
-              isZapytania ? 'Brak zgłoszeń' : 'Brak nadchodzących wizyt',
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-          )
-        else
-        Column(
-          children: items.map((item) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-                child: Card(
-                  color: AppColors.onPrimary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  elevation: 3,
-                  child: SizedBox(
-                    width: 310,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          item['name'] ?? '',
-                          style: const TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        if (isZapytania) ...[
-                          Text('Od: ${item['startDate']}',
-                          style: const TextStyle(
-                              fontSize: 15),
-                          ),
-                          Text('Do: ${item['endDate']}',
-                          style: const TextStyle(
-                              fontSize: 15),
-                          ),
-                          Text('Usługa: ${item['service']}',
-                          style: const TextStyle(
-                              fontSize: 15),
-                          ),
-                          Text('Odległość: BRAK',
-                          style: const TextStyle(
-                              fontSize: 15),
-                          ),
-                          const SizedBox(height: 8),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => OfferFormScreen(
-                                    appointmentId: item['id'],
-                                    patientName: item['name'],
-                                    startDate: item['startDate'],
-                                    endDate: item['endDate'],
-                                    serviceName: item['service'],
-                                  ),
-                                ),
-                              ).then((_) => _fetchData());
-                            },
-                            style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.onSurface,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 0),
-                            shape: RoundedRectangleBorder(
-                               borderRadius: BorderRadius.circular(10),
-                            ),
-                            fixedSize: const Size(125, 29),
-                          ),
-                          child: const Text('Wyślij ofertę'),
-                            
-                        ),
-
-                      ]
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.surface,
+      body: SafeArea(
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                onRefresh: _fetchData,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: 32),
+                      _buildSectionTitle('Nowe zapytania', Icons.notifications_active_outlined),
+                      const SizedBox(height: 16),
+                      _buildInquiriesList(),
                     ],
                   ),
                 ),
-                
               ),
+      ),
+    );
+  }
+Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.surfaceContainerHighest,
+            AppColors.surfaceContainerHighest.withValues(alpha: 0.7),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Dzień dobry,',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  firstName.isNotEmpty ? firstName : 'Specjalisto',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.onSurface,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Masz ${inquiries.length} nowych zapytań',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
             ),
-            );
-          }).toList(),
+          ),
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Icon(Icons.medical_services_outlined, color: Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title, IconData icon) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: AppColors.primary, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
         ),
       ],
-    ),
-  );
-}
-  
-  @override
-  void dispose() {
-    super.dispose();
+    );
+  }
+
+  Widget _buildInquiriesList() {
+    if (inquiries.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainer,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.outlineVariant),
+        ),
+        child: Column(
+          children: [
+            Icon(Icons.inbox_outlined, size: 48, color: AppColors.textSecondary.withValues(alpha: 0.5)),
+            const SizedBox(height: 16),
+            Text(
+              'Brak nowych zapytań',
+              style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: inquiries.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 16),
+      itemBuilder: (context, index) {
+        final item = inquiries[index];
+        return Container(
+          decoration: BoxDecoration(
+            color: AppColors.surfaceContainer,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+            border: Border.all(color: AppColors.outlineVariant),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item['name'],
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondary.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        item['service'],
+                        style: TextStyle(
+                          color: AppColors.livingColor10,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 24),
+                _buildInfoRow(Icons.calendar_today_outlined, '${item['startDate']} - ${item['endDate']}'),
+                const SizedBox(height: 8),
+                _buildInfoRow(Icons.location_on_outlined, item['address']),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => OfferFormScreen(
+                            appointmentId: item['id'],
+                            patientName: item['name'],
+                            startDate: item['startDate'],
+                            endDate: item['endDate'],
+                            description: item['description'], // NOWE
+                          ),
+                        ),
+                      ).then((_) => _fetchData());
+                    },
+                    child: const Text('Szczegóły oferty'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: AppColors.textSecondary),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+          ),
+        ),
+      ],
+    );
   }
 }
