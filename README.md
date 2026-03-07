@@ -61,8 +61,6 @@ Dodano nowe metody do SpecialistController.
 COMMIT 4: 14.01.2026
 (I)SpecialistService(Controller): Dodano sygnature i logike metody od zatwierdzania statusu wizyty. Dodano do kontrolera.
 Dodano E-mail i nr telefonu do SpecialistDto
-<<<<<<< HEAD
-=======
 
 Commit 5: 20.02.2026
 Poprawiono elementy związane z geolokalizacją
@@ -82,6 +80,3 @@ W AppSettings dodano pole z informacjami o e-mailu
 Auth004 do 006 zaklepane do weryfikacji
 
 
-
-
->>>>>>> origin/Wiktor

@@ -33,7 +33,6 @@ namespace H4H.Data
         public DbSet<AppointmentSpecialist> appointments_specialists { get; set; }
         public DbSet<DeviceToken> device_tokens { get; set; }
 
-
         // dla PostGIS i NetTopologySuite
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -464,8 +463,6 @@ namespace H4H.Data
 
 
             // usuniecie service_requests
-
-
         }
     }
 }

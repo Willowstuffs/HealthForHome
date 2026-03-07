@@ -32,7 +32,6 @@ namespace H4H_API.Services.Interfaces
         Task UpdateServiceAsync(Guid userId, Guid serviceId, SpecialistServiceManageDto dto);
         /// <summary>Usuwa usluge specjalisty</summary>
         Task DeleteServiceAsync(Guid userId, Guid serviceId);
-
         /// <summary>
         /// Zmienia zasieg uslug specjalisty
         /// </summary>

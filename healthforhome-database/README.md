@@ -37,6 +37,7 @@ Kompletny (prawie) schemat bazy danych PostgreSQL dla platformy HealthForHome.
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 * <code>device_tokens</code> - przechowywanie tokenów FCM (Firebase Cloud Messaging) dla systemu powiadomień
 * <code>service_requests</code> - przechowywanie ofert zgłoszeń wysyłanych przez klientów
@@ -46,11 +47,15 @@ Kompletny (prawie) schemat bazy danych PostgreSQL dla platformy HealthForHome.
 >>>>>>> origin/justyna
 =======
 >>>>>>> origin/Wiktor
+=======
+* <code>device_tokens</code> - przechowywanie tokenów FCM (Firebase Cloud Messaging) dla systemu powiadomień
+>>>>>>> origin/main
 * <code>__EFMigrationsHistory</code> - tabelka z migracjami
 
 ## Diagram relacji
 * diagrams/schemat.png
 * diagrams/schemat.svg
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -62,6 +67,9 @@ na diagramach brakuje jeszcze najnowszej tabelki (device_tokens)
 >>>>>>> origin/justyna
 =======
 >>>>>>> origin/Wiktor
+=======
+na diagramach brakuje jeszcze najnowszej tabelki (device_tokens)
+>>>>>>> origin/main
 
 ## Jak uruchomić bazę danych
 ### Wymagania:

@@ -11,7 +11,6 @@ using H4H_API.Exceptions;
 using H4H_API.Helpers;
 using H4H_API.DTOs.Geolocation;
 
-
 namespace H4H_API.Services.Implementations
 {
     /// <summary>
@@ -213,7 +212,6 @@ namespace H4H_API.Services.Implementations
             if (client == null)
                 throw new AppException($"Nie znaleziono klienta dla użytkownika {userId}", ErrorCodes.ClientNotFound);
 
-
             if (string.IsNullOrEmpty(client.Address))
                 throw new AppException("Klient nie ma adresu do geokodowania", ErrorCodes.GeocodingFailed);
 
@@ -302,7 +300,7 @@ namespace H4H_API.Services.Implementations
                 .Include(a => a.Client) // Ważne dla ClientName
                 .Include(a => a.Specialist) // Ważne dla SpecialistName
                 .Include(a => a.SpecialistService) // Ważne dla ServiceName
-                    .ThenInclude(ss => ss.ServiceType)
+                    .ThenInclude(ss => ss!.ServiceType)
                 .Where(a => a.ClientId == client.Id)
                 .AsQueryable();
 
@@ -347,7 +345,7 @@ namespace H4H_API.Services.Implementations
                 .Include(a => a.Client)
                 .Include(a => a.Specialist)
                 .Include(a => a.SpecialistService)
-                    .ThenInclude(ss => ss.ServiceType)
+                    .ThenInclude(ss => ss!.ServiceType)
                 .FirstOrDefaultAsync(a => a.Id == appointmentId && a.ClientId == client.Id);
 
             if (appointment == null)
@@ -359,6 +357,7 @@ namespace H4H_API.Services.Implementations
 
         public async Task<AppointmentDto> CreateAppointmentAsync(Guid userId, CreateAppointmentDto dto)
         {
+            await Task.CompletedTask; //usuwam warning o braku await
             // TODO: Zaimplementować z walidacją odległości
             throw new NotImplementedException("CreateAppointmentAsync not implemented yet");
         }
@@ -466,6 +465,7 @@ namespace H4H_API.Services.Implementations
 
         public async Task<PagedResponse<SpecialistDto>> SearchSpecialistsAsync(SearchSpecialistsDto filters, PagedRequest request)
         {
+            await Task.CompletedTask; //usuwam warning o braku await
             // TODO: Zaimplementować z filtrowaniem po odległości
             // Na razie zwróć pustą listę
             return new PagedResponse<SpecialistDto>
@@ -522,11 +522,15 @@ namespace H4H_API.Services.Implementations
 
             var geocoded = await _geocoder.GeocodeAddressAsync(cleanAddress);
 
+            // Jeśli użytkownik jest zalogowany, ale nie znaleziono klienta, to jest błąd - nie można stworzyć ogłoszenia bez klienta
+            if (!finalClientId.HasValue)
+                throw new AppException("Musisz być zalogowany, aby stworzyć ogłoszenie", ErrorCodes.ClientNotFound);
+
             // Tworzenie wizyty (ogłoszenia)
             var appointment = new Appointment
             {
                 Id = Guid.NewGuid(),
-                ClientId = finalClientId, // Może być null dla gościa
+                ClientId = finalClientId.Value, // Może być null dla gościa
                 SpecialistId = null, // To jest ogłoszenie otwarte
                 ServiceTypeId = serviceType.Id,
 

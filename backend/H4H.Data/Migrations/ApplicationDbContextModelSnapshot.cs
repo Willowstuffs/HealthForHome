@@ -142,7 +142,7 @@ namespace H4H.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("client_address");
 
-                    b.Property<Guid?>("ClientId")
+                    b.Property<Guid>("ClientId")
                         .HasColumnType("uuid")
                         .HasColumnName("client_id");
 
@@ -153,7 +153,6 @@ namespace H4H.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_at");
-
 
                     b.Property<Point>("Location")
                         .HasColumnType("geometry")

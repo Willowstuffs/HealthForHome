@@ -15,8 +15,9 @@ namespace H4H_API.DTOs.Specialist
         [Required]
         [Range(0, 500)] // Maksymalny zasieg uslugi w kilometrach. 500 chyba wystarczy.
         public int MaxDistanceKm { get; set; }
+
+
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
-
     }
 }

@@ -147,7 +147,6 @@ namespace H4H_API.Controllers
             return Ok(ApiResponse<object?>.SuccessResponse(null, "Zasięg został zaktualizowany."));
         }
 
-
         /// <summary>Potwierdza oczekującą wizytę przez specjalistę. 
         /// !!! DO POPRAWIENIA GDY BEDZIE UPDATE BAZY !!!
         /// </summary>

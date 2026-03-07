@@ -357,9 +357,12 @@ ALTER TABLE appointments ADD COLUMN selected_specialist_id UUID REFERENCES speci
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 SELECT * FROM "__EFMigrationsHistory"
 =======
+=======
+>>>>>>> origin/main
 SELECT * FROM "__EFMigrationsHistory";
 >>>>>>> origin/justyna
 
@@ -512,7 +515,43 @@ DROP CONSTRAINT appointments_appointment_status_check;
 ALTER TABLE appointments 
 ADD CONSTRAINT appointments_appointment_status_check 
 CHECK (appointment_status IN ('open', 'confirmed', 'cancelled', 'completed', 'pending'));
+<<<<<<< HEAD
 >>>>>>> origin/justyna
 =======
 SELECT * FROM "__EFMigrationsHistory"
 >>>>>>> origin/Wiktor
+=======
+
+
+-- aktualizacja 01.03.2026 funkcje do czyszczenia kodow i martwych kont
+-- przez prace lokalną kazdy musi sobie odpalic raz u siebie w bazie te funkcje zeby dzialaly
+
+-- 1. Funkcja do usuwania wygasłych kodów OTP
+CREATE OR REPLACE FUNCTION delete_expired_codes()
+RETURNS integer AS $$
+DECLARE
+    deleted_count integer;
+BEGIN
+    DELETE FROM verification_codes 
+    WHERE expires_at < CURRENT_TIMESTAMP;
+    
+    GET DIAGNOSTICS deleted_count = ROW_COUNT;
+    RETURN deleted_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 2. Funkcja do czyszczenia martwych kont (nieaktywne > 30 dni)
+CREATE OR REPLACE FUNCTION cleanup_inactive_users()
+RETURNS integer AS $$
+DECLARE
+    deleted_count integer;
+BEGIN
+    DELETE FROM users 
+    WHERE is_active = false 
+      AND created_at < (CURRENT_TIMESTAMP - INTERVAL '30 days');
+    
+    GET DIAGNOSTICS deleted_count = ROW_COUNT;
+    RETURN deleted_count;
+END;
+$$ LANGUAGE plpgsql;
+>>>>>>> origin/main

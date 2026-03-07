@@ -1,4 +1,3 @@
-﻿using H4H.Core.Helpers;
 using H4H.Core.Models;
 using H4H.Data;
 using H4H_API.DTOs.Specialist;
@@ -32,7 +31,7 @@ namespace H4H_API.Services.Implementations
                 .FirstOrDefaultAsync(s => s.UserId == userId);
 
             return spec == null
-                ? throw new KeyNotFoundException($"Nie znaleziono specjalisty dla użytkownika {userId}")
+                ? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound)
                 : new SpecialistDto
                 {
                     Id = spec.Id,
@@ -63,7 +62,7 @@ namespace H4H_API.Services.Implementations
         public async Task<List<InquiryListItemDto>> GetInquiriesAsync(Guid userId, InquiryFilterDto filters)
         {
             var specialist = await _context.specialists
-                .FirstOrDefaultAsync(s => s.UserId == userId) ?? throw new KeyNotFoundException($"Nie znaleziono specjalisty dla użytkownika {userId}");
+                .FirstOrDefaultAsync(s => s.UserId == userId) ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
 
             ///<summary>
             ///Query Builder do pobrania zapytan z zastosowaniem filtrow
@@ -126,9 +125,8 @@ namespace H4H_API.Services.Implementations
         {
             var specialist = await _context.specialists
                 .FirstOrDefaultAsync(s => s.UserId == userId)
-                ?? throw new KeyNotFoundException($"Nie znaleziono specjalisty dla użytkownika {userId}");
-
-
+                ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
+      
             var qualification = await _context.specialist_qualifications
                 .FirstOrDefaultAsync(q => q.SpecialistId == specialist.Id);
 
@@ -165,7 +163,7 @@ namespace H4H_API.Services.Implementations
                 return qualification?.LicenseNumber;
             }
 
-            throw new KeyNotFoundException($"Nie znaleziono profilu specjalisty dla użytkownika {userId}");
+            throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
         }
         public async Task<List<SpecialistServiceDto>> GetServicesAsync(Guid userId)
         {
@@ -173,7 +171,7 @@ namespace H4H_API.Services.Implementations
                 .Include(s => s.Services)
                     .ThenInclude(ss => ss.ServiceType)
                 .FirstOrDefaultAsync(s => s.UserId == userId)
-                ?? throw new KeyNotFoundException("Profil specjalisty nie istnieje.");
+                ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
 
             return specialist.Services
                 .Where(s => s.IsActive)
@@ -207,7 +205,7 @@ namespace H4H_API.Services.Implementations
         public async Task AddServiceAsync(Guid userId, SpecialistServiceManageDto dto)
         {
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
-                 ?? throw new KeyNotFoundException("Profil nie istnieje."); // ErrorCode: SPEC_001
+                 ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound); // ErrorCode: SPEC_001
 
             // Duplikaty
             var exists = await _context.specialist_services
@@ -235,7 +233,7 @@ namespace H4H_API.Services.Implementations
         public async Task UpdateServiceAsync(Guid userId, Guid serviceId, SpecialistServiceManageDto dto)
         {
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
-                ?? throw new KeyNotFoundException("Profil nie istnieje.");
+                ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
 
             // Pobieranie konkretnej uslugi
             var service = await _context.specialist_services
@@ -251,8 +249,7 @@ namespace H4H_API.Services.Implementations
 
                 await _context.SaveChangesAsync();
             }
-            else
-                throw new KeyNotFoundException("Usługa nie znaleziona.");
+                throw new AppException("Usługa nie znaleziona.", ErrorCodes.ServiceNotFound); //SERV_002
         }
 
         public async Task DeleteServiceAsync(Guid userId, Guid serviceId)
@@ -268,7 +265,7 @@ namespace H4H_API.Services.Implementations
                 await _context.SaveChangesAsync();
             }
             else
-                throw new KeyNotFoundException("Usługa nie znaleziona.");
+                throw new AppException("Usługa nie znaleziona.", ErrorCodes.ServiceNotFound); //SERV_002
         }
 
         public async Task UpdateServiceAreaAsync(Guid userId, ServiceAreaManageDto dto)
@@ -276,7 +273,7 @@ namespace H4H_API.Services.Implementations
             var specialist = await _context.specialists
                 .Include(s => s.ServiceAreas)
                 .FirstOrDefaultAsync(s => s.UserId == userId)
-                ?? throw new KeyNotFoundException("Profil nie istnieje.");
+                ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
             // Zakladamy ze specjalista ma jeden obszar dzialania.
 
             var area = specialist.ServiceAreas.FirstOrDefault();
@@ -323,7 +320,7 @@ namespace H4H_API.Services.Implementations
                 throw new AppException("Wizyta nie znaleziona.", ErrorCodes.AppointmentNotFound);
 
             if (appointment.AppointmentStatus != "open")
-                throw new AppException("Można potwierdzić tylko wizyty oczekujące.", ErrorCodes.AppointmentCancelForbidden);
+                throw new AppException("Można potwierdzić tylko wizyty oczekujące.", ErrorCodes.AppointmentStatusNotPending);
 
 
             var appointmentSpecialist = new AppointmentSpecialist
@@ -355,7 +352,7 @@ namespace H4H_API.Services.Implementations
                 throw new AppException("Wizyta nie znaleziona.", ErrorCodes.AppointmentNotFound);
 
             if (appointment.AppointmentStatus != "pending")
-                throw new AppException("Można potwierdzić tylko wizyty oczekujące.", ErrorCodes.AppointmentCancelForbidden);
+                throw new AppException("Można potwierdzić tylko wizyty oczekujące.", ErrorCodes.AppointmentStatusNotPending);
 
             appointment.AppointmentStatus = "confirmed";
 
@@ -374,7 +371,7 @@ namespace H4H_API.Services.Implementations
                 throw new AppException("Wizyta nie znaleziona.", ErrorCodes.AppointmentNotFound);
 
             if (appointment.AppointmentStatus != "pending")
-                throw new AppException("Można potwierdzić tylko wizyty oczekujące.", ErrorCodes.AppointmentCancelForbidden);
+                throw new AppException("Można potwierdzić tylko wizyty oczekujące.", ErrorCodes.AppointmentStatusNotPending);
 
             appointment.AppointmentStatus = "confirmed";
             appointment.UpdatedAt = DateTime.UtcNow;
@@ -478,7 +475,6 @@ namespace H4H_API.Services.Implementations
         }
         public async Task UpdateProfileAsync(Guid userId, UpdateSpecialistProfileDto dto)
         {
-            Console.WriteLine("----rozpoczęcie----");
             // Pobranie specjalisty wraz z obszarami działania
             var specialist = await _context.specialists
                 .Include(s => s.ServiceAreas)
@@ -488,7 +484,6 @@ namespace H4H_API.Services.Implementations
             // Pobranie powiązanego użytkownika osobno, aby EF Core poprawnie śledził zmiany
             var user = await _context.users.FirstOrDefaultAsync(u => u.Id == userId)
                 ?? throw new KeyNotFoundException("Użytkownik nie istnieje.");
-            Console.WriteLine("----aktualizacja---");
             // Aktualizacja podstawowych danych w tabeli Users
             user.Email = dto.Email;
             user.PhoneNumber = dto.PhoneNumber;
@@ -516,19 +511,15 @@ namespace H4H_API.Services.Implementations
                 // Zapisujemy ścieżkę do bazy (relative URL)
                 user.AvatarUrl = $"/avatars/{fileName}";
             }
-            Console.WriteLine("----aktualizacja specjalisty---");
             // Aktualizacja danych specjalisty
             specialist.FirstName = dto.FirstName;
             specialist.LastName = dto.LastName;
             specialist.ProfessionalTitle = dto.ProfessionalTitle;
             specialist.Bio = dto.Bio;
             specialist.HourlyRate = dto.HourlyRate;
-            Console.WriteLine("----zapis do bazy---");
             // Zapis wszystkich zmian w jednej transakcji
             await _context.SaveChangesAsync();
-            Console.WriteLine("----koniec----");
 
         }
-
     }
 }

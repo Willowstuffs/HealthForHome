@@ -31,7 +31,6 @@ namespace H4H_API.Services.Implementations
         /// </summary>
         /// <param name="context">The database context used to access application data for authentication operations. Cannot be null.</param>
         /// <param name="jwtService">The JWT service used to generate and validate JSON Web Tokens for authentication. Cannot be null.</param>
-
         public AuthService(ApplicationDbContext context, IJwtService jwtService, IEmailService emailService)
         {
             _context = context;
@@ -372,7 +371,6 @@ namespace H4H_API.Services.Implementations
             }
             await _context.SaveChangesAsync();
         }
-        /// <summary>
         /// Sends a verification code to the specified email address for account registration verification.
         /// </summary>
         /// <remarks>This method generates a new 6-digit verification code and sends it to the provided
@@ -384,6 +382,14 @@ namespace H4H_API.Services.Implementations
         /// <exception cref="AppException">Thrown if no user with the specified email exists, or if the user account is already verified.</exception>
         public async Task SendVerificationCodeAsync(string email)
         {
+            // Wywołanie funkcji SQL: sprzątanie bazy danych z nieużywanych kodów weryfikacyjnych i nieaktywnych użytkowników
+            await _context.Database.ExecuteSqlRawAsync("SELECT delete_expired_codes();"); // Kody czyścimy zawsze - to szybka operacja
+            if (new Random().Next(1, 50) == 1) // Konta czyścimy tylko raz na 50 wysłanych maili (średnio)
+            {
+                await _context.Database.ExecuteSqlRawAsync("SELECT cleanup_inactive_users();");
+            }
+            // <3
+
             var user = await _context.users.FirstOrDefaultAsync(u => u.Email == email)
                 ?? throw new AppException("Uzytkownik nie istnieje.", ErrorCodes.UserNotFound);
 
@@ -450,7 +456,6 @@ namespace H4H_API.Services.Implementations
             }
             else
                 throw new AppException("Nieprawidłowy kod weryfikacyjny.", ErrorCodes.WrongVerificationCode);
-
         }
     }
 }
