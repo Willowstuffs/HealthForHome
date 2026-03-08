@@ -5,6 +5,7 @@ import '../../theme/app_theme.dart';
 import '../services/api_service.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import '../services/app_refresh_service.dart';
 
 class EditProfilScreen extends StatefulWidget {
   const EditProfilScreen({super.key});
@@ -99,7 +100,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
       // Pobranie zaktualizowanego profilu i zapis do UserSession
       final updatedProfile = await api.getProfile();
       UserSession.setProfileFromApi(updatedProfile,UserSession.token ?? '');
-
+      AppRefreshService().refresh();
       setState(() {}); // odśwież UI
 
 

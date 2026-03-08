@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-=======
 
-
->>>>>>> origin/justyna
 -- TWORZENIE TABEL
 -- uzytkownicy
 CREATE TABLE users (

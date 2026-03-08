@@ -19,8 +19,10 @@ class MainScreen extends StatefulWidget {
 
   @override
   State<MainScreen> createState() => _MainScreenState();
-}class _MainScreenState extends State<MainScreen> {
+}
+class _MainScreenState extends State<MainScreen> {
   late int _selectedIndex;
+  List<Map<String, dynamic>> inquiries = [];
 
   late final List<Widget> _screens;
 
@@ -34,7 +36,7 @@ class MainScreen extends StatefulWidget {
         highlightAppointmentId: widget.highlightAppointmentId,
       ),
       const WorkScreen(),
-      const MapScreen(),
+      MapScreen(inquiries: inquiries),
       const UpcomingScreen(),
       const ProfilScreen(),
     ];

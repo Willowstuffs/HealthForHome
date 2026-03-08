@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:specjalist_app/main.dart';
 import 'package:specjalist_app/services/user_profile.dart';
 import '../../theme/app_theme.dart';
@@ -7,14 +6,7 @@ import '../../services/api_service.dart';
 import 'package:intl/intl.dart';
 import '../offer_from_screen.dart';
 import '../../services/notification_services.dart';
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
-const AndroidNotificationChannel channel = AndroidNotificationChannel(
-  'high_importance_channel', // id
-  'High Importance Notifications', // nazwa
-  description: 'Kanał dla ważnych powiadomień', 
-  importance: Importance.high,
-);
+
 
 class StartScreen extends StatefulWidget {
   final String? highlightAppointmentId;
@@ -41,57 +33,76 @@ class _StartScreenState extends State<StartScreen> {
     _initializeNotifications();
     _fetchData();
   }
-  @override
-  void didUpdateWidget(covariant StartScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    if (widget.highlightAppointmentId != oldWidget.highlightAppointmentId) {
-      highlightedId = widget.highlightAppointmentId;
-      _fetchData();
-    }
-  }
+ 
   Future<void> _initializeNotifications() async {
     await NotificationService().setupInteractions(navigatorKey);
     
     await NotificationService().uploadTokenToServer();
   }
-  Future<void> _fetchData() async {
-  try {
-    final fetchedInquiries = await ApiService().getInquiries(
-      patientName: "", // przykładowy filtr
-      dateFrom: DateTime(now.year, now.month, now.day), // dziś od 00:00
-      dateTo: DateTime(now.year, now.month, now.day).add(const Duration(days: 30)),
-    );
-  final displayFormatter = DateFormat('dd-MM-yyyy HH:mm');
-    setState(() {
-  inquiries = fetchedInquiries.map((i) {
-    // Sprawdzamy oba warianty: małe 'a' i duże 'A'
-    final id = i['appointmentId'] ?? i['AppointmentId'];
-     DateTime? start = i['scheduledStart'] != null
-      ? DateTime.tryParse(i['scheduledStart'])
-      : (i['ScheduledStart'] != null ? DateTime.tryParse(i['ScheduledStart']) : null);
+   Future<void> _fetchData() async {
+    try {
+      final fetchedInquiries = await ApiService().getInquiries(
+        patientName: "",
+        dateFrom: DateTime(now.year, now.month, now.day),
+        dateTo:
+            DateTime(now.year, now.month, now.day).add(const Duration(days: 30)),
+      );
 
-  DateTime? end = i['scheduledEnd'] != null
-      ? DateTime.tryParse(i['scheduledEnd'])
-      : (i['ScheduledEnd'] != null ? DateTime.tryParse(i['ScheduledEnd']) : null);
+      final displayFormatter = DateFormat('dd-MM-yyyy HH:mm');
 
-    return {
-      'id': id?.toString() ?? '', 
-      'name': i['patientName'] ?? i['PatientName'] ?? '',
-      'startDate': start != null ? displayFormatter.format(start) : '',
-      'endDate': end != null ? displayFormatter.format(end) : '',
-      'service': i['serviceName'] ?? i['ServiceName'] ?? '',
-      'address': i['patientAddress'] ?? i['PatientAddress'] ?? '',
-      'description': i['description'] ?? i['Description'] ?? '',
-    };
-  }).toList();
-  isLoading = false;
-});
+      List<Map<String, dynamic>> processed = [];
 
-  } catch (e) {
-    print('Błąd pobierania zapytań: $e');
-    setState(() => isLoading = false);
-  }
+      for (var i in fetchedInquiries) {
+        final id = i['appointmentId'] ?? i['AppointmentId'];
+
+        DateTime? start = i['scheduledStart'] != null
+            ? DateTime.tryParse(i['scheduledStart'])
+            : (i['ScheduledStart'] != null
+                ? DateTime.tryParse(i['ScheduledStart'])
+                : null);
+
+        DateTime? end = i['scheduledEnd'] != null
+            ? DateTime.tryParse(i['scheduledEnd'])
+            : (i['ScheduledEnd'] != null
+                ? DateTime.tryParse(i['ScheduledEnd'])
+                : null);
+
+        /// --- ADDRESS PROCESSING ---
+        String originalAddress = i['patientAddress'] ?? i['PatientAddress'] ?? '';
+        String blurredAddress = originalAddress;
+
+        if (originalAddress.isNotEmpty) {
+          blurredAddress = blurredAddress.replaceAll(RegExp(r'\d{2}-\d{3}'), '');
+
+          blurredAddress = blurredAddress.replaceAll(RegExp(r'\s+\d+[a-zA-Z]?(\s*/\s*\d+[a-zA-Z]?)?'), '');
+
+          blurredAddress = blurredAddress.trim().replaceAll(RegExp(r',\s*$'), '');
+        }
+
+        processed.add({
+          'id': id?.toString() ?? '',
+          'name': i['patientName'] ?? i['PatientName'] ?? '',
+          'startDate': start != null ? displayFormatter.format(start) : '',
+          'endDate': end != null ? displayFormatter.format(end) : '',
+          'service': i['serviceName'] ?? i['ServiceName'] ?? '',
+          'address': blurredAddress,
+          'description': i['description'] ?? i['Description'] ?? '',
+        });
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        inquiries = processed;
+        isLoading = false;
+      });
+    } catch (e) {
+      print('Błąd pobierania zapytań: $e');
+
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
 }
   
 @override

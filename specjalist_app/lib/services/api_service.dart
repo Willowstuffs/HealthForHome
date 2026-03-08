@@ -433,22 +433,64 @@ Future<void> verifyCode({
 
   Exception _handleDioError(DioException e) {
     if (e.response != null) {
+      final data = e.response?.data;
       final statusCode = e.response?.statusCode;
 
+      // 1️⃣ Obsługa walidacji
+      if (data is Map && data.containsKey('errors')) {
+        final errors = data['errors'];
+
+        if (errors is Map && errors.isNotEmpty) {
+          final firstFieldErrors = errors.values.first;
+
+          if (firstFieldErrors is List && firstFieldErrors.isNotEmpty) {
+            return Exception(firstFieldErrors.first.toString());
+          }
+        }
+      }
+
+      // 2️⃣ Obsługa message z backendu
+      if (data is Map && data['message'] != null) {
+        return Exception(data['message']);
+      }
+
+      // 3️⃣ Obsługa errorCode
+      final String? errorCode = data is Map ? data['errorCode'] : null;
+
+      if (errorCode != null) {
+        switch (errorCode) {
+          case "AUTH_001":
+            return Exception('Niepoprawny e-mail lub hasło.');
+          case "AUTH_002":
+            return Exception('Ten adres e-mail jest już zajęty.');
+          case "AUTH_003":
+            return Exception('Użytkownik nie został odnaleziony.');
+          case "AUTH_005":
+            return Exception('Niepoprawny kod weryfikacyjny.');
+          case "AUTH_006":
+            return Exception('Kod weryfikacyjny wygasł.');
+          case "VAL_001":
+            return Exception('Błąd walidacji danych.');
+        }
+      }
+
+      // 4️⃣ Fallback HTTP
       switch (statusCode) {
         case 401:
-          return Exception('Brak tokenu');
-        case 400:
-          return Exception('Niepoprawne dane rejestracyjne');
-        case 409:
-          return Exception('Użytkownik już istnieje');
+          return Exception('Sesja wygasła. Zaloguj się ponownie.');
+        case 403:
+          return Exception('Brak uprawnień.');
         case 500:
-          return Exception('Błąd serwera');
+          return Exception('Błąd serwera.');
         default:
-          return Exception(e.response?.data['message'] ?? 'Błąd rejestracji');
+          return Exception('Nieoczekiwany błąd ($statusCode)');
       }
-    } else {
-      return Exception('Brak połączenia z serwerem');
     }
+
+    if (e.type == DioExceptionType.connectionTimeout) {
+      return Exception('Timeout połączenia.');
+    }
+
+    return Exception('Brak internetu.');
   }
 }

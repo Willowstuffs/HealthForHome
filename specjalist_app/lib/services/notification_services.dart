@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../screens/offer_from_screen.dart';
 import 'api_service.dart';
 import 'user_profile.dart';
+import 'app_refresh_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -52,7 +53,7 @@ class NotificationService {
 
   void _handleForeground(RemoteMessage message) {
     print('Foreground: ${message.notification?.title}');
-    // Możesz tu dodać flutter_local_notifications jeśli chcesz
+    AppRefreshService().refresh();
   }
 
   void _handleMessageClick(RemoteMessage message) {
