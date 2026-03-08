@@ -31,9 +31,12 @@ namespace H4H_API.Services.Implementations
                 .Include(s => s.User)
                 .AsQueryable();
 
-            //Filtrowanie
+            // Filtrowanie
             if (!string.IsNullOrEmpty(filter.VerificationStatus))
                 query = query.Where(s => s.VerificationStatus == filter.VerificationStatus);
+
+            if (!string.IsNullOrEmpty(filter.Specialization))
+                query = query.Where(s => s.ProfessionalTitle == filter.Specialization);
 
             if (filter.RegisteredFrom.HasValue)
                 query = query.Where(s => s.CreatedAt >= filter.RegisteredFrom.Value);
@@ -41,7 +44,7 @@ namespace H4H_API.Services.Implementations
             if (filter.RegisteredTo.HasValue)
                 query = query.Where(s => s.CreatedAt <= filter.RegisteredTo.Value);
 
-            //Sortowanie (domyślnie po dacie rejestracji malejąco)
+            // Sortowanie
             query = filter.SortDescending
                 ? query.OrderByDescending(s => s.CreatedAt)
                 : query.OrderBy(s => s.CreatedAt);
@@ -60,7 +63,11 @@ namespace H4H_API.Services.Implementations
                     Email = s.User.Email,
                     ProfessionalTitle = s.ProfessionalTitle ?? string.Empty, //CS8601 fix
                     VerificationStatus = s.VerificationStatus,
-                    CreatedAt = s.CreatedAt
+                    CreatedAt = s.CreatedAt,
+                    City = _context.service_areas
+                        .Where(a => a.SpecialistId == s.Id && a.IsPrimary)
+                        .Select(a => a.City)
+                        .FirstOrDefault()
                 })
                 .ToListAsync();
 
@@ -84,7 +91,7 @@ namespace H4H_API.Services.Implementations
             var specialist = await _context.specialists
                 .Include(s => s.User)
                 .FirstOrDefaultAsync(s => s.Id == specialistId)
-                ?? throw new AppException ("Nie znaleziono specjalisty.", ErrorCodes.SpecialistNotFound);
+                ?? throw new AppException("Nie znaleziono specjalisty.", ErrorCodes.SpecialistNotFound);
             var qualifications = await _context.specialist_qualifications
                 .FirstOrDefaultAsync(q => q.SpecialistId == specialistId && q.IsActive);
 
@@ -114,19 +121,18 @@ namespace H4H_API.Services.Implementations
 
             specialist.VerificationStatus = "approved";
             specialist.IsVerified = true;
-            specialist.VerifiedAt = DateTime.UtcNow;
+            specialist.VerifiedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
 
-            // Logowanie akcji admina
-            _context.verification_logs.Add(new VerificationLog
+            try
             {
-                Id = Guid.NewGuid(),
-                SpecialistId = specialistId,
-                AdminId = adminId,
-                Action = "approved",
-                CreatedAt = DateTime.UtcNow
-            });
-
-            await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("APPROVE ERROR:");
+                Console.WriteLine(ex.ToString());
+                throw;
+            }
         }
 
         /// <summary>Odrzuca specjaliste zmieniajac status weryfikacji na rejected i logujac akcje wykonana przez admina z powodem odrzucenia.</summary>
@@ -139,15 +145,7 @@ namespace H4H_API.Services.Implementations
             specialist.IsVerified = false;
 
             // Logowanie akcji admina
-            _context.verification_logs.Add(new VerificationLog
-            {
-                Id = Guid.NewGuid(),
-                SpecialistId = specialistId,
-                AdminId = adminId,
-                Action = "rejected",
-                Notes = reason, // Powód odrzucenia
-                CreatedAt = DateTime.UtcNow
-            });
+
 
             await _context.SaveChangesAsync();
         }

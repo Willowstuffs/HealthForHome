@@ -60,7 +60,8 @@ function SzczegolySpecjalisty() {
 
     getSpecialist(id)
       .then((res) => {
-        if (!cancelled) setData(res);
+        const payload = res?.data ?? res;
+        if (!cancelled) setData(payload);
       })
       .catch((e) => {
         if (!cancelled) setError(e?.message || "Błąd pobierania danych");
@@ -83,7 +84,7 @@ function SzczegolySpecjalisty() {
   if (error) return <p style={{ padding: 24, color: "tomato" }}>{error}</p>;
   if (!data) return null;
 
-  const accountStatus = data.status; // PENDING/APPROVED/REJECTED
+  const accountStatus = data.status || data.verificationStatus;
   const canApprove = accountStatus === "PENDING";
   const canReject = accountStatus === "PENDING";
 
@@ -114,7 +115,7 @@ function SzczegolySpecjalisty() {
 
     try {
       setActionLoading(true);
-      await rejectSpecialist(id, { reasonText: rejectReason });
+      await rejectSpecialist(id, { reason: rejectReason });
       alert("Konto odrzucone");
       navigate("/specialists");
     } catch (e) {
@@ -146,7 +147,7 @@ function SzczegolySpecjalisty() {
                   <div>
                     <span className="profile-email">{data.email}</span>
                     <span className={`status-pill status-pill--${String(data.status).toLowerCase()}`}>
-                      <StatusBadge status={data.status} />
+                      <StatusBadge status={data.status || data.verificationStatus} />
                     </span>
 
                   </div>
@@ -195,7 +196,7 @@ function SzczegolySpecjalisty() {
               <div className="kv">
                 <div className="kv-row">
                   <div className="kv-key">Specjalizacja</div>
-                  <div className="kv-val">{data.specialization}</div>
+                  <div className="kv-val">{data.specialization || data.professionalTitle || "-"}</div>
                 </div>
 
                 <div className="kv-row">

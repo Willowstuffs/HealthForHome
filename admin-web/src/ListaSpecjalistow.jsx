@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { listSpecialists } from "./api/adminApi";
+import {
+  listSpecialists,
+  approveSpecialist,
+  rejectSpecialist,
+} from "./api/adminApi";
 import StatusBadge from "./components/StatusBadge";
 import LicenseBadge from "./components/LicenseBadge";
 import { computeLicenseStatus } from "./utils/license";
@@ -28,36 +32,61 @@ function ListaSpecjalistow() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    let cancelled = false;
-
+  const loadSpecialists = async () => {
     setLoading(true);
     setError("");
 
-    listSpecialists(query)
-      .then((res) => {
-        const payload = res?.data ?? res;
+    try {
+      const res = await listSpecialists(query);
+      const payload = res?.data ?? res;
 
-        if (cancelled) return;
+      console.log("SPECIALISTS PAYLOAD:", payload);
+      console.log("SPECIALISTS ITEMS:", payload?.items);
+      console.log("FIRST SPECIALIST:", payload?.items?.[0]);
+      console.log("FIRST SPECIALIST KEYS:", Object.keys(payload?.items?.[0] || {}));
 
-        setData({
-          items: payload?.items ?? [],
-          total: payload?.totalCount ?? payload?.total ?? 0,
-          page: payload?.page ?? query.page,
-          pageSize: payload?.pageSize ?? query.pageSize,
-        });
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e?.message || "Błąd pobierania listy");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+      setData({
+        items: payload?.items ?? [],
+        total: payload?.totalCount ?? payload?.total ?? 0,
+        page: payload?.page ?? query.page,
+        pageSize: payload?.pageSize ?? query.pageSize,
       });
-
-    return () => {
-      cancelled = true;
-    };
+    } catch (e) {
+      setError(e?.message || "Błąd pobierania listy");
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    loadSpecialists();
   }, [query]);
+
+  const handleApprove = async (id) => {
+    try {
+      await approveSpecialist(id);
+      alert("Specjalista został zaakceptowany");
+      await loadSpecialists();
+    } catch (e) {
+      console.error(e);
+      alert("Nie udało się zaakceptować specjalisty");
+    }
+  };
+  const handleReject = async (id) => {
+  const reason = prompt("Podaj powód odrzucenia");
+
+      if (!reason || !reason.trim()) {
+        return;
+      }
+
+      try {
+        await rejectSpecialist(id, { reasonText: reason });
+        alert("Specjalista został odrzucony");
+        await loadSpecialists();
+      } catch (e) {
+        console.error(e);
+        alert("Nie udało się odrzucić specjalisty");
+      }
+    };
 
   const canPrev = query.page > 1;
   const canNext = data.page * data.pageSize < data.total;
@@ -68,6 +97,12 @@ function ListaSpecjalistow() {
     if (data.total === 0) return "Brak wyników";
     return `Strona ${data.page} z ${Math.max(1, Math.ceil(data.total / data.pageSize))} • Wyświetlono ${data.items.length} wyników`;
   }, [loading, error, data]);
+    const specializationLabels = {
+      physiotherapist: "Fizjoterapeuta",
+      nurse: "Pielęgniarz",
+      doctor: "Lekarz",
+      caregiver: "Opiekun medyczny"
+    };
 
   return (
     <div className="page">
@@ -96,11 +131,8 @@ function ListaSpecjalistow() {
               onChange={(e) => setQuery((q) => ({ ...q, specialization: e.target.value, page: 1 }))}
             >
               <option value="">Wszystkie</option>
-              <option value="PIELEGNIARKA">PIELEGNIARKA</option>
-              <option value="POLOZNA">POLOZNA</option>
-              <option value="FIZJOTERAPEUTA">FIZJOTERAPEUTA</option>
-              <option value="REHABILITANT">REHABILITANT</option>
-              <option value="INNE">INNE</option>
+              <option value="physiotherapist">Fizjoterapeuta</option>
+              <option value="nurse">Pielęgniarz</option>
             </select>
           </label>
 
@@ -160,6 +192,7 @@ function ListaSpecjalistow() {
                     <th>Status</th>
                     <th>Lokalizacja</th>
                     <th>Licencja</th>
+                    <th>Akcje</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -167,31 +200,45 @@ function ListaSpecjalistow() {
                 <tbody>
                   {data.items.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="muted">
+                      <td colSpan={8} className="muted">
                         Brak wyników
                       </td>
                     </tr>
                   ) : (
                     data.items.map((s) => (
-                      <tr key={s.id}>
+                      <tr key={s.specialistId}>
                         <td className="cell-strong">
                           {s.firstName} {s.lastName}
                         </td>
-                        <td>{s.specialization}</td>
+                        <td>{specializationLabels[s.specialization] || s.specialization}</td>
                         <td>{s.email}</td>
                         <td>
-                          <StatusBadge status={s.status} />
+                          <StatusBadge status={s.status || s.verificationStatus} />
                         </td>
-                        <td>
-                          {s.voivodeship}, {s.city}
-                        </td>
+                        <td>{s.city || "-"}</td>
                         <td>
                           <LicenseBadge
                             status={computeLicenseStatus(s.licenseStatus, s.licenseValidUntil)}
                           />
                         </td>
+
+
+                        <td>
+                          {(s.status || s.verificationStatus)?.toUpperCase() === "PENDING" && (
+                            <div style={{ display: "flex", gap: "8px" }}>
+                              <button className="btn" onClick={() => handleApprove(s.specialistId)}>
+                                Akceptuj
+                              </button>
+
+                              <button className="btn" onClick={() => handleReject(s.specialistId)}>
+                                Odrzuć
+                              </button>
+                            </div>
+                          )}
+                        </td>
+
                         <td className="cell-right">
-                          <Link className="table-link" to={`/specialists/${s.id}`}>
+                          <Link className="table-link" to={`/specialists/${s.specialistId}`}>
                             Szczegóły
                           </Link>
                         </td>

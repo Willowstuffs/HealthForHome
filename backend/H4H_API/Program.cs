@@ -100,7 +100,7 @@ builder.Services.AddHttpClient();
 // CORS dla frontendu je�li Flutter debuguje przez przegl�dark�
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFlutter",
+    options.AddPolicy("AllowFrontend",
         policy => policy
             .AllowAnyOrigin()  // Ka�de �r�d�o
             .AllowAnyMethod()
@@ -133,15 +133,17 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseRouting();
 
-// Middleware 
+app.UseCors("AllowFrontend");
+
 app.UseMiddleware<ErrorHandlingMiddleware>();
 
-app.UseHttpsRedirection();
-app.UseCors("AllowFlutter");
-app.UseAuthentication();
+// app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();

@@ -10,5 +10,6 @@
         public string ProfessionalTitle { get; set; } = string.Empty;
         public string VerificationStatus { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
+        public string? City { get; set; }
     }
 }

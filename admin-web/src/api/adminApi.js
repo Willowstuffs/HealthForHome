@@ -10,12 +10,54 @@ function cleanQuery(query) {
   return out;
 }
 
-export async function listSpecialists() {
-  return apiFetch(`/api/Admin/specialists`);
-}
+export async function listSpecialists(query) {
+    const params = new URLSearchParams();
+    const cleaned = cleanQuery(query);
+
+    if (cleaned.status) {
+      params.set("verificationStatus", cleaned.status.toLowerCase());
+    }
+
+    if (cleaned.specialization) {
+      params.set("specialization", cleaned.specialization);
+    }
+
+    if (cleaned.createdFrom) {
+      params.set("registeredFrom", cleaned.createdFrom);
+    }
+
+    if (cleaned.createdTo) {
+      params.set("registeredTo", cleaned.createdTo);
+    }
+
+    if (cleaned.sort) {
+      params.set("sortDescending", cleaned.sort === "CREATED_DESC" ? "true" : "false");
+    }
+
+    if (cleaned.page) {
+      params.set("page", String(cleaned.page));
+    }
+
+    if (cleaned.pageSize) {
+      params.set("pageSize", String(cleaned.pageSize));
+    }
+
+    const queryString = params.toString();
+    const res = await apiFetch(
+      `/api/Admin/specialists${queryString ? `?${queryString}` : ""}`,
+    );
+    const payload = res?.data ?? res;
+
+    return {
+      ...payload,
+      items: (payload?.items ?? []).map(normalizeSpecialist),
+    };
+  }
 
 export async function getSpecialist(id) {
-  return apiFetch(`/api/Admin/specialists/${id}`);
+  const res = await apiFetch(`/api/Admin/specialists/${id}`);
+  const payload = res?.data ?? res;
+  return normalizeSpecialist(payload);
 }
 
 export async function approveSpecialist(id) {
@@ -166,47 +208,18 @@ function mockGetUser(id) {
   return Promise.resolve(found);
 }
 
-let ORDERS = [
-  {
-    id: "o1",
-    userId: "u1",
-    userName: "Kasia Wiśniewska",
-    specialistId: "1",
-    specialistName: "Anna Nowak",
-    customerEmail: "marek@test.pl",
-    customerPhone: "500600700",
-    totalValue: 180,
-    status: "NEW",
-    createdAt: "2026-02-01T10:15:00.000Z",
-    description: "Wizyta domowa",
-  },
-  {
-    id: "o2",
-    userId: "u1",
-    userName: "Kasia Wiśniewska",
-    customerEmail: "marek@test.pl",
-    customerPhone: "501111222",
-    specialistId: "2",
-    specialistName: "Jan Kowalski",
-    totalValue: 140,
-    status: "DONE",
-    createdAt: "2026-01-28T08:30:00.000Z",
-    description: "Rehabilitacja",
-  },
-  {
-    id: "o3",
-    userId: "u2",
-    userName: "Marek Kowalski",
-    customerEmail: "marek@test.pl",
-    customerPhone: "501111222",
-    specialistId: "2",
-    specialistName: "Jan Kowalski",
-    totalValue: 220,
-    status: "IN_PROGRESS",
-    createdAt: "2026-02-02T12:00:00.000Z",
-    description: "Konsultacja",
-  },
-];
+function normalizeSpecialist(item) {
+  if (!item) return item;
+
+  const rawStatus = item.status ?? item.verificationStatus;
+
+  return {
+    ...item,
+    id: item.id ?? item.specialistId,
+    status: rawStatus ? String(rawStatus).toUpperCase() : undefined,
+    specialization: item.specialization ?? item.professionalTitle,
+  };
+}
 
 function mockListOrders(query) {
   const q = cleanQuery(query);

@@ -42,7 +42,16 @@ namespace H4H.Core.Models
         public DateTime? VerifiedAt { get; set; }
 
         [Column("created_at", TypeName = "timestamp without time zone")]
+        
         public DateTime CreatedAt { get; set; } = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified);
+        [Column("is_suspended")]
+        public bool IsSuspended { get; set; } = false;
+
+        [Column("suspended_at", TypeName = "timestamp without time zone")]
+        public DateTime? SuspendedAt { get; set; }
+
+        [Column("suspension_reason")]
+        public string? SuspensionReason { get; set; }
 
         public virtual User User { get; set; } = null!;
         public virtual ICollection<SpecialistService> Services { get; set; } = new List<SpecialistService>();
