@@ -644,6 +644,7 @@ namespace H4H.Data.Migrations
                         });
                 });
 
+
             modelBuilder.Entity("H4H.Core.Models.ServiceType", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1076,6 +1077,7 @@ namespace H4H.Data.Migrations
                     b.HasOne("H4H.Core.Models.Specialist", "Specialist")
                         .WithMany("Appointments")
                         .HasForeignKey("SpecialistId")
+
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("H4H.Core.Models.SpecialistService", "SpecialistService")

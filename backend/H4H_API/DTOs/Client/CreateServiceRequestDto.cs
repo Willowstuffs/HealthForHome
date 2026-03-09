@@ -5,6 +5,7 @@ namespace H4H_API.DTOs.Client
     public class CreateServiceRequestDto
     {
         // Ekran 0 i 1: Wybór kategorii/usługi
+
         // Klient wybiera: "nursing" lub "physiotherapy"
         [Required]
         public string Category { get; set; } = string.Empty;

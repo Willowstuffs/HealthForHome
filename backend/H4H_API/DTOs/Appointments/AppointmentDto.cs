@@ -48,6 +48,7 @@ namespace H4H_API.DTOs.Appointments
         [Required]
         public Guid? SpecialistServiceId { get; set; }
 
+
         [Required]
         public DateTime ScheduledStart { get; set; }
 

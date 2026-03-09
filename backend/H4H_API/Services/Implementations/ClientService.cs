@@ -26,6 +26,8 @@ namespace H4H_API.Services.Implementations
         private readonly ApplicationDbContext _context;
         private readonly IMapper _mapper;
         private readonly IGeocoder _geocoder;
+        private readonly FirebaseNotificationService _firebaseNotificationService;
+
 
         /// <summary>
         /// Initializes a new instance of the ClientService class using the specified database context and object
@@ -34,10 +36,11 @@ namespace H4H_API.Services.Implementations
         /// <param name="context">The database context used to access and manage client data within the application. Cannot be null.</param>
         /// <param name="mapper">The object mapper used to map between domain entities and data transfer objects. Cannot be null.</param>
         /// <param name="geocoder">The geocoding service for address geolocation. Cannot be null.</param>
-        public ClientService(ApplicationDbContext context, IMapper mapper, IGeocoder geocoder)
+        public ClientService(ApplicationDbContext context, IMapper mapper, FirebaseNotificationService firebaseNotificationService, IGeocoder geocoder)
         {
             _context = context;
             _mapper = mapper;
+            _firebaseNotificationService = firebaseNotificationService;
             _geocoder = geocoder;
         }
 
@@ -358,7 +361,6 @@ namespace H4H_API.Services.Implementations
             // TODO: Zaimplementować z walidacją odległości
             throw new NotImplementedException("CreateAppointmentAsync not implemented yet");
         }
-
         /// <summary>
         /// Anuluj wizytę (termin) klienta, jeśli wizyta należy do niego i nie jest już zakończona lub anulowana. Zwraca true jeśli anulowano, false jeśli nie można anulować z powodu statusu wizyty.
         /// </summary>
@@ -408,6 +410,7 @@ namespace H4H_API.Services.Implementations
         public async Task<DistanceInfoDto> GetDistanceToServiceRequestAsync(Guid specialistId, Guid serviceRequestId)
         {
             // 1. Pobieramy lokalizację ogłoszenia (ServiceRequest)
+
             var request = await _context.appointments
                 .Where(r => r.Id == serviceRequestId)
                 .Select(r => new { r.Location })
@@ -497,7 +500,7 @@ namespace H4H_API.Services.Implementations
         /// <param name="userId"></param>
         /// <returns></returns>
         public async Task<Guid> CreateServiceRequestAsync(CreateServiceRequestDto dto, Guid? userId = null)
-        {
+        {            
             Guid? finalClientId = null;
             if (userId.HasValue)
             {
@@ -548,6 +551,21 @@ namespace H4H_API.Services.Implementations
 
             _context.appointments.Add(appointment);
             await _context.SaveChangesAsync();
+            var specialistTokens = await _context.device_tokens
+                .Where(t => t.User.UserType == "specialist")
+                .Select(t => t.FcmToken)
+                .ToListAsync();
+
+            if (specialistTokens.Any())
+            {
+                await _firebaseNotificationService.SendNotificationToManyAsync(
+                    specialistTokens,
+                    "Nowa oferta!",
+                    $"Nowe zapytanie: {appointment.ServiceType}," +
+                    $"od: {appointment.ScheduledStart} do: {appointment.ScheduledEnd}",
+                    appointment.Id.ToString()
+                );
+            }
             return appointment.Id;
         }
 
@@ -561,6 +579,7 @@ namespace H4H_API.Services.Implementations
         {
             var client = await _context.clients.FirstOrDefaultAsync(c => c.UserId == userId);
             if (client == null) throw new AppException("Nie znaleziono klienta", ErrorCodes.ClientNotFound);
+
 
             // ZMIANA: _context.appointments ZAMIAST _context.service_requests
             var requests = await _context.appointments

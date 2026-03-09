@@ -61,6 +61,7 @@ namespace H4H.Core.Models
         public virtual Specialist? Specialist { get; set; } 
         public virtual SpecialistService? SpecialistService { get; set; }
         public virtual ServiceType ServiceType { get; set; } = null!;
+
         public virtual Payment? Payment { get; set; }
         public virtual Review? Review { get; set; }
         public virtual ICollection<Message> Messages { get; set; } = new List<Message>();

@@ -31,5 +31,6 @@ namespace H4H_API.Services.Interfaces
         // Zarządzanie prośbami o usługę
         Task<Guid> CreateServiceRequestAsync(CreateServiceRequestDto dto, Guid? userId = null);
         Task<List<ServiceRequestDto>> GetMyServiceRequestsAsync(Guid userId);
+
     }
 }

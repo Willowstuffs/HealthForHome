@@ -64,6 +64,7 @@ namespace H4H_API.Controllers
             {
                 return BadRequest(ApiResponse<RegisterResponse>.ErrorResponse(ex.Message));
             }
+
         }
 
         /// <summary>
@@ -133,7 +134,6 @@ namespace H4H_API.Controllers
             await _authService.LogoutAsync(token);
             return Ok(ApiResponse.SuccessResponse("Wylogowano pomyślnie"));
         }
-
         /// <summary>
         /// Aktualizuje token urządzenia dla zalogowanego użytkownika, umożliwiając otrzymywanie powiadomień push
         /// </summary>
@@ -154,7 +154,6 @@ namespace H4H_API.Controllers
                 return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
             }
         }
-
         /// <summary>
         /// Wysyła 6-cyfrowy kod weryfikacyjny na podany adres e-mail (jeśli konto jest nieaktywne).
         /// </summary>

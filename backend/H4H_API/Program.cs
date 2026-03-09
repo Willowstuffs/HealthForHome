@@ -95,6 +95,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<ISpecialistService, SpecialistService>();
 builder.Services.AddScoped<IGeocoder, Geocoder>();
+builder.Services.AddSingleton<FirebaseNotificationService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddHttpClient();
 
@@ -141,6 +142,7 @@ app.UseMiddleware<ErrorHandlingMiddleware>();
 
 app.UseHttpsRedirection();
 app.UseCors("AllowFlutter");
+app.UseStaticFiles();
 app.UseAuthentication();
 
 app.UseAuthorization();

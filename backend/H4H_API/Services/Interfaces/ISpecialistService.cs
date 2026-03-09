@@ -1,7 +1,6 @@
-﻿using H4H_API.DTOs.Client;
-using H4H_API.DTOs.Specialist;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+
+﻿using H4H_API.DTOs.Specialist;
+
 
 namespace H4H_API.Services.Interfaces
 {
@@ -52,16 +51,24 @@ namespace H4H_API.Services.Interfaces
         Task<List<ServiceTypeDto>> GetServiceTypesAsync();
 
         /// <summary>Zmienia status wizyty u specjalisty na potwierdzony (confirmed)</summary>
-        Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId);
-
-
-
+        Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId, Guid serviceId, decimal price);
         /// <summary>
-        /// Pobiera listę dostępnych zapytań (inquiries) dla specjalisty, które pasują do jego usług i obszaru działania.
+        /// Pobiera listę nadchodzących usług (inquiries) dla specjalisty z opcjonalnymi filtrami
         /// </summary>
-        /// <param name="specialistId"></param>
+        /// <param name="filters">Parametr tener zawiera opcjonalne filtry do zastosowania przy pobieraniu zapytań</param>
+        Task<List<InquiryListItemDto>> GetCommingInquiriesAsync(Guid userId, InquiryFilterDto filters);
+        /// <summary>
+        /// Pobiera listę zakończonych usług (inquiries) dla specjalisty z opcjonalnymi filtrami
+        /// </summary>
+        /// <param name="filters">Parametr tener zawiera opcjonalne filtry do zastosowania przy pobieraniu zapytań</param>
+        Task<List<InquiryListItemDto>> GetArchiveInquiriesAsync(Guid userId, InquiryFilterDto filters);
+        /// <summary>
+        /// Pozwala na edycje danych osobowych zdjęcia itd
+        /// </summary>
+        /// <param name="userId"> przyjmuje id urzytkownika</param>
+        /// <param name="dto"> przyjmuje parametry do zmiany</param>
         /// <returns></returns>
-        Task<List<ServiceRequestDto>> GetAvailableServiceRequestsAsync(Guid specialistId);
+        Task UpdateProfileAsync(Guid userId, UpdateSpecialistProfileDto dto);
 
     }
 }

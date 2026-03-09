@@ -21,6 +21,11 @@
     <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
 
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+
+    <PackageReference Include="FirebaseAdmin" Version="3.4.0" />
+
+    <PackageReference Include="Google.Apis.Auth" Version="1.73.0" />
+
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0">
       <PrivateAssets>all</PrivateAssets>
@@ -37,16 +42,12 @@
   </ItemGroup>
 
   <ItemGroup>
-
-    <Folder Include="Entities\" />
-    <Folder Include="Data\" />
-
+    <Folder Include="Firebase\" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.0" />
 
   </ItemGroup>
 
   <ItemGroup>
-
     <ProjectReference Include="..\H4H.Core\H4H.Core.csproj" />
     <ProjectReference Include="..\H4H.Data\H4H.Data.csproj" />
   </ItemGroup>

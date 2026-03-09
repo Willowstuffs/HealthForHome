@@ -189,7 +189,7 @@ namespace H4H_API.Services.Implementations
                     Email = request.Email,
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
                     UserType = "specialist",
-                    IsActive = true, //logowanie mozliwe, ale profil specjalisty wymaga weryfikacji
+                    IsActive = false, 
                     CreatedAt = DateTime.Now,
                     UpdatedAt = DateTime.Now
                 };
@@ -371,7 +371,6 @@ namespace H4H_API.Services.Implementations
             }
             await _context.SaveChangesAsync();
         }
-        
         /// Sends a verification code to the specified email address for account registration verification.
         /// </summary>
         /// <remarks>This method generates a new 6-digit verification code and sends it to the provided

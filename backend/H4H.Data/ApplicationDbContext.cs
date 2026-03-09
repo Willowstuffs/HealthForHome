@@ -195,6 +195,7 @@ namespace H4H.Data
             // Wizyty - centralna encja systemu
             modelBuilder.Entity<Appointment>(entity =>
             {
+
                 entity.ToTable("appointments"); // Upewnienie się co do nazwy tabeli
 
                 // 1. RELACJE
@@ -239,7 +240,6 @@ namespace H4H.Data
                 entity.HasIndex(a => a.ScheduledStart);
                 entity.HasIndex(a => a.AppointmentStatus);
             });
-
 
             // Płatności
             modelBuilder.Entity<Payment>(entity =>
@@ -377,7 +377,6 @@ namespace H4H.Data
 
                 entity.HasIndex(m => m.CreatedAt);
             });
-
 
             // Powiadomienia
             modelBuilder.Entity<Notification>(entity =>
