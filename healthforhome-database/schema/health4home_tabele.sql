@@ -524,3 +524,16 @@ BEGIN
     RETURN deleted_count;
 END;
 $$ LANGUAGE plpgsql;
+
+
+
+-- AKTUALIZACJA 09.03.2026 - Dodanie ceny i obsługi wielu usług do appointments_specialists
+
+-- 1. Dodanie kolumn do appointments_specialists
+ALTER TABLE appointments_specialists 
+ADD COLUMN IF NOT EXISTS price DECIMAL(10,2),           -- cena za wszystkie usługi
+ADD COLUMN IF NOT EXISTS service_type_ids UUID[] DEFAULT '{}'; -- tablica ID usług
+
+-- 2. Indeks dla GIST (szybsze wyszukiwanie w tablicy)
+CREATE INDEX IF NOT EXISTS idx_appointments_specialists_service_ids 
+ON appointments_specialists USING GIN (service_type_ids);
