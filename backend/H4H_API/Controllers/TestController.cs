@@ -240,52 +240,6 @@ namespace H4H_API.Controllers
         /// with the specified email already exists, no new account is created.</remarks>
         /// <returns>An <see cref="IActionResult"/> containing a success message and administrator details if the test admin is
         /// created or already exists; otherwise, a bad request result with error information.</returns>
-        [HttpPost("test-admin")]
-        public async Task<IActionResult> CreateTestAdmin()
-        {
-            try
-            {
-                var existingAdmin = await _context.admins
-                    .FirstOrDefaultAsync(a => a.Email == "admin@health4home.pl");
-
-                if (existingAdmin != null)
-                {
-                    return Ok(new
-                    {
-                        Message = "Test admin already exists",
-                        AdminId = existingAdmin.Id
-                    });
-                }
-
-                var admin = new H4H.Core.Models.Admin
-                {
-                    Id = Guid.NewGuid(),
-                    Email = "admin@health4home.pl",
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
-
-                    Role = "super_admin", // Rola super administratora
-
-                    FullName = "Test Administrator",
-                    IsActive = true,
-                    CreatedAt = DateTime.Now
-                };
-
-                _context.admins.Add(admin);
-                await _context.SaveChangesAsync();
-
-                return Ok(new
-                {
-                    Message = "Test admin created successfully",
-                    AdminId = admin.Id,
-                    Email = admin.Email,
-                    Role = admin.Role
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
-        }
 
         /// <summary>
         /// Tests connectivity to the Nominatim geocoding service by performing a sample address lookup.

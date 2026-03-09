@@ -72,10 +72,6 @@ function LoginPage() {
           {loading ? "Logowanie..." : "Zaloguj"}
         </button>
 
-        <div className="login3-test">
-          <div>Testowe dane:</div>
-          <code>admin@admin.pl / admin123</code>
-        </div>
       </form>
     </div>
   );

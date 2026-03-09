@@ -51,37 +51,30 @@ namespace H4H_API.Services.Implementations
         /// <exception cref="UnauthorizedAccessException">Thrown when the email or password is invalid, or the user account is inactive.</exception>
         public async Task<LoginResponse> LoginAsync(LoginRequest request)
         {
-            // Pobierz użytkownika z bazy danych wraz z powiązanymi danymi klienta/specjalisty
             var user = await _context.users
                 .Include(u => u.Client)
                 .Include(u => u.Specialist)
                 .FirstOrDefaultAsync(u => u.Email == request.Email && u.IsActive);
 
-            // Sprawdź czy użytkownik istnieje i czy hasło jest poprawne
+
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
                 throw new UnauthorizedAccessException("Nieprawidłowy email lub hasło");
 
-            // Aktualizuj last login
             user.LastLoginAt = DateTime.Now;
             await _context.SaveChangesAsync();
 
-            // Generuj tokeny
             var accessToken = _jwtService.GenerateAccessToken(user);
             var refreshToken = _jwtService.GenerateRefreshToken();
 
-            // TODO: Zapisz refresh token do bazy (do implementacji
-
-            // Przygotuj informacje o użytkowniku do odpowiedzi
             var userInfo = new UserInfoDto
             {
                 Id = user.Id,
                 Email = user.Email,
-                UserType = user.UserType, // "client" lub "specialist"
+                UserType = user.UserType,
                 PhoneNumber = user.PhoneNumber,
                 AvatarUrl = user.AvatarUrl
             };
 
-            // Pobierz imię i nazwisko w zależności od typu użytkownika
             if (user.UserType == "client" && user.Client != null)
             {
                 userInfo.FirstName = user.Client.FirstName;
@@ -93,17 +86,15 @@ namespace H4H_API.Services.Implementations
                 userInfo.LastName = user.Specialist.LastName;
             }
 
-            // Zwróć odpowiedź z tokenami i danymi użytkownika
             return new LoginResponse
             {
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
-                AccessTokenExpires = DateTime.Now.AddMinutes(15), // Token dostępowy ważny 15 minut
-                RefreshTokenExpires = DateTime.Now.AddDays(7), // Token odświeżający ważny 7 dni
+                AccessTokenExpires = DateTime.Now.AddMinutes(15),
+                RefreshTokenExpires = DateTime.Now.AddDays(7),
                 User = userInfo
             };
         }
-
         /// <summary>
         /// Asynchronously registers a new client user with the provided registration details.
         /// </summary>
@@ -205,7 +196,7 @@ namespace H4H_API.Services.Implementations
                     FirstName = request.FirstName,
                     LastName = request.LastName,
                     ProfessionalTitle = request.Specialization,
-                    
+
                     //DEFAULTOWE dla nowej rejestracji
                     IsVerified = false,
                     VerificationStatus = "pending",
@@ -229,7 +220,8 @@ namespace H4H_API.Services.Implementations
                     RequiresEmailVerification = true, //tylko dla funkcji usera!
                 };
 
-            } catch (Exception)
+            }
+            catch (Exception)
             {
                 await transaction.RollbackAsync(); //w przypadku bledu, wycofaj zmiany
                 throw; //przekaz dalej wyjatek do middleware error handling

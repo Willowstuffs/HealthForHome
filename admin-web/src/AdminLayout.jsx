@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { getLoggedAdmin } from "./api/adminAuthApi";
+import { getAdminUser } from "./api/adminAuthApi";
 import "./styles/admin.css";
 import logo from "./assets/logo.png";
 
@@ -11,10 +11,14 @@ function AdminLayout() {
     localStorage.removeItem("admin_token");
     navigate("/login");
   }
+function logout() {
+  localStorage.removeItem("admin_token");
+  window.location.href = "/login";
+}
 const [admin, setAdmin] = useState(null);
 
 useEffect(() => {
-  setAdmin(getLoggedAdmin());
+  setAdmin(getAdminUser());
 }, []);
 
   return (
@@ -47,7 +51,7 @@ useEffect(() => {
         </nav>
 
         <div className="sidebar-footer">
-          <button className="btn-logout" onClick={handleLogout}>
+          <button className="btn-logout" onClick={logout}>
             Wyloguj
           </button>
         </div>
