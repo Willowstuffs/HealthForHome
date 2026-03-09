@@ -2,11 +2,13 @@
 using H4H_API.DTOs.Common;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace H4H_API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = "admin")]
     // TODO: Dodać [Authorize(Roles = "admin")] gdy wdrożymy JWT dla admina
     public class AdminController : ControllerBase
     {
@@ -59,6 +61,7 @@ namespace H4H_API.Controllers
             return Ok(ApiResponse<object?>.SuccessResponse(null, "Specjalista został zatwierdzony."));
         }
 
+
         /// <summary>Odrzuca specjaliste zmieniajac status weryfikacji na rejected i logujac akcje wykonana przez admina z powodem odrzucenia.</summary>
         [HttpPost("specialists/{id}/reject")]
         public async Task<ActionResult<ApiResponse<object?>>> RejectSpecialist(Guid id, [FromBody] RejectSpecialistDto dto)
@@ -68,5 +71,35 @@ namespace H4H_API.Controllers
             await _adminService.RejectSpecialistAsync(id, tempAdminId, dto.Reason);
             return Ok(ApiResponse<object?>.SuccessResponse(null, "Specjalista został odrzucony."));
         }
+        /// <summary>Zawiesza specjalistę (blokuje możliwość przyjmowania zleceń)</summary>
+        [HttpPost("specialists/{id}/suspend")]
+        public async Task<ActionResult<ApiResponse<object?>>> SuspendSpecialist(Guid id)
+        {
+            var tempAdminId = Guid.NewGuid();
+
+            await _adminService.SuspendSpecialistAsync(id, tempAdminId);
+
+            return Ok(ApiResponse<object?>.SuccessResponse(null, "Specjalista został zawieszony."));
+        }
+
+        /// <summary>Przywraca zawieszonego specjalistę</summary>
+        [HttpPost("specialists/{id}/unsuspend")]
+        public async Task<ActionResult<ApiResponse<object?>>> UnsuspendSpecialist(Guid id)
+        {
+            var tempAdminId = Guid.NewGuid();
+
+            await _adminService.UnsuspendSpecialistAsync(id, tempAdminId);
+
+            return Ok(ApiResponse<object?>.SuccessResponse(null, "Specjalista został odwieszony."));
+        }
+        [HttpPut("specialists/{id}/license-validity")]
+        public async Task<ActionResult<ApiResponse<object?>>> UpdateLicenseValidity(
+            Guid id,
+            [FromBody] UpdateLicenseValidityDto dto)
+        {
+            await _adminService.UpdateLicenseValidityAsync(id, dto.LicenseValidUntil);
+            return Ok(ApiResponse<object?>.SuccessResponse(null, "Data ważności licencji została zapisana."));
+        }
+
     }
 }

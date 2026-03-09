@@ -8,21 +8,28 @@ import {
   getSpecialist,
   approveSpecialist,
   rejectSpecialist,
+  updateLicenseValidity,
+  suspendSpecialist,
+  unsuspendSpecialist,
 } from "./api/adminApi";
 import "./styles/specjalistaSzczegoly.css";
 
 function computeLicenseStatus(licenseStatus, licenseValidUntil) {
-  if (!licenseValidUntil) return licenseStatus || "UNKNOWN";
+  if (!licenseValidUntil) return "UNKNOWN";
 
   const until = new Date(licenseValidUntil);
-  if (Number.isNaN(until.getTime())) return licenseStatus || "UNKNOWN";
+  if (Number.isNaN(until.getTime())) return "UNKNOWN";
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   until.setHours(0, 0, 0, 0);
 
-  if (until < today) return "EXPIRED";
-  return licenseStatus || "UNKNOWN";
+  const diffMs = until - today;
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) return "EXPIRED";
+  if (diffDays <= 30) return "EXPIRING_SOON";
+  return "ACTIVE";
 }
 
 function initials(firstName, lastName) {
@@ -52,6 +59,7 @@ function SzczegolySpecjalisty() {
   const [actionLoading, setActionLoading] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [showReject, setShowReject] = useState(false);
+  const [licenseValidUntil, setLicenseValidUntil] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -62,7 +70,16 @@ function SzczegolySpecjalisty() {
       .then((res) => {
         const payload = res?.data ?? res;
         if (!cancelled) setData(payload);
+        if (!cancelled) {
+          setData(payload);
+          setLicenseValidUntil(
+            payload?.licenseValidUntil
+              ? new Date(payload.licenseValidUntil).toISOString().split("T")[0]
+              : ""
+          );
+        }
       })
+      
       .catch((e) => {
         if (!cancelled) setError(e?.message || "Błąd pobierania danych");
       })
@@ -124,6 +141,58 @@ function SzczegolySpecjalisty() {
       setActionLoading(false);
     }
   }
+  async function handleSaveLicenseValidity() {
+    try {
+      setActionLoading(true);
+      await updateLicenseValidity(id, {
+        licenseValidUntil: licenseValidUntil || null,
+      });
+      alert("Data ważności licencji została zapisana");
+
+      const refreshed = await getSpecialist(id);
+      const payload = refreshed?.data ?? refreshed;
+      setData(payload);
+      setLicenseValidUntil(
+        payload?.licenseValidUntil
+          ? new Date(payload.licenseValidUntil).toISOString().split("T")[0]
+          : ""
+      );
+    } catch (e) {
+      console.error(e);
+      alert(e?.message || "Błąd zapisu daty licencji");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+async function handleSuspend() {
+  if (!window.confirm("Czy zawiesić specjalistę?")) return;
+
+  try {
+    setActionLoading(true);
+    await suspendSpecialist(id);
+    alert("Specjalista został zawieszony");
+    location.reload();
+  } catch (e) {
+    alert("Błąd zawieszania");
+  } finally {
+    setActionLoading(false);
+  }
+}
+
+async function handleUnsuspend() {
+  if (!window.confirm("Czy przywrócić specjalistę?")) return;
+
+  try {
+    setActionLoading(true);
+    await unsuspendSpecialist(id);
+    alert("Specjalista został odwieszony");
+    location.reload();
+  } catch (e) {
+    alert("Błąd przywracania");
+  } finally {
+    setActionLoading(false);
+  }
+}
 
   return (
     <div>
@@ -146,7 +215,7 @@ function SzczegolySpecjalisty() {
 
                   <div>
                     <span className="profile-email">{data.email}</span>
-                    <span className={`status-pill status-pill--${String(data.status).toLowerCase()}`}>
+                    <span className={`status-pill status-pill--${String(data.status || data.verificationStatus).toLowerCase()}`}>
                       <StatusBadge status={data.status || data.verificationStatus} />
                     </span>
 
@@ -155,36 +224,53 @@ function SzczegolySpecjalisty() {
                 </div>
               </div>
 
-              {accountStatus === "PENDING" ? (
-                <div className="details-actions">
-                  <button
-                    className="btn btn-primary"
-                    disabled={actionLoading || !canApprove}
-                    onClick={handleApprove}
-                    type="button"
-                  >
-                    ✓ Zaakceptuj
-                  </button>
+              <div className="details-actions">
+        {accountStatus === "PENDING" && (
+          <>
+            <button
+              className="btn btn-primary"
+              disabled={actionLoading || !canApprove}
+              onClick={handleApprove}
+              type="button"
+            >
+              ✓ Zaakceptuj
+            </button>
 
-                  <button
-                    className="btn btn-danger"
-                    disabled={actionLoading || !canReject}
-                    onClick={() => {
-                      setRejectReason("");
-                      setShowReject(true);
-                    }}
-                    type="button"
-                  >
-                  Odrzuć
-                  </button>
-                </div>
-              ) : (
-                <div className="details-actions">
-                
-      
-                </div>
-              )}
-                          </div>  
+            <button
+              className="btn btn-danger"
+              disabled={actionLoading || !canReject}
+              onClick={() => {
+                setRejectReason("");
+                setShowReject(true);
+              }}
+              type="button"
+            >
+              Odrzuć
+            </button>
+          </>
+        )}
+
+        {data?.isActive ? (
+          <button
+            className="btn"
+            onClick={handleSuspend}
+            disabled={actionLoading}
+            type="button"
+          >
+            Zawieś
+          </button>
+        ) : (
+          <button
+            className="btn"
+            onClick={handleUnsuspend}
+            disabled={actionLoading}
+            type="button"
+          >
+            Odwieś
+          </button>
+        )}
+      </div>
+      </div>
 
           {/* Cards grid */}
           <div className="details-grid">
@@ -234,18 +320,34 @@ function SzczegolySpecjalisty() {
                 <div className="license-cell">
                   <div className="license-label">Status licencji</div>
                   <div className="license-value">
-                    <span className={`license-pill license-pill--${String(licenseStatus).toLowerCase()}`}>
-                      <LicenseBadge status={licenseStatus} />
-                    </span>
+                    <LicenseBadge status={licenseStatus} />
                   </div>
                 </div>
 
                 <div className="license-cell license-cell--right">
                   <div className="license-label">Licencja ważna do</div>
-                  <div className="license-value license-date">
+
+                  <div className="license-value license-date" style={{ marginBottom: 8 }}>
                     {data.licenseValidUntil
                       ? new Date(data.licenseValidUntil).toLocaleDateString()
                       : "brak danych"}
+                  </div>
+
+                  <div>
+                    <input
+                      type="date"
+                      value={licenseValidUntil}
+                      onChange={(e) => setLicenseValidUntil(e.target.value)}
+                    />
+                    <button
+                      className="btn"
+                      type="button"
+                      onClick={handleSaveLicenseValidity}
+                      disabled={actionLoading}
+                      style={{ marginLeft: 8 }}
+                    >
+                      Zapisz
+                    </button>
                   </div>
                 </div>
 

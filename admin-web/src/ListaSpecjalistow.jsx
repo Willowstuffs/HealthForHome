@@ -7,7 +7,23 @@ import {
 } from "./api/adminApi";
 import StatusBadge from "./components/StatusBadge";
 import LicenseBadge from "./components/LicenseBadge";
-import { computeLicenseStatus } from "./utils/license";
+function computeLicenseStatus(licenseStatus, licenseValidUntil) {
+  if (!licenseValidUntil) return licenseStatus || "UNKNOWN";
+
+  const until = new Date(licenseValidUntil);
+  if (Number.isNaN(until.getTime())) return licenseStatus || "UNKNOWN";
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  until.setHours(0, 0, 0, 0);
+
+  const diffMs = until - today;
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) return "EXPIRED";
+  if (diffDays <= 30) return "EXPIRING_SOON";
+  return "ACTIVE";
+}
 
 const DEFAULT_QUERY = {
   status: "",
@@ -79,7 +95,7 @@ function ListaSpecjalistow() {
       }
 
       try {
-        await rejectSpecialist(id, { reasonText: reason });
+        await rejectSpecialist(id, { reason });
         alert("Specjalista został odrzucony");
         await loadSpecialists();
       } catch (e) {

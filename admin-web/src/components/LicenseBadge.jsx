@@ -1,12 +1,14 @@
 function LicenseBadge({ status }) {
   const map = {
-    VALID: { label: "LICENCJA: OK", bg: "#22c55e" },
-    EXPIRED: { label: "LICENCJA: WYGASŁA", bg: "#ef4444" },
-    SUSPENDED: { label: "LICENCJA: ZAWIESZONA", bg: "#f59e0b" },
-    REVOKED: { label: "LICENCJA: ODEBRANA", bg: "#6b7280" },
+    ACTIVE: { label: "WAŻNA", bg: "#22c55e" },
+    EXPIRING_SOON: { label: "WYGASA WKRÓTCE", bg: "#f59e0b" },
+    EXPIRED: { label: "WYGASŁA", bg: "#ef4444" },
+    UNKNOWN: { label: "BRAK DANYCH", bg: "#64748b" },
+    SUSPENDED: { label: "ZAWIESZONA", bg: "#f59e0b" },
+    REVOKED: { label: "ODEBRANA", bg: "#6b7280" },
   };
 
-  const cfg = map[status] || { label: status || "LICENCJA: BRAK", bg: "#64748b" };
+  const cfg = map[status] || map.UNKNOWN;
 
   return (
     <span

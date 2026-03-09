@@ -64,9 +64,14 @@ namespace H4H_API.Services.Implementations
                     ProfessionalTitle = s.ProfessionalTitle ?? string.Empty, //CS8601 fix
                     VerificationStatus = s.VerificationStatus,
                     CreatedAt = s.CreatedAt,
+                    IsActive = s.User.IsActive,
                     City = _context.service_areas
                         .Where(a => a.SpecialistId == s.Id && a.IsPrimary)
                         .Select(a => a.City)
+                        .FirstOrDefault(),
+                    LicenseValidUntil = _context.specialist_qualifications
+                        .Where(q => q.SpecialistId == s.Id && q.IsActive)
+                        .Select(q => q.LicenseValidUntil)
                         .FirstOrDefault()
                 })
                 .ToListAsync();
@@ -106,11 +111,14 @@ namespace H4H_API.Services.Implementations
                 Bio = specialist.Bio,
                 VerificationStatus = specialist.VerificationStatus,
                 IsVerified = specialist.IsVerified,
+                IsActive = specialist.User.IsActive,
                 CreatedAt = specialist.CreatedAt,
                 LicenseNumber = qualifications?.LicenseNumber,
                 LicensePhotoUrl = qualifications?.LicensePhotoUrl,
                 IdCardPhotoUrl = qualifications?.IdCardPhotoUrl,
-                VerificationNotes = qualifications?.VerificationNotes
+                VerificationNotes = qualifications?.VerificationNotes,
+                LicenseValidUntil = qualifications?.LicenseValidUntil
+
             };
         }
         /// <summary>Zatwierdza specjaliste aktualizując status weryfikacji i logując akcje wykonaną przez admina</summary>
@@ -146,6 +154,64 @@ namespace H4H_API.Services.Implementations
 
             // Logowanie akcji admina
 
+
+            await _context.SaveChangesAsync();
+        }
+        public async Task UpdateLicenseValidityAsync(Guid specialistId, DateTime? licenseValidUntil)
+        {
+            var specialist = await _context.specialists
+                .FirstOrDefaultAsync(s => s.Id == specialistId);
+
+            if (specialist == null)
+                throw new AppException("Nie znaleziono specjalisty.", ErrorCodes.SpecialistNotFound);
+
+            var qualification = await _context.specialist_qualifications
+                .FirstOrDefaultAsync(q => q.SpecialistId == specialistId && q.IsActive);
+
+            if (qualification == null)
+            {
+                qualification = new SpecialistQualification
+                {
+                    Id = Guid.NewGuid(),
+                    SpecialistId = specialistId,
+                    IsActive = true,
+                    CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified),
+                    LicenseValidUntil = licenseValidUntil.HasValue
+                        ? DateTime.SpecifyKind(licenseValidUntil.Value, DateTimeKind.Unspecified)
+                        : null
+                };
+
+                _context.specialist_qualifications.Add(qualification);
+            }
+            else
+            {
+                qualification.LicenseValidUntil = licenseValidUntil.HasValue
+                    ? DateTime.SpecifyKind(licenseValidUntil.Value, DateTimeKind.Unspecified)
+                    : null;
+            }
+
+            await _context.SaveChangesAsync();
+        }
+        public async Task SuspendSpecialistAsync(Guid specialistId, Guid adminId)
+        {
+            var specialist = await _context.specialists
+                .Include(s => s.User)
+                .FirstOrDefaultAsync(s => s.Id == specialistId)
+                ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
+
+            specialist.User.IsActive = false;
+
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UnsuspendSpecialistAsync(Guid specialistId, Guid adminId)
+        {
+            var specialist = await _context.specialists
+                .Include(s => s.User)
+                .FirstOrDefaultAsync(s => s.Id == specialistId)
+                ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
+
+            specialist.User.IsActive = true;
 
             await _context.SaveChangesAsync();
         }

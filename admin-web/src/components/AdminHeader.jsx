@@ -23,9 +23,7 @@ function AdminHeader() {
     >
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <b>Health For Home </b>
-        <span style={{ opacity: 0.8, fontSize: 14 }}>
-          {admin?.email ? `Zalogowano: ${admin.email}` : ""}
-        </span>
+        
       </div>
     </div>
   );

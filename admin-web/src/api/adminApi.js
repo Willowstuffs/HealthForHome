@@ -11,48 +11,51 @@ function cleanQuery(query) {
 }
 
 export async function listSpecialists(query) {
-    const params = new URLSearchParams();
-    const cleaned = cleanQuery(query);
+  const params = new URLSearchParams();
+  const cleaned = cleanQuery(query);
 
-    if (cleaned.status) {
-      params.set("verificationStatus", cleaned.status.toLowerCase());
-    }
-
-    if (cleaned.specialization) {
-      params.set("specialization", cleaned.specialization);
-    }
-
-    if (cleaned.createdFrom) {
-      params.set("registeredFrom", cleaned.createdFrom);
-    }
-
-    if (cleaned.createdTo) {
-      params.set("registeredTo", cleaned.createdTo);
-    }
-
-    if (cleaned.sort) {
-      params.set("sortDescending", cleaned.sort === "CREATED_DESC" ? "true" : "false");
-    }
-
-    if (cleaned.page) {
-      params.set("page", String(cleaned.page));
-    }
-
-    if (cleaned.pageSize) {
-      params.set("pageSize", String(cleaned.pageSize));
-    }
-
-    const queryString = params.toString();
-    const res = await apiFetch(
-      `/api/Admin/specialists${queryString ? `?${queryString}` : ""}`,
-    );
-    const payload = res?.data ?? res;
-
-    return {
-      ...payload,
-      items: (payload?.items ?? []).map(normalizeSpecialist),
-    };
+  if (cleaned.status) {
+    params.set("verificationStatus", cleaned.status.toLowerCase());
   }
+
+  if (cleaned.specialization) {
+    params.set("specialization", cleaned.specialization);
+  }
+
+  if (cleaned.createdFrom) {
+    params.set("registeredFrom", cleaned.createdFrom);
+  }
+
+  if (cleaned.createdTo) {
+    params.set("registeredTo", cleaned.createdTo);
+  }
+
+  if (cleaned.sort) {
+    params.set(
+      "sortDescending",
+      cleaned.sort === "CREATED_DESC" ? "true" : "false",
+    );
+  }
+
+  if (cleaned.page) {
+    params.set("page", String(cleaned.page));
+  }
+
+  if (cleaned.pageSize) {
+    params.set("pageSize", String(cleaned.pageSize));
+  }
+
+  const queryString = params.toString();
+  const res = await apiFetch(
+    `/api/Admin/specialists${queryString ? `?${queryString}` : ""}`,
+  );
+  const payload = res?.data ?? res;
+
+  return {
+    ...payload,
+    items: (payload?.items ?? []).map(normalizeSpecialist),
+  };
+}
 
 export async function getSpecialist(id) {
   const res = await apiFetch(`/api/Admin/specialists/${id}`);
@@ -65,11 +68,27 @@ export async function approveSpecialist(id) {
     method: "POST",
   });
 }
-
+export async function updateLicenseValidity(id, payload) {
+  return apiFetch(`/api/Admin/specialists/${id}/license-validity`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
 export async function rejectSpecialist(id, payload) {
   return apiFetch(`/api/Admin/specialists/${id}/reject`, {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+export async function suspendSpecialist(id) {
+  return apiFetch(`/api/Admin/specialists/${id}/suspend`, {
+    method: "POST",
+  });
+}
+
+export async function unsuspendSpecialist(id) {
+  return apiFetch(`/api/Admin/specialists/${id}/unsuspend`, {
+    method: "POST",
   });
 }
 export async function listUsers(query) {

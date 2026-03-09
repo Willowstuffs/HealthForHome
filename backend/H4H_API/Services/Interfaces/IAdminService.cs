@@ -11,5 +11,8 @@ namespace H4H_API.Services.Interfaces
         // Tymczasowo Guid adminId, dopóki nie wdrożymy JWT dla admina
         Task ApproveSpecialistAsync(Guid specialistId, Guid adminId);
         Task RejectSpecialistAsync(Guid specialistId, Guid adminId, string reason);
+        Task UpdateLicenseValidityAsync(Guid specialistId, DateTime? licenseValidUntil);
+        Task SuspendSpecialistAsync(Guid specialistId, Guid adminId);
+        Task UnsuspendSpecialistAsync(Guid specialistId, Guid adminId);
     }
 }

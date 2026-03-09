@@ -2,7 +2,6 @@
 {
     public class AdminSpecialistListItemDto
     {
-        //Element listy specjalistów w panelu admina
         public Guid SpecialistId { get; set; }
         public string FirstName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
@@ -11,5 +10,8 @@
         public string VerificationStatus { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public string? City { get; set; }
+
+        public DateTime? LicenseValidUntil { get; set; }
+        public bool IsActive { get; set; }
     }
 }
