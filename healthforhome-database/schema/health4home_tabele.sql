@@ -1,8 +1,3 @@
-<<<<<<< HEAD
-=======
-
-
->>>>>>> origin/justyna
 -- TWORZENIE TABEL
 -- uzytkownicy
 CREATE TABLE users (
@@ -355,17 +350,7 @@ CREATE TABLE appointments_specialists (
 -- Kto ostatecznie wziął to zlecenie (PIERWSZY który zaakceptował)
 ALTER TABLE appointments ADD COLUMN selected_specialist_id UUID REFERENCES specialists(id);
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-SELECT * FROM "__EFMigrationsHistory"
-=======
-=======
->>>>>>> origin/main
 SELECT * FROM "__EFMigrationsHistory";
->>>>>>> origin/justyna
-
 
 -- Aktualizacja 08.02.26
 
@@ -385,13 +370,8 @@ CREATE TABLE device_tokens (
 CREATE INDEX idx_device_tokens_user ON device_tokens(user_id);
 CREATE INDEX idx_device_tokens_fcm_token ON device_tokens(fcm_token);
 
-<<<<<<< HEAD
-SELECT * FROM device_tokens
-SELECT * FROM "__EFMigrationsHistory"
-=======
 SELECT * FROM device_tokens;
 SELECT * FROM "__EFMigrationsHistory";
->>>>>>> origin/justyna
 
 -- czesc 2
 
@@ -435,10 +415,6 @@ CREATE TABLE service_requests (
 CREATE INDEX idx_service_requests_location ON service_requests USING GIST(location);
 CREATE INDEX idx_service_requests_status ON service_requests(status);
 CREATE INDEX idx_service_requests_client ON service_requests(client_id);
-<<<<<<< HEAD
-=======
-
-
 
 -- AKTUALIZACJA SERVICE REQUEST 19.02 - mam nadzieje ze teraz zadziala ;-;
 -- 1. Zmiana nazw kolumn na na małe literki spójne z resztą tabelek
@@ -515,12 +491,6 @@ DROP CONSTRAINT appointments_appointment_status_check;
 ALTER TABLE appointments 
 ADD CONSTRAINT appointments_appointment_status_check 
 CHECK (appointment_status IN ('open', 'confirmed', 'cancelled', 'completed', 'pending'));
-<<<<<<< HEAD
->>>>>>> origin/justyna
-=======
-SELECT * FROM "__EFMigrationsHistory"
->>>>>>> origin/Wiktor
-=======
 
 
 -- aktualizacja 01.03.2026 funkcje do czyszczenia kodow i martwych kont
@@ -554,4 +524,16 @@ BEGIN
     RETURN deleted_count;
 END;
 $$ LANGUAGE plpgsql;
->>>>>>> origin/main
+
+
+
+-- AKTUALIZACJA 09.03.2026 - Dodanie ceny i obsługi wielu usług do appointments_specialists
+
+-- 1. Dodanie kolumn do appointments_specialists
+ALTER TABLE appointments_specialists 
+ADD COLUMN IF NOT EXISTS price DECIMAL(10,2),           -- cena za wszystkie usługi
+ADD COLUMN IF NOT EXISTS service_type_ids UUID[] DEFAULT '{}'; -- tablica ID usług
+
+-- 2. Indeks dla GIST (szybsze wyszukiwanie w tablicy)
+CREATE INDEX IF NOT EXISTS idx_appointments_specialists_service_ids 
+ON appointments_specialists USING GIN (service_type_ids);

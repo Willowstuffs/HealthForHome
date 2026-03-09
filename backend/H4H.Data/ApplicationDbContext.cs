@@ -440,6 +440,15 @@ namespace H4H.Data
 
                 // Unikalna para appointment + specialist
                 entity.HasIndex(a => new { a.AppointmentId, a.SpecialistId }).IsUnique();
+
+                // NOWE: Mapowanie tablicy UUID dla ServiceTypeIds (PostgreSQL)
+                entity.Property(e => e.ServiceTypeIds)
+                    .HasColumnType("uuid[]")
+                    .HasDefaultValueSql("'{}'"); // zapewnia pustą tablicę zamiast nulla na poziomie bazy
+
+                // NOWE: Mapowanie ceny 
+                entity.Property(e => e.Price)
+                    .HasPrecision(10, 2); 
             });
 
             // Konfiguracja tabeli DeviceToken dla powiadomień push
@@ -460,9 +469,6 @@ namespace H4H.Data
 
                 entity.HasIndex(e => new { e.UserId, e.FcmToken }).IsUnique();
             });
-
-
-            // usuniecie service_requests
         }
     }
 }
