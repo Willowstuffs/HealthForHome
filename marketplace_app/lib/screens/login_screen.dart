@@ -36,8 +36,9 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Zalogowano pomyślnie')));
-      Navigator.of(context).pop();
-      Navigator.of(context).pop();
+
+      // wracamy do glownego ekranu usuwajac ekrany logowania/rejestracji
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -66,22 +67,26 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: IconButton(
-                    icon: Icon(Icons.arrow_back_ios_rounded, color: AppColors.onSurface),
+                    icon: Icon(
+                      Icons.arrow_back_ios_rounded,
+                      color: AppColors.onSurface,
+                    ),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Witaj ponownie!',
-                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                        color: AppColors.onSurface,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: Theme.of(context).textTheme.headlineLarge
+                          ?.copyWith(
+                            color: AppColors.onSurface,
+                            fontWeight: FontWeight.w700,
+                          ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -92,9 +97,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 40),
-                
+
                 _buildTextField(
                   controller: emailController,
                   label: 'Adres email',
@@ -137,7 +142,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             height: 24,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                             ),
                           )
                         : const Text('Zaloguj się'),
@@ -157,12 +164,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: RichText(
                       text: TextSpan(
                         text: 'Nie masz konta? ',
-                        style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 14,
+                        ),
                         children: [
                           TextSpan(
                             text: 'Zarejestruj się',
                             style: TextStyle(
-                              color: AppColors.primary, 
+                              color: AppColors.primary,
                               fontWeight: FontWeight.w600,
                             ),
                           ),

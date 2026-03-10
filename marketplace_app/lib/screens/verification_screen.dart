@@ -35,10 +35,10 @@ class _VerificationScreenState extends State<VerificationScreen> {
         ),
       );
 
-      // pop until we can push login (alt. use pushReplacement)
+      // wracamy do ekranu poczatkowego i otwieramy LoginScreen zamiast czyscic caly stos
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const LoginScreen()),
-        (route) => false,
+        (route) => route.isFirst,
       );
     } catch (e) {
       if (!mounted) return;
