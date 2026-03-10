@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:marketplace_app/screens/login_register_screen.dart';
-import '../../screens/register_account_screen.dart';
 import '../../theme/app_theme.dart';
 
 class RequestSuccessScreen extends StatelessWidget {
@@ -45,67 +43,14 @@ class RequestSuccessScreen extends StatelessWidget {
 
               SizedBox(height: 96),
 
-              Column(
-                children: [
-                  Text(
-                    'Załóż konto, by być na bieżąco!',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
-                    ),
-                  ),
-
-                  SizedBox(height: 16),
-
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => RegisterScreen()),
-                        );
-                      },
-                      child: Text('Zarejestruj się'),
-                    ),
-                  ),
-
-                  SizedBox(height: 16),
-
-                  Row(
-                    children: [
-                      Expanded(child: Divider(color: AppColors.outline)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'lub',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: AppColors.secondary,
-                          ),
-                        ),
-                      ),
-                      Expanded(child: Divider(color: AppColors.outline)),
-                    ],
-                  ),
-
-                  SizedBox(height: 16),
-
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => LoginRegisterScreen(),
-                          ),
-                        );
-                      },
-                      child: Text('Zaloguj się'),
-                    ),
-                  ),
-                ],
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  },
+                  child: const Text('Wróć do strony głównej'),
+                ),
               ),
 
               SizedBox(height: 32),

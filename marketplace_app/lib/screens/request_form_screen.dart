@@ -19,12 +19,9 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
-  final TextEditingController nameController =
-      TextEditingController();
-  final TextEditingController phoneController =
-      TextEditingController();
-  final TextEditingController emailController =
-      TextEditingController();
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
 
   final TextEditingController addressController = TextEditingController();
   final TextEditingController notesController = TextEditingController();
@@ -133,7 +130,8 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                       controller: nameController,
                       label: 'Imię i nazwisko osoby kontaktowej',
                       validator: (v) {
-                        if (!ApiService().isLoggedIn && (v == null || v.isEmpty)) {
+                        if (!ApiService().isLoggedIn &&
+                            (v == null || v.isEmpty)) {
                           return 'Podaj imię i nazwisko';
                         }
                         return null;
@@ -146,7 +144,8 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                       label: 'Numer telefonu',
                       keyboardType: TextInputType.phone,
                       validator: (v) {
-                        if (!ApiService().isLoggedIn && (v == null || v.isEmpty)) {
+                        if (!ApiService().isLoggedIn &&
+                            (v == null || v.isEmpty)) {
                           return 'Podaj numer telefonu';
                         }
                         return null;
@@ -159,7 +158,8 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                       label: 'Email',
                       keyboardType: TextInputType.emailAddress,
                       validator: (v) {
-                        if (!ApiService().isLoggedIn && (v == null || v.isEmpty)) {
+                        if (!ApiService().isLoggedIn &&
+                            (v == null || v.isEmpty)) {
                           return 'Podaj email';
                         }
                         return null;
@@ -240,6 +240,19 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
   }
 
   Future<void> _submitForm() async {
+    if (!ApiService().isLoggedIn) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Musisz być zalogowany, aby wysłać zgłoszenie.'),
+        ),
+      );
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginRegisterScreen()),
+      );
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
 
     if (selectedCategory == null ||
@@ -249,19 +262,6 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
         const SnackBar(content: Text('Uzupełnij kategorię i daty.')),
       );
       return;
-    }
-
-    if (!ApiService().isLoggedIn) {
-      if (nameController.text.isEmpty ||
-          phoneController.text.isEmpty ||
-          emailController.text.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Uzupełnij dane kontaktowe lub zaloguj się.'),
-          ),
-        ); 
-        return;
-      }
     }
 
     final categoryKey = MockData.categoryMapping[selectedCategory];
