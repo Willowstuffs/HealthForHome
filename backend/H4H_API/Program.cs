@@ -15,7 +15,7 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// aby unikn¹æ problemów z datami w Npgsql (np. przy DateTimeOffset), ustawiamy legacy timestamp behavior
+// aby uniknac problemï¿½w z datami w Npgsql (np. przy DateTimeOffset), ustawiamy legacy timestamp behavior
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 // Add services to the container.
@@ -28,7 +28,7 @@ builder.Services.AddSwaggerGen(options =>
     // DODANA KONFIGURACJA AUTORYZACJI W SWAGGERZE (przez Bearer token)
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "WprowadŸ token JWT w formacie: Bearer {twój_token}",
+        Description = "Wprowadï¿½ token JWT w formacie: Bearer {twï¿½j_token}",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.ApiKey,
@@ -36,7 +36,7 @@ builder.Services.AddSwaggerGen(options =>
         BearerFormat = "JWT"
     });
 
-    // Wymagaj tokena dla wszystkich endpointów
+    // Wymagaj tokena dla wszystkich endpointï¿½w
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -57,6 +57,7 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
+
 // Database context
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(
@@ -70,6 +71,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Add logging
 builder.Services.AddLogging();
 
+
 // JWT Authentication 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -78,7 +80,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             ValidateIssuer = true,
             ValidateAudience = true,
-            ValidateLifetime = true, // Sprawdzaj czy token nie wygas³
+            ValidateLifetime = true, // Sprawdzaj czy token nie wygasï¿½
             ValidateIssuerSigningKey = true, // Weryfikuj klucz podpisu
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
@@ -87,23 +89,26 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// Rejestracja serwisów
+// Rejestracja serwisï¿½w
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<ISpecialistService, SpecialistService>();
 builder.Services.AddScoped<IGeocoder, Geocoder>();
+builder.Services.AddSingleton<FirebaseNotificationService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddHttpClient();
 
 
-// CORS dla frontendu jeœli Flutter debuguje przez przegl¹darkê
+// CORS dla frontendu jeï¿½li Flutter debuguje przez przeglï¿½darkï¿½
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFlutter",
         policy => policy
-            .AllowAnyOrigin()  // Ka¿de Ÿród³o
+            .AllowAnyOrigin()  // Kaï¿½de ï¿½rï¿½dï¿½o
             .AllowAnyMethod()
             .AllowAnyHeader());
+
 });
 
 // Dependency Injection dla Repository
@@ -118,7 +123,7 @@ builder.Services.AddHttpClient("Nominatim", client =>
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
-// Rate limiting dla Nominatim (max 1 request na sekundê)
+// Rate limiting dla Nominatim (max 1 request na sekundï¿½)
 builder.Services.AddSingleton<GeocodingRateLimiter>();
 
 
@@ -131,12 +136,15 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+
 // Middleware 
 app.UseMiddleware<ErrorHandlingMiddleware>();
 
 app.UseHttpsRedirection();
 app.UseCors("AllowFlutter");
+app.UseStaticFiles();
 app.UseAuthentication();
+
 app.UseAuthorization();
 app.MapControllers();
 
@@ -144,11 +152,12 @@ app.Run();
 
 
 
+
 public class SecurityRequirementsOperationFilter : IOperationFilter
 {
     public void Apply(OpenApiOperation operation, OperationFilterContext context)
     {
-        var authAttributes = context.MethodInfo.DeclaringType.GetCustomAttributes(true)
+        var authAttributes = (context.MethodInfo.DeclaringType?.GetCustomAttributes(true) ?? Array.Empty<object>())
             .Union(context.MethodInfo.GetCustomAttributes(true))
             .OfType<AuthorizeAttribute>();
 

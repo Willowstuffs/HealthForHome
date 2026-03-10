@@ -26,6 +26,8 @@ namespace H4H_API.Services.Implementations
         private readonly ApplicationDbContext _context;
         private readonly IMapper _mapper;
         private readonly IGeocoder _geocoder;
+        private readonly FirebaseNotificationService _firebaseNotificationService;
+
 
         /// <summary>
         /// Initializes a new instance of the ClientService class using the specified database context and object
@@ -34,10 +36,11 @@ namespace H4H_API.Services.Implementations
         /// <param name="context">The database context used to access and manage client data within the application. Cannot be null.</param>
         /// <param name="mapper">The object mapper used to map between domain entities and data transfer objects. Cannot be null.</param>
         /// <param name="geocoder">The geocoding service for address geolocation. Cannot be null.</param>
-        public ClientService(ApplicationDbContext context, IMapper mapper, IGeocoder geocoder)
+        public ClientService(ApplicationDbContext context, IMapper mapper, FirebaseNotificationService firebaseNotificationService, IGeocoder geocoder)
         {
             _context = context;
             _mapper = mapper;
+            _firebaseNotificationService = firebaseNotificationService;
             _geocoder = geocoder;
         }
 
@@ -237,6 +240,24 @@ namespace H4H_API.Services.Implementations
         }
 
         /// <summary>
+        /// Sprawdza czy klient jest w zasięgu specjalisty
+        /// </summary>
+        public async Task<bool> IsClientWithinSpecialistRangeAsync(Guid clientUserId, Guid specialistId)
+        {
+            try
+            {
+                return await _geocoder.IsWithinServiceAreaAsync(
+                    await GetClientIdFromUserId(clientUserId),
+                    specialistId
+                );
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Attempts to change the password for the specified user using the provided current and new passwords.
         /// </summary>
         /// <param name="userId">The unique identifier of the user whose password is to be changed.</param>
@@ -279,7 +300,7 @@ namespace H4H_API.Services.Implementations
                 .Include(a => a.Client) // Ważne dla ClientName
                 .Include(a => a.Specialist) // Ważne dla SpecialistName
                 .Include(a => a.SpecialistService) // Ważne dla ServiceName
-                    .ThenInclude(ss => ss.ServiceType)
+                    .ThenInclude(ss => ss!.ServiceType)
                 .Where(a => a.ClientId == client.Id)
                 .AsQueryable();
 
@@ -324,7 +345,7 @@ namespace H4H_API.Services.Implementations
                 .Include(a => a.Client)
                 .Include(a => a.Specialist)
                 .Include(a => a.SpecialistService)
-                    .ThenInclude(ss => ss.ServiceType)
+                    .ThenInclude(ss => ss!.ServiceType)
                 .FirstOrDefaultAsync(a => a.Id == appointmentId && a.ClientId == client.Id);
 
             if (appointment == null)
@@ -336,10 +357,10 @@ namespace H4H_API.Services.Implementations
 
         public async Task<AppointmentDto> CreateAppointmentAsync(Guid userId, CreateAppointmentDto dto)
         {
+            await Task.CompletedTask; //usuwam warning o braku await
             // TODO: Zaimplementować z walidacją odległości
             throw new NotImplementedException("CreateAppointmentAsync not implemented yet");
         }
-
         /// <summary>
         /// Anuluj wizytę (termin) klienta, jeśli wizyta należy do niego i nie jest już zakończona lub anulowana. Zwraca true jeśli anulowano, false jeśli nie można anulować z powodu statusu wizyty.
         /// </summary>
@@ -389,6 +410,7 @@ namespace H4H_API.Services.Implementations
         public async Task<DistanceInfoDto> GetDistanceToServiceRequestAsync(Guid specialistId, Guid serviceRequestId)
         {
             // 1. Pobieramy lokalizację ogłoszenia (ServiceRequest)
+
             var request = await _context.appointments
                 .Where(r => r.Id == serviceRequestId)
                 .Select(r => new { r.Location })
@@ -443,6 +465,7 @@ namespace H4H_API.Services.Implementations
 
         public async Task<PagedResponse<SpecialistDto>> SearchSpecialistsAsync(SearchSpecialistsDto filters, PagedRequest request)
         {
+            await Task.CompletedTask; //usuwam warning o braku await
             // TODO: Zaimplementować z filtrowaniem po odległości
             // Na razie zwróć pustą listę
             return new PagedResponse<SpecialistDto>
@@ -477,7 +500,7 @@ namespace H4H_API.Services.Implementations
         /// <param name="userId"></param>
         /// <returns></returns>
         public async Task<Guid> CreateServiceRequestAsync(CreateServiceRequestDto dto, Guid? userId = null)
-        {
+        {            
             Guid? finalClientId = null;
             if (userId.HasValue)
             {
@@ -499,11 +522,15 @@ namespace H4H_API.Services.Implementations
 
             var geocoded = await _geocoder.GeocodeAddressAsync(cleanAddress);
 
+            // Jeśli użytkownik jest zalogowany, ale nie znaleziono klienta, to jest błąd - nie można stworzyć ogłoszenia bez klienta
+            if (!finalClientId.HasValue)
+                throw new AppException("Musisz być zalogowany, aby stworzyć ogłoszenie", ErrorCodes.ClientNotFound);
+
             // Tworzenie wizyty (ogłoszenia)
             var appointment = new Appointment
             {
                 Id = Guid.NewGuid(),
-                ClientId = finalClientId, // Może być null dla gościa
+                ClientId = finalClientId.Value, // Może być null dla gościa
                 SpecialistId = null, // To jest ogłoszenie otwarte
                 ServiceTypeId = serviceType.Id,
 
@@ -524,6 +551,21 @@ namespace H4H_API.Services.Implementations
 
             _context.appointments.Add(appointment);
             await _context.SaveChangesAsync();
+            var specialistTokens = await _context.device_tokens
+                .Where(t => t.User.UserType == "specialist")
+                .Select(t => t.FcmToken)
+                .ToListAsync();
+
+            if (specialistTokens.Any())
+            {
+                await _firebaseNotificationService.SendNotificationToManyAsync(
+                    specialistTokens,
+                    "Nowa oferta!",
+                    $"Nowe zapytanie: {appointment.ServiceType}," +
+                    $"od: {appointment.ScheduledStart} do: {appointment.ScheduledEnd}",
+                    appointment.Id.ToString()
+                );
+            }
             return appointment.Id;
         }
 
@@ -537,6 +579,7 @@ namespace H4H_API.Services.Implementations
         {
             var client = await _context.clients.FirstOrDefaultAsync(c => c.UserId == userId);
             if (client == null) throw new AppException("Nie znaleziono klienta", ErrorCodes.ClientNotFound);
+
 
             // ZMIANA: _context.appointments ZAMIAST _context.service_requests
             var requests = await _context.appointments

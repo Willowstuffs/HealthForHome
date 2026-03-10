@@ -14,35 +14,45 @@ namespace H4H.Data.Repositories
             _context = context;
         }
 
+
         // Sprawdza czy email już istnieje w bazie
+
         public async Task<bool> EmailExistsAsync(string email)
         {
             return await _context.users.AnyAsync(u => u.Email == email);
         }
 
+
         // Tworzy nowego użytkownika (i odpowiedniego klienta/specjalistę)
         public async Task<User> CreateUserAsync(string email, string password, string firstName, string lastName, string userType)
         {
             // Utwórz DateTime bez Kind (Unspecified) - ważne dla PostgreSQL
+
             var unspecifiedNow = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified);
 
             var user = new User
             {
                 Id = Guid.NewGuid(),
                 Email = email,
+
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),  // Hashowanie hasła
+
                 UserType = userType,
                 PhoneNumber = null, // Dodaj brakujące pola
                 AvatarUrl = null,
                 IsActive = true,
+
                 CreatedAt = unspecifiedNow, // Użycie Unspecified dla PostgreSQL
                 UpdatedAt = unspecifiedNow, // Użycie Unspecified dla PostgreSQL
+
                 LastLoginAt = null
             };
 
             _context.users.Add(user);
 
+
             // Jeśli to klient, utwórz również rekord w tabeli clients
+
             if (userType == "client")
             {
                 var client = new Client
@@ -73,6 +83,7 @@ namespace H4H.Data.Repositories
                 .FirstOrDefaultAsync(u => u.Email == email && u.IsActive); // Tylko aktywni użytkownicy
 
             // Sprawdź czy użytkownik istnieje i czy hasło się zgadza
+
             if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
                 return null;
 
@@ -83,7 +94,9 @@ namespace H4H.Data.Repositories
             return user;
         }
 
+
         // Pobiera użytkownika po ID
+
         public async Task<User?> GetUserByIdAsync(Guid id)
         {
             return await _context.users
@@ -93,6 +106,7 @@ namespace H4H.Data.Repositories
         }
 
         // Dodatkowe metody które mogą być potrzebne:
+
         
         // Pobiera użytkownika po emailu
         public async Task<User?> GetUserByEmailAsync(string email)
@@ -103,6 +117,7 @@ namespace H4H.Data.Repositories
                 .FirstOrDefaultAsync(u => u.Email == email);
         }
 
+
         // Aktualizuje dane użytkownika
         public async Task<bool> UpdateUserAsync(User user)
         {
@@ -111,13 +126,14 @@ namespace H4H.Data.Repositories
             return await _context.SaveChangesAsync() > 0;
         }
 
+
         // Dezaktywuje użytkownika (soft delete)
         public async Task<bool> DeactivateUserAsync(Guid userId)
         {
             var user = await GetUserByIdAsync(userId);
             if (user == null) return false;
-
             user.IsActive = false; // Soft delete - użytkownik nieaktywny
+
             user.UpdatedAt = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified);
             return await _context.SaveChangesAsync() > 0;
         }

@@ -1,0 +1,79 @@
+instrukcja generowania kluczy i konfiguracji firebase jeśli robisz tylko backend to rób 1. 6.!!!
+
+1.utworzenie projektu (strona):
+
+- https://console.firebase.google.com
+
+//trzeba będzie założyć konto 
+
+- Create a new Firebase project
+
+- Nadaj nazwe -> continue … -> create
+
+po lewej stronie klikasz w kołatkę -> general
+na dole strony wybierasz flutter
+
+robisz wg instrukcji.
+
+2.Konfiguracja (terminal)
+
+//instalacja firebase
+- npm install -g firebase-tools
+
+//zaloguj się
+- firebase login
+
+3.zainstaluj FlutterFire CLI
+
+- dart pub global activate flutterfire_cli
+
+//!!! trzeba dodać ścieżkę PATH w zmiennych środowiskowych
+
+4. dodaj firebase do projektu flutter
+
+- cd twój projekt flutter
+
+//kopiujesz z instrukcji
+- flutterfire configure --project=
+
+(zaznacz swój projekt firebase, android)
+
+5.Dodaj biblioteki flutter(pubspec.yaml)
+
+dependencies:
+	firebase_core: ^2.27.0
+	firebase_messaging: ^14.7.0
+	flutter_local_notifications: ^19.0.0
+
+
+- flutter pub get
+
+
+6. generujesz klucz
+
+w settings w zakładce service accounts
+
+Generate new private key
+
+gdy plik się pobierze wstawiacie go w 
+
+/Firebase
+
+//jeśli nie ma to stworzyć
+
+Oraz zmieniacie nzwy w backendzie w pliku
+
+FirebaseNotificationService.cs
+
+     public FirebaseNotificationService()
+     {
+         // Sprawdzenie, czy domyślny app już istnieje
+         _app = FirebaseApp.DefaultInstance ?? FirebaseApp.Create(new AppOptions()
+         {
+             Credential = GoogleCredential.FromFile("Firebase/waszplikjson.json"),
+             ProjectId = "wasz poject id" // dokładnie jak w pliku JSON i projekcie Firebase
+         });
+     }
+
+
+   

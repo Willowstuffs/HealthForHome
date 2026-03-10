@@ -20,6 +20,12 @@ namespace H4H.Core.Models
         [Column("specialist_id")]
         public Guid SpecialistId { get; set; }
 
+        [Column("price")]
+        public decimal? Price { get; set; }
+
+        [Column("service_type_ids")]
+        public List<Guid> ServiceTypeIds { get; set; } = new List<Guid>();
+
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTimeHelper.NowUnspecified;
 

@@ -1,4 +1,4 @@
-﻿using H4H_API.Helpers;
+using H4H_API.Helpers;
 using H4H.Core.Models;
 using H4H.Data;
 using H4H_API.DTOs.Specialist;
@@ -6,7 +6,9 @@ using H4H_API.Exceptions;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using SpecialistServiceEntity = H4H.Core.Models.SpecialistService;
-using H4H_API.DTOs.Client;
+using H4H_API.Helpers;
+using ErrorCodes = H4H_API.Helpers.ErrorCodes;
+using NetTopologySuite;
 
 namespace H4H_API.Services.Implementations
 {
@@ -30,37 +32,38 @@ namespace H4H_API.Services.Implementations
                 .FirstOrDefaultAsync(s => s.UserId == userId);
 
             return spec == null
-                ? throw new KeyNotFoundException($"Nie znaleziono specjalisty dla użytkownika {userId}")
+                ? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound)
                 : new SpecialistDto
-            {
-                Id = spec.Id,
-                FirstName = spec.FirstName,
-                LastName = spec.LastName,
-                ProfessionalTitle = spec.ProfessionalTitle,
-                Bio = spec.Bio,
-                HourlyRate = spec.HourlyRate,
-                IsVerified = spec.IsVerified,
-                AverageRating = (decimal)spec.AverageRating,
-                TotalReviews = spec.TotalReviews,
-                //uproszczone mapowanie list
-                Services = [.. spec.Services.Select(s => new SpecialistServiceDto
                 {
-                    Id = s.Id,
-                    ServiceName = s.ServiceType?.Name ?? "Nieznana usługa",
-                    Price = s.Price,
-                //tu uzupelnic o reszte pozniej
-                })],
-                ServiceAreas = [.. spec.ServiceAreas.Select(a => new ServiceAreaDto
+                    Id = spec.Id,
+                    FirstName = spec.FirstName,
+                    LastName = spec.LastName,
+
+                    Email = spec.User.Email,
+                    PhoneNumber = spec.User.PhoneNumber,
+
+                    ProfessionalTitle = spec.ProfessionalTitle,
+                    Bio = spec.Bio,
+                    HourlyRate = spec.HourlyRate,
+                    IsVerified = spec.IsVerified,
+                    AverageRating = (decimal)spec.AverageRating,
+                    TotalReviews = spec.TotalReviews,
+                    AvatarUrl = spec.User.AvatarUrl,
+                    //uproszczone mapowanie list
+
+                    ServiceAreas = [.. spec.ServiceAreas.Select(a => new ServiceAreaDto
+
                 {
                     City = a.City,
                     MaxDistanceKm = a.MaxDistanceKm
                 })]
+
                 };
         }
         public async Task<List<InquiryListItemDto>> GetInquiriesAsync(Guid userId, InquiryFilterDto filters)
         {
             var specialist = await _context.specialists
-                .FirstOrDefaultAsync(s => s.UserId == userId) ?? throw new KeyNotFoundException($"Nie znaleziono specjalisty dla użytkownika {userId}");
+                .FirstOrDefaultAsync(s => s.UserId == userId) ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
 
             ///<summary>
             ///Query Builder do pobrania zapytan z zastosowaniem filtrow
@@ -69,8 +72,19 @@ namespace H4H_API.Services.Implementations
                 .Include(a => a.Client)
                 .Include(a => a.SpecialistService)
                     .ThenInclude(ss => ss!.ServiceType) //by dostac nazwe uslugi
-                .Where(a => a.SpecialistService!.SpecialistId == specialist.Id)
+
                 .AsQueryable();
+            ///<summary>
+            ///dadanie sprawdzenia czy dany specjalista już nie dodał ogłoszenia
+            /// </summary>>
+            var appointmentIds = query.Select(q => q.Id).ToList();
+
+            query = query.Where(a => !_context.appointments_specialists
+                            .Any(aspl => aspl.AppointmentId == a.Id && aspl.SpecialistId == specialist.Id));
+
+
+
+
             //Aplikowanie filtrow
             if (filters.DateFrom.HasValue) // od
                 query = query.Where(a => a.ScheduledStart >= filters.DateFrom.Value);
@@ -86,7 +100,9 @@ namespace H4H_API.Services.Implementations
                 );
             }
             //filtrowanie po statusie
-            query = query.Where(a => a.AppointmentStatus != "cancelled");
+            query = query.Where(a => a.AppointmentStatus == "open");
+
+
 
             //Pobranie danych i mapowanie na DTO
             var result = await query
@@ -100,7 +116,8 @@ namespace H4H_API.Services.Implementations
                     ServiceName = a.SpecialistService!.ServiceType.Name,
                     Status = a.AppointmentStatus,
                     PatientAddress = a.ClientAddress ?? a.Client.Address ?? "Brak adresu",
-                    Price = a.TotalPrice ?? 0
+                    Price = a.TotalPrice ?? 0,
+                    Description = a.ClientNotes
                 })
                 .ToListAsync();
             return result;
@@ -108,9 +125,9 @@ namespace H4H_API.Services.Implementations
         public async Task UpdateLicenseNumberAsync(Guid userId, string licenseNumber)
         {
             var specialist = await _context.specialists
-                .FirstOrDefaultAsync(s => s.UserId == userId) 
-                ?? throw new KeyNotFoundException($"Nie znaleziono specjalisty dla użytkownika {userId}");
-            
+                .FirstOrDefaultAsync(s => s.UserId == userId)
+                ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
+      
             var qualification = await _context.specialist_qualifications
                 .FirstOrDefaultAsync(q => q.SpecialistId == specialist.Id);
 
@@ -141,11 +158,13 @@ namespace H4H_API.Services.Implementations
                 .Include(s => s.Qualifications) //relacja do kwalifikacji
                 .FirstOrDefaultAsync(s => s.UserId == userId);
 
-            if(specialist == null)
-                throw new KeyNotFoundException($"Nie znaleziono profilu specjalisty dla użytkownika {userId}");
+            if (specialist != null)
+            {
+                var qualification = specialist.Qualifications.FirstOrDefault();
+                return qualification?.LicenseNumber;
+            }
 
-            var qualification = specialist.Qualifications.FirstOrDefault();
-            return qualification?.LicenseNumber;
+            throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
         }
         public async Task<List<SpecialistServiceDto>> GetServicesAsync(Guid userId)
         {
@@ -153,7 +172,7 @@ namespace H4H_API.Services.Implementations
                 .Include(s => s.Services)
                     .ThenInclude(ss => ss.ServiceType)
                 .FirstOrDefaultAsync(s => s.UserId == userId)
-                ?? throw new KeyNotFoundException("Profil specjalisty nie istnieje.");
+                ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
 
             return specialist.Services
                 .Where(s => s.IsActive)
@@ -164,6 +183,7 @@ namespace H4H_API.Services.Implementations
                     Category = s.ServiceType.Category ?? "",
                     DurationMinutes = s.DurationMinutes,
                     Price = s.Price,
+                    ServiceTypeId = s.ServiceTypeId,
                     Description = s.Description
                 })
                 .ToList();
@@ -186,7 +206,7 @@ namespace H4H_API.Services.Implementations
         public async Task AddServiceAsync(Guid userId, SpecialistServiceManageDto dto)
         {
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
-                 ?? throw new KeyNotFoundException("Profil nie istnieje."); // ErrorCode: SPEC_001
+                 ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound); // ErrorCode: SPEC_001
 
             // Duplikaty
             var exists = await _context.specialist_services
@@ -214,21 +234,23 @@ namespace H4H_API.Services.Implementations
         public async Task UpdateServiceAsync(Guid userId, Guid serviceId, SpecialistServiceManageDto dto)
         {
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
-                ?? throw new KeyNotFoundException("Profil nie istnieje.");
+                ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
 
             // Pobieranie konkretnej uslugi
             var service = await _context.specialist_services
                 .FirstOrDefaultAsync(ss => ss.Id == serviceId && ss.SpecialistId == specialist.Id);
 
-            if (service == null) throw new KeyNotFoundException("Usługa nie znaleziona.");
+            if (service != null)
+            {
+                // Aktualizacja pól
+                service.Price = dto.Price;
+                service.DurationMinutes = dto.DurationMinutes;
+                service.Description = dto.Description;
+                service.ServiceTypeId = dto.ServiceTypeId;
 
-            // Aktualizacja pól
-            service.Price = dto.Price;
-            service.DurationMinutes = dto.DurationMinutes;
-            service.Description = dto.Description;
-            service.ServiceTypeId = dto.ServiceTypeId; 
-
-            await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
+            }
+                throw new AppException("Usługa nie znaleziona.", ErrorCodes.ServiceNotFound); //SERV_002
         }
 
         public async Task DeleteServiceAsync(Guid userId, Guid serviceId)
@@ -238,10 +260,13 @@ namespace H4H_API.Services.Implementations
             var service = await _context.specialist_services
                 .FirstOrDefaultAsync(ss => ss.Id == serviceId && ss.SpecialistId == specialist!.Id);
 
-            if (service == null) throw new KeyNotFoundException("Usługa nie znaleziona.");
-
-            _context.specialist_services.Remove(service);
-            await _context.SaveChangesAsync();
+            if (service != null)
+            {
+                _context.specialist_services.Remove(service);
+                await _context.SaveChangesAsync();
+            }
+            else
+                throw new AppException("Usługa nie znaleziona.", ErrorCodes.ServiceNotFound); //SERV_002
         }
 
         public async Task UpdateServiceAreaAsync(Guid userId, ServiceAreaManageDto dto)
@@ -249,7 +274,7 @@ namespace H4H_API.Services.Implementations
             var specialist = await _context.specialists
                 .Include(s => s.ServiceAreas)
                 .FirstOrDefaultAsync(s => s.UserId == userId)
-                ?? throw new KeyNotFoundException("Profil nie istnieje.");
+                ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
             // Zakladamy ze specjalista ma jeden obszar dzialania.
 
             var area = specialist.ServiceAreas.FirstOrDefault();
@@ -269,76 +294,233 @@ namespace H4H_API.Services.Implementations
             area.PostalCode = dto.PostalCode;
             area.MaxDistanceKm = dto.MaxDistanceKm;
 
-            // --- PRZYSZŁA IMPLEMENTACJA GEOLOKALIZACJI ---
-            /*
+            //PostGIS
             if (dto.Latitude.HasValue && dto.Longitude.HasValue)
             {
-                 area.Latitude = dto.Latitude.Value;
-                 area.Longitude = dto.Longitude.Value;
+                // Tworzymy punkt geograficzny (SRID 4326 = WGS 84, standard GPS)
+                var geometryFactory = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
+                area.Location = geometryFactory.CreatePoint(new NetTopologySuite.Geometries.Coordinate(dto.Longitude.Value, dto.Latitude.Value));
+                area.LocationUpdatedAt = DateTime.UtcNow;
+            } else {
+                //Majac tylko miasto i kod pocztowy, mozna zrobic geokodowanie (kiedys)
+                area.Location = null;
             }
-            */
             await _context.SaveChangesAsync();
         }
 
-
-
-        /// <summary>
-        /// Pobiera listę dostępnych zgłoszeń (service requests) dla specjalisty na podstawie jego obszaru działania.
-        /// </summary>
-        /// <param name="specialistId"></param>
-        /// <returns></returns>
-        /// <exception cref="KeyNotFoundException"></exception>
-        public async Task<List<ServiceRequestDto>> GetAvailableServiceRequestsAsync(Guid specialistId)
+        public async Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId,Guid serviceId, decimal price)
         {
-            // 1. Pobieramy specjalistę z jego kwalifikacjami i obszarem działania
+            var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
+                ?? throw new AppException("Profil nie istnieje.", ErrorCodes.SpecialistNotFound);
+
+
+            var appointment = await _context.appointments
+                .FirstOrDefaultAsync(a => a.Id == appointmentId);
+
+            if (appointment == null)
+                throw new AppException("Wizyta nie znaleziona.", ErrorCodes.AppointmentNotFound);
+
+            if (appointment.AppointmentStatus != "open")
+                throw new AppException("Można potwierdzić tylko wizyty oczekujące.", ErrorCodes.AppointmentStatusNotPending);
+
+
+            var appointmentSpecialist = new AppointmentSpecialist
+            {
+                Id = Guid.NewGuid(),
+                AppointmentId = appointment.Id,
+                SpecialistId = specialist.Id,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.appointments_specialists.Add(appointmentSpecialist);
+
+            appointment.TotalPrice = price;
+            appointment.SpecialistServiceId = serviceId;
+            appointment.AppointmentStatus = "pending";
+
+            await _context.SaveChangesAsync();
+        }
+        public async Task ShowConfirmAppointmentAsync(Guid userId, Guid appointmentId)
+        {
+            var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
+                ?? throw new AppException("Profil nie istnieje.", ErrorCodes.SpecialistNotFound);
+
+
+            // Szukamy wizyty, która należy do tego specjalisty i ma status pending
+            var appointment = await _context.appointments
+                .FirstOrDefaultAsync(a => a.Id == appointmentId && a.SpecialistId == specialist.Id);
+
+            if (appointment == null)
+                throw new AppException("Wizyta nie znaleziona.", ErrorCodes.AppointmentNotFound);
+
+            if (appointment.AppointmentStatus != "pending")
+                throw new AppException("Można potwierdzić tylko wizyty oczekujące.", ErrorCodes.AppointmentStatusNotPending);
+
+            appointment.AppointmentStatus = "confirmed";
+
+            await _context.SaveChangesAsync();
+        }
+        public async Task ShowArchiwumAsync(Guid userId, Guid appointmentId)
+        {
+            var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
+                ?? throw new AppException("Profil nie istnieje.", ErrorCodes.SpecialistNotFound);
+
+            // Szukamy wizyty, która należy do tego specjalisty i ma status pending
+            var appointment = await _context.appointments
+                .FirstOrDefaultAsync(a => a.Id == appointmentId && a.SpecialistId == specialist.Id);
+
+            if (appointment == null)
+                throw new AppException("Wizyta nie znaleziona.", ErrorCodes.AppointmentNotFound);
+
+            if (appointment.AppointmentStatus != "pending")
+                throw new AppException("Można potwierdzić tylko wizyty oczekujące.", ErrorCodes.AppointmentStatusNotPending);
+
+            appointment.AppointmentStatus = "confirmed";
+            appointment.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+        }
+        public async Task<List<InquiryListItemDto>> GetCommingInquiriesAsync(Guid userId, InquiryFilterDto filters)
+        {
+            var specialist = await _context.specialists
+                .FirstOrDefaultAsync(s => s.UserId == userId) ?? throw new KeyNotFoundException($"Nie znaleziono specjalisty dla użytkownika {userId}");
+
+            ///<summary>
+            ///Query Builder do pobrania zapytan z zastosowaniem filtrow
+            /// </summary>
+            var query = _context.appointments
+                .Include(a => a.Client)
+                .Include(a => a.SpecialistService)
+                    .ThenInclude(ss => ss!.ServiceType) //by dostac nazwe uslugi
+                .Where(a => a.SpecialistService!.SpecialistId == specialist.Id)
+                .AsQueryable();
+
+
+            //Aplikowanie filtrow
+            if (filters.DateFrom.HasValue) // od
+                query = query.Where(a => a.ScheduledStart >= filters.DateFrom.Value);
+            if (filters.DateTo.HasValue) // do
+                query = query.Where(a => a.ScheduledEnd <= filters.DateTo.Value);
+
+            if (!string.IsNullOrEmpty(filters.PatientName))
+            {
+                var search = filters.PatientName.ToLower();
+                query = query.Where(a =>
+                    (a.Client.FirstName != null && a.Client.FirstName.ToLower().Contains(search)) ||
+                    (a.Client.LastName != null && a.Client.LastName.ToLower().Contains(search))
+                );
+            }
+            //filtrowanie po statusie
+            query = query.Where(a => a.AppointmentStatus == "confirmed");
+
+            //Pobranie danych i mapowanie na DTO
+            var result = await query
+                .OrderByDescending(a => a.ScheduledStart)
+                .Select(a => new InquiryListItemDto
+                {
+                    AppointmentId = a.Id,
+                    ScheduledStart = a.ScheduledStart,
+                    ScheduledEnd = a.ScheduledEnd,
+                    PatientName = a.Client.FirstName + " " + a.Client.LastName,
+                    ServiceName = a.SpecialistService!.ServiceType.Name,
+                    Status = a.AppointmentStatus,
+                    PatientAddress = a.ClientAddress ?? a.Client.Address ?? "Brak adresu",
+                    Price = a.TotalPrice ?? 0
+                })
+                .ToListAsync();
+            return result;
+        }
+        public async Task<List<InquiryListItemDto>> GetArchiveInquiriesAsync(Guid userId, InquiryFilterDto filters)
+        {
+            var specialist = await _context.specialists
+                .FirstOrDefaultAsync(s => s.UserId == userId) ?? throw new KeyNotFoundException($"Nie znaleziono specjalisty dla użytkownika {userId}");
+
+            ///<summary>
+            ///Query Builder do pobrania zapytan z zastosowaniem filtrow
+            /// </summary>
+            var query = _context.appointments
+                .Include(a => a.Client)
+                .Include(a => a.SpecialistService)
+                    .ThenInclude(ss => ss!.ServiceType) //by dostac nazwe uslugi
+                .Where(a => a.SpecialistService!.SpecialistId == specialist.Id)
+                .AsQueryable();
+
+
+
+            if (!string.IsNullOrEmpty(filters.PatientName))
+            {
+                var search = filters.PatientName.ToLower();
+                query = query.Where(a =>
+                    (a.Client.FirstName != null && a.Client.FirstName.ToLower().Contains(search)) ||
+                    (a.Client.LastName != null && a.Client.LastName.ToLower().Contains(search))
+                );
+            }
+            //filtrowanie po statusie
+            query = query.Where(a => a.AppointmentStatus == "completed");
+
+            //Pobranie danych i mapowanie na DTO
+            var result = await query
+                .OrderByDescending(a => a.ScheduledStart)
+                .Select(a => new InquiryListItemDto
+                {
+                    AppointmentId = a.Id,
+                    ScheduledStart = a.ScheduledStart,
+                    ScheduledEnd = a.ScheduledEnd,
+                    PatientName = a.Client.FirstName + " " + a.Client.LastName,
+                    ServiceName = a.SpecialistService!.ServiceType.Name,
+                    Status = a.AppointmentStatus,
+                    PatientAddress = a.ClientAddress ?? a.Client.Address ?? "Brak adresu",
+                    Price = a.TotalPrice ?? 0
+                })
+                .ToListAsync();
+            return result;
+        }
+        public async Task UpdateProfileAsync(Guid userId, UpdateSpecialistProfileDto dto)
+        {
+            // Pobranie specjalisty wraz z obszarami działania
             var specialist = await _context.specialists
                 .Include(s => s.ServiceAreas)
-                .Include(s => s.Qualifications) // Nazwa zgodna z modelem Specialist
-                .FirstOrDefaultAsync(s => s.UserId == specialistId);
+                .FirstOrDefaultAsync(s => s.UserId == userId)
+                ?? throw new KeyNotFoundException("Profil specjalisty nie istnieje.");
 
-            // Rozwiązanie błędu CS0161 - rzucamy wyjątek, jeśli nie ma specjalisty
-            if (specialist == null)
+            // Pobranie powiązanego użytkownika osobno, aby EF Core poprawnie śledził zmiany
+            var user = await _context.users.FirstOrDefaultAsync(u => u.Id == userId)
+                ?? throw new KeyNotFoundException("Użytkownik nie istnieje.");
+            // Aktualizacja podstawowych danych w tabeli Users
+            user.Email = dto.Email;
+            user.PhoneNumber = dto.PhoneNumber;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            // Obsługa uploadu avataru
+            if (dto.Avatar != null && dto.Avatar.Length > 0)
             {
-                throw new KeyNotFoundException($"Nie znaleziono specjalisty dla UserId: {specialistId}");
+                // Tworzymy nazwę pliku z GUIDem, zachowując rozszerzenie
+                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(dto.Avatar.FileName)}";
+
+                // Tworzymy folder wwwroot/avatars jeśli nie istnieje
+                var folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "avatars");
+                if (!Directory.Exists(folderPath))
+                    Directory.CreateDirectory(folderPath);
+
+                var filePath = Path.Combine(folderPath, fileName);
+
+                // Zapis pliku na dysku
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await dto.Avatar.CopyToAsync(stream);
+                }
+
+                // Zapisujemy ścieżkę do bazy (relative URL)
+                user.AvatarUrl = $"/avatars/{fileName}";
             }
+            // Aktualizacja danych specjalisty
+            specialist.FirstName = dto.FirstName;
+            specialist.LastName = dto.LastName;
+            specialist.ProfessionalTitle = dto.ProfessionalTitle;
+            specialist.Bio = dto.Bio;
+            specialist.HourlyRate = dto.HourlyRate;
+            // Zapis wszystkich zmian w jednej transakcji
+            await _context.SaveChangesAsync();
 
-            // 2. Pobieramy główny obszar działania
-            var primaryArea = specialist.ServiceAreas?.FirstOrDefault();
-            if (primaryArea == null || primaryArea.Location == null)
-            {
-                return new List<ServiceRequestDto>();
-            }
-
-            // 3. Mapujemy profesje z bazy na kategorie usług
-            // Korzystamy z modelu SpecialistQualification i pola Profession
-            var myCategories = specialist.Qualifications?
-                .Where(q => q.IsActive)
-                .Select(q => q.Profession.ToLower() == "nurse" ? "nursing" : "physiotherapy")
-                .ToList() ?? new List<string>();
-
-            // 4. Pobieramy zgłoszenia pasujące do kategorii i lokalizacji
-            var requests = await _context.appointments
-                .Include(r => r.ServiceType)
-                .Where(r => r.AppointmentStatus == "open" && r.SpecialistId == null)
-                .Where(r => myCategories.Contains(r.ServiceType.Category)) // Filtrujemy po kategorii (nursing/physiotherapy)
-                .Where(r => r.Location != null &&
-                       r.Location.Distance(primaryArea.Location) <= (primaryArea.MaxDistanceKm * 1000))
-                .OrderByDescending(r => r.CreatedAt)
-                .ToListAsync();
-
-            // 5. Mapowanie na DTO
-            return requests.Select(r => new ServiceRequestDto
-            {
-                Id = r.Id,
-                ServiceTypeName = r.ServiceType?.Name ?? "Usługa",
-                Description = r.ClientNotes ?? "",
-                DateFrom = r.ScheduledStart,
-                DateTo = r.ScheduledEnd,
-                Address = r.ClientAddress ?? "",
-                Status = r.AppointmentStatus,
-                CreatedAt = r.CreatedAt
-            }).ToList();
         }
-
     }
 }

@@ -101,12 +101,15 @@ namespace H4H.Data
                 entity.Property(e => e.UserType).HasMaxLength(20);
             });
 
+
             // Relacja jeden-do-jednego User <=> Client z kaskadowym usuwaniem
+
             modelBuilder.Entity<Client>(entity =>
             {
                 entity.HasOne(c => c.User)
                     .WithOne(u => u.Client)
                     .HasForeignKey<Client>(c => c.UserId)
+
                     .OnDelete(DeleteBehavior.Cascade); // Usunięcie użytkownika usuwa klienta
 
                 // KONFIGURACJA POSTGIS DLA Client:
@@ -115,11 +118,13 @@ namespace H4H.Data
             });
 
             // Relacja jeden-do-jednego User <=> Specialist z kaskadowym usuwaniem
+
             modelBuilder.Entity<Specialist>(entity =>
             {
                 entity.HasOne(s => s.User)
                     .WithOne(u => u.Specialist)
                     .HasForeignKey<Specialist>(s => s.UserId)
+
                     .OnDelete(DeleteBehavior.Cascade); // Usunięcie użytkownika usuwa specjalistę
 
                 entity.Property(s => s.VerificationStatus)
@@ -190,6 +195,7 @@ namespace H4H.Data
             // Wizyty - centralna encja systemu
             modelBuilder.Entity<Appointment>(entity =>
             {
+
                 entity.ToTable("appointments"); // Upewnienie się co do nazwy tabeli
 
                 // 1. RELACJE
@@ -241,6 +247,7 @@ namespace H4H.Data
                 // Relacja jeden-do-jednego z Wizytą
                 entity.HasOne(p => p.Appointment)
                     .WithOne(a => a.Payment) // Jedna wizyta ma jedną płatność
+
                     .HasForeignKey<Payment>(p => p.AppointmentId)
                     .OnDelete(DeleteBehavior.Cascade);
 
@@ -249,20 +256,24 @@ namespace H4H.Data
                 entity.Property(p => p.PaymentStatus).HasMaxLength(20);
             });
 
+
             // Recenzje
             modelBuilder.Entity<Review>(entity =>
             {
                 // Relacja z Wizytą
+
                 entity.HasOne(r => r.Appointment)
                     .WithOne(a => a.Review)
                     .HasForeignKey<Review>(r => r.AppointmentId)
                     .OnDelete(DeleteBehavior.Cascade);
 
                 // Relacja z Klientem
+
                 entity.HasOne(r => r.Client)
                     .WithMany(c => c.Reviews)
                     .HasForeignKey(r => r.ClientId)
                     .OnDelete(DeleteBehavior.Cascade);
+
 
                 // Relacja z Specialista
                 entity.HasOne(r => r.Specialist)
@@ -271,6 +282,8 @@ namespace H4H.Data
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasIndex(r => r.AppointmentId).IsUnique();
+
+
                 // Constraint w bazie: ocena musi być między 1 a 5
                 entity.ToTable(tb => tb.HasCheckConstraint("CK_Review_Rating", "\"Rating\" >= 1 AND \"Rating\" <= 5"));
             });
@@ -280,10 +293,12 @@ namespace H4H.Data
             {
                 entity.HasOne(sq => sq.Specialist)
                     .WithMany(s => s.Qualifications) // Jeden specjalista ma wiele kwalifikacji
+
                     .HasForeignKey(sq => sq.SpecialistId)
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasOne(sq => sq.VerifiedByAdmin)
+
                     .WithMany(a => a.VerifiedQualifications) // Jeden admin może zweryfikować wiele kwalifikacji
                     .HasForeignKey(sq => sq.VerifiedByAdminId)
                     .OnDelete(DeleteBehavior.SetNull); // Usunięcie admina ustawia NULL
@@ -292,9 +307,11 @@ namespace H4H.Data
             });
 
             // Administratorzy systemu
+
             modelBuilder.Entity<Admin>(entity =>
             {
                 entity.ToTable("admins");
+
 
                 entity.HasIndex(a => a.Email).IsUnique(); // Unikalny email admina
                 entity.Property(a => a.Role).HasMaxLength(20); // Rola admina (super_admin, support)
@@ -318,6 +335,7 @@ namespace H4H.Data
                     .HasColumnType("timestamp without time zone");
             });
 
+
             // Logi weryfikacji specjalistów
             modelBuilder.Entity<VerificationLog>(entity =>
             {
@@ -327,6 +345,7 @@ namespace H4H.Data
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasOne(vl => vl.Admin)
+
                     .WithMany(a => a.VerificationLogs) // Jeden admin ma wiele logów weryfikacji
                     .HasForeignKey(vl => vl.AdminId)
                     .OnDelete(DeleteBehavior.SetNull); // Usunięcie admina ustawia NULL
@@ -352,6 +371,7 @@ namespace H4H.Data
                 // Relacja z Wizytą (wiadomości mogą dotyczyć konkretnej wizyty)
                 entity.HasOne(m => m.Appointment)
                     .WithMany(a => a.Messages) // Jedna wizyta może mieć wiele wiadomości
+
                     .HasForeignKey(m => m.AppointmentId)
                     .OnDelete(DeleteBehavior.SetNull);
 
@@ -371,6 +391,7 @@ namespace H4H.Data
                 entity.HasIndex(n => n.CreatedAt);
             });
 
+
             // Kody weryfikacyjne 
             modelBuilder.Entity<VerificationCode>(entity =>
             {
@@ -380,6 +401,7 @@ namespace H4H.Data
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.Property(vc => vc.Purpose).HasMaxLength(50); // Cel kodu (email_verification)
+
                 entity.HasIndex(vc => new { vc.Email, vc.Code, vc.IsUsed });
                 entity.HasIndex(vc => vc.ExpiresAt);
             });
@@ -418,6 +440,15 @@ namespace H4H.Data
 
                 // Unikalna para appointment + specialist
                 entity.HasIndex(a => new { a.AppointmentId, a.SpecialistId }).IsUnique();
+
+                // NOWE: Mapowanie tablicy UUID dla ServiceTypeIds (PostgreSQL)
+                entity.Property(e => e.ServiceTypeIds)
+                    .HasColumnType("uuid[]")
+                    .HasDefaultValueSql("'{}'"); // zapewnia pustą tablicę zamiast nulla na poziomie bazy
+
+                // NOWE: Mapowanie ceny 
+                entity.Property(e => e.Price)
+                    .HasPrecision(10, 2); 
             });
 
             // Konfiguracja tabeli DeviceToken dla powiadomień push
@@ -438,9 +469,6 @@ namespace H4H.Data
 
                 entity.HasIndex(e => new { e.UserId, e.FcmToken }).IsUnique();
             });
-
-
-            // usuniecie service_requests
         }
     }
 }

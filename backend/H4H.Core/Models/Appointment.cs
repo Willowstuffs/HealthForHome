@@ -10,7 +10,7 @@ namespace H4H.Core.Models
         public Guid Id { get; set; }
 
         [Column("client_id")]
-        public Guid? ClientId { get; set; } // Zmiana na nullable (dla gości)
+        public Guid ClientId { get; set; } // usuwam opcje wysylania dla gości - nie moze byc null
 
         [Column("specialist_id")]
         public Guid? SpecialistId { get; set; } // Zmiana na nullable (dla ogłoszeń "open")
@@ -57,10 +57,11 @@ namespace H4H.Core.Models
         public Guid? SelectedSpecialistId { get; set; }
 
 
-        public virtual Client? Client { get; set; } 
+        public virtual Client Client { get; set; } = null!;
         public virtual Specialist? Specialist { get; set; } 
         public virtual SpecialistService? SpecialistService { get; set; }
         public virtual ServiceType ServiceType { get; set; } = null!;
+
         public virtual Payment? Payment { get; set; }
         public virtual Review? Review { get; set; }
         public virtual ICollection<Message> Messages { get; set; } = new List<Message>();

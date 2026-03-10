@@ -354,7 +354,6 @@ ALTER TABLE appointments ADD COLUMN selected_specialist_id UUID REFERENCES speci
 
 SELECT * FROM "__EFMigrationsHistory";
 
-
 -- Aktualizacja 08.02.26
 
 --czesc1
@@ -418,8 +417,6 @@ CREATE TABLE service_requests (
 CREATE INDEX idx_service_requests_location ON service_requests USING GIST(location);
 CREATE INDEX idx_service_requests_status ON service_requests(status);
 CREATE INDEX idx_service_requests_client ON service_requests(client_id);
-
-
 
 -- AKTUALIZACJA SERVICE REQUEST 19.02 - mam nadzieje ze teraz zadziala ;-;
 -- 1. Zmiana nazw kolumn na na małe literki spójne z resztą tabelek
@@ -496,3 +493,49 @@ DROP CONSTRAINT appointments_appointment_status_check;
 ALTER TABLE appointments 
 ADD CONSTRAINT appointments_appointment_status_check 
 CHECK (appointment_status IN ('open', 'confirmed', 'cancelled', 'completed', 'pending'));
+
+
+-- aktualizacja 01.03.2026 funkcje do czyszczenia kodow i martwych kont
+-- przez prace lokalną kazdy musi sobie odpalic raz u siebie w bazie te funkcje zeby dzialaly
+
+-- 1. Funkcja do usuwania wygasłych kodów OTP
+CREATE OR REPLACE FUNCTION delete_expired_codes()
+RETURNS integer AS $$
+DECLARE
+    deleted_count integer;
+BEGIN
+    DELETE FROM verification_codes 
+    WHERE expires_at < CURRENT_TIMESTAMP;
+    
+    GET DIAGNOSTICS deleted_count = ROW_COUNT;
+    RETURN deleted_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 2. Funkcja do czyszczenia martwych kont (nieaktywne > 30 dni)
+CREATE OR REPLACE FUNCTION cleanup_inactive_users()
+RETURNS integer AS $$
+DECLARE
+    deleted_count integer;
+BEGIN
+    DELETE FROM users 
+    WHERE is_active = false 
+      AND created_at < (CURRENT_TIMESTAMP - INTERVAL '30 days');
+    
+    GET DIAGNOSTICS deleted_count = ROW_COUNT;
+    RETURN deleted_count;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+-- AKTUALIZACJA 09.03.2026 - Dodanie ceny i obsługi wielu usług do appointments_specialists
+
+-- 1. Dodanie kolumn do appointments_specialists
+ALTER TABLE appointments_specialists 
+ADD COLUMN IF NOT EXISTS price DECIMAL(10,2),           -- cena za wszystkie usługi
+ADD COLUMN IF NOT EXISTS service_type_ids UUID[] DEFAULT '{}'; -- tablica ID usług
+
+-- 2. Indeks dla GIST (szybsze wyszukiwanie w tablicy)
+CREATE INDEX IF NOT EXISTS idx_appointments_specialists_service_ids 
+ON appointments_specialists USING GIN (service_type_ids);
