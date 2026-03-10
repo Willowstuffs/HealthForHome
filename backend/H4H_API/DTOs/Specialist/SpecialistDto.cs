@@ -22,6 +22,8 @@
         public int TotalReviews { get; set; }
         public List<SpecialistServiceDto> Services { get; set; } = [];
         public List<ServiceAreaDto> ServiceAreas { get; set; } = [];
+        public string? AvatarUrl { get; set; }
+
     }
 
     /// <summary>
@@ -72,3 +74,19 @@ namespace H4H_API.DTOs.Specialist
         public DateTime? AvailableTo { get; set; }
     }
 }
+
+//update danych specjalisty
+public class UpdateSpecialistProfileDto
+{
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+
+    public string Email { get; set; } = string.Empty;
+    public string? PhoneNumber { get; set; }
+
+    public string? ProfessionalTitle { get; set; }
+    public string? Bio { get; set; }
+    public decimal? HourlyRate { get; set; }
+    public IFormFile? Avatar { get; set; }
+}
+

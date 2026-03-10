@@ -132,8 +132,6 @@ namespace H4H.Data.Repositories
         {
             var user = await GetUserByIdAsync(userId);
             if (user == null) return false;
-
-
             user.IsActive = false; // Soft delete - użytkownik nieaktywny
 
             user.UpdatedAt = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified);

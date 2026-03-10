@@ -95,7 +95,7 @@ namespace H4H_API.Services.Implementations
                 LastName = specialist.LastName,
                 Email = specialist.User.Email,
                 PhoneNumber = specialist.User.PhoneNumber,
-                ProfessionalTitle = specialist.ProfessionalTitle,
+                ProfessionalTitle = specialist.ProfessionalTitle ?? string.Empty,
                 Bio = specialist.Bio,
                 VerificationStatus = specialist.VerificationStatus,
                 IsVerified = specialist.IsVerified,

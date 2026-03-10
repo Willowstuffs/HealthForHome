@@ -1,5 +1,6 @@
 ﻿using H4H_API.DTOs.Common;
 using H4H_API.DTOs.Specialist;
+using H4H_API.Services.Implementations;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -146,14 +147,57 @@ namespace H4H_API.Controllers
             return Ok(ApiResponse<object?>.SuccessResponse(null, "Zasięg został zaktualizowany."));
         }
 
-
-        /// <summary>Potwierdza oczekującą wizytę przez specjalistę.</summary>
+        /// <summary>Potwierdza oczekującą wizytę przez specjalistę. 
+        /// !!! DO POPRAWIENIA GDY BEDZIE UPDATE BAZY !!!
+        /// </summary>
         [HttpPatch("appointments/{id}/confirm")]
-        public async Task<ActionResult<ApiResponse<object?>>> ConfirmAppointment(Guid id)
+        public async Task<ActionResult<ApiResponse<object?>>> ConfirmAppointment(Guid id, Guid serviceId, decimal price)
         {
             var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
-            await _specialistService.ConfirmAppointmentAsync(userId, id);
+            await _specialistService.ConfirmAppointmentAsync(userId, id,serviceId,price);
             return Ok(ApiResponse<object?>.SuccessResponse(null, "Wizyta została potwierdzona."));
+        }
+
+        /// <summary>Pobiera listę nadchodzących wizyt dla zalogowanego specjalisty</summary>
+        [HttpGet("inquiries/comming")]
+        [ProducesResponseType(typeof(ApiResponse<List<InquiryListItemDto>>), 200)]
+        public async Task<ActionResult<ApiResponse<List<InquiryListItemDto>>>> GetCommingInquiries([FromQuery] InquiryFilterDto filters)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized(ApiResponse<object>.ErrorResponse("Błąd autoryzacji."));
+
+            var userId = Guid.Parse(userIdClaim);
+            var inquiries = await _specialistService.GetCommingInquiriesAsync(userId, filters);
+
+            return Ok(ApiResponse<List<InquiryListItemDto>>.SuccessResponse(inquiries, "Pobrano listę zapytań."));
+        }
+        /// <summary>Pobiera listę nadchodzących wizyt dla zalogowanego specjalisty</summary>
+        [HttpGet("inquiries/archive")]
+        [ProducesResponseType(typeof(ApiResponse<List<InquiryListItemDto>>), 200)]
+        public async Task<ActionResult<ApiResponse<List<InquiryListItemDto>>>> GetArchiveInquiries([FromQuery] InquiryFilterDto filters)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized(ApiResponse<object>.ErrorResponse("Błąd autoryzacji."));
+
+            var userId = Guid.Parse(userIdClaim);
+            var inquiries = await _specialistService.GetArchiveInquiriesAsync(userId, filters);
+
+            return Ok(ApiResponse<List<InquiryListItemDto>>.SuccessResponse(inquiries, "Pobrano listę zapytań."));
+        }
+        
+      
+        /// <summary>
+        /// Aktualizuje wszystkie dane profilu specjalisty
+        /// </summary>
+        [HttpPut("profile")]
+        public async Task<ActionResult<ApiResponse<object>>> UpdateProfile([FromForm] UpdateSpecialistProfileDto dto)
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+
+            await _specialistService.UpdateProfileAsync(userId, dto);
+
+            return Ok(ApiResponse<object?>
+                .SuccessResponse(null, "Profil został zaktualizowany."));
         }
 
     }

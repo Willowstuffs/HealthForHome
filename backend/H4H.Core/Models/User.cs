@@ -40,5 +40,6 @@ namespace H4H.Core.Models
         public virtual ICollection<Message> SentMessages { get; set; } = new List<Message>();
         public virtual ICollection<Message> ReceivedMessages { get; set; } = new List<Message>();
         public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+        public virtual ICollection<DeviceToken> DeviceTokens { get; set; } = new List<DeviceToken>();
     }
 }

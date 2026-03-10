@@ -189,7 +189,7 @@ namespace H4H_API.Services.Implementations
                     Email = request.Email,
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
                     UserType = "specialist",
-                    IsActive = true, //logowanie mozliwe, ale profil specjalisty wymaga weryfikacji
+                    IsActive = false, 
                     CreatedAt = DateTime.Now,
                     UpdatedAt = DateTime.Now
                 };
@@ -344,6 +344,33 @@ namespace H4H_API.Services.Implementations
         }
 
         /// <summary>
+        /// Akualizuje lub dodaje token urządzenia (FCM) dla użytkownika, umożliwiając wysyłanie powiadomień push na jego urządzenie. 
+        /// Jeśli token już istnieje dla tego użytkownika, aktualizuje datę ostatniego użycia; w przeciwnym razie tworzy nowy rekord tokena.
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="token"></param>
+        /// <returns></returns>
+        public async Task UpdateDeviceTokenAsync(Guid userId, string token)
+        {
+            var existingToken = await _context.device_tokens
+                .FirstOrDefaultAsync(t => t.UserId == userId && t.FcmToken == token);
+
+            if (existingToken != null)
+            {
+                existingToken.LastUsedAt = DateTime.UtcNow;
+            }
+            else
+            {
+                _context.device_tokens.Add(new DeviceToken
+                {
+                    UserId = userId,
+                    FcmToken = token,
+                    CreatedAt = DateTime.UtcNow,
+                    LastUsedAt = DateTime.UtcNow
+                });
+            }
+            await _context.SaveChangesAsync();
+        }
         /// Sends a verification code to the specified email address for account registration verification.
         /// </summary>
         /// <remarks>This method generates a new 6-digit verification code and sends it to the provided
@@ -355,6 +382,14 @@ namespace H4H_API.Services.Implementations
         /// <exception cref="AppException">Thrown if no user with the specified email exists, or if the user account is already verified.</exception>
         public async Task SendVerificationCodeAsync(string email)
         {
+            // Wywołanie funkcji SQL: sprzątanie bazy danych z nieużywanych kodów weryfikacyjnych i nieaktywnych użytkowników
+            await _context.Database.ExecuteSqlRawAsync("SELECT delete_expired_codes();"); // Kody czyścimy zawsze - to szybka operacja
+            if (new Random().Next(1, 50) == 1) // Konta czyścimy tylko raz na 50 wysłanych maili (średnio)
+            {
+                await _context.Database.ExecuteSqlRawAsync("SELECT cleanup_inactive_users();");
+            }
+            // <3
+
             var user = await _context.users.FirstOrDefaultAsync(u => u.Email == email)
                 ?? throw new AppException("Uzytkownik nie istnieje.", ErrorCodes.UserNotFound);
 

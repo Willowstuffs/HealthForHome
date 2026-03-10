@@ -31,7 +31,6 @@ namespace H4H_API.Controllers
             _logger = logger;
         }
 
-
         /// <summary>
         /// Checks the application's ability to connect to the database and retrieves information about the available
         /// tables.
@@ -41,7 +40,6 @@ namespace H4H_API.Controllers
         /// Sensitive information is not exposed in the response.</remarks>
         /// <returns>An HTTP 200 response containing the database name, connection status, table count, table names, and a
         /// timestamp if the check succeeds; otherwise, an HTTP 400 response with error details.</returns>
-
         [HttpGet("database")]
         public IActionResult CheckDatabase()
         {
@@ -163,7 +161,6 @@ namespace H4H_API.Controllers
             }
         }
 
-
         /// <summary>
         /// Retrieves a list of all users with basic profile information.
         /// </summary>
@@ -172,7 +169,6 @@ namespace H4H_API.Controllers
         /// response is returned with an error message.</remarks>
         /// <returns>An <see cref="IActionResult"/> containing a JSON object with the total user count and a collection of user
         /// records. Each user record includes the user's ID, email, user type, active status, and creation date.</returns>
-
         [HttpGet("users")]
         public async Task<IActionResult> GetUsers()
         {

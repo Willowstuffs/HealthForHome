@@ -2,7 +2,6 @@
 using System.Text.Json;
 using H4H_API.DTOs.Common;
 using H4H_API.Exceptions;
-
 using H4H_API.Helpers;
 
 namespace H4H_API.Middleware
@@ -72,7 +71,6 @@ namespace H4H_API.Middleware
             string? errorCode = null;
             string message = "Wystąpił nieoczekiwany błąd serwera";
 
-
             switch (exception)
             {
                 case AppException appEx:
@@ -96,7 +94,6 @@ namespace H4H_API.Middleware
                     // Dla pozostałych błędów zachowujemy 500 i domyślną wiadomość
                     break;
             }
-
 
             // Przygotuj odpowiedź w zaktualizowanym ApiResponse
             var response = ApiResponse.ErrorResponse(message, errorCode);
