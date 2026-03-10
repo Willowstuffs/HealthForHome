@@ -5,7 +5,6 @@
 
 # dotenv files
 .env
-*.env
 
 # User-specific files
 *.rsuser
@@ -483,18 +482,3 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
-
-.vs/VSWorkspaceState.json
-.vs/H4H_Backend/CopilotIndices/17.14.1518.61961/CodeChunks.db
-.vs/H4H_Backend/CopilotIndices/17.14.1518.61961/SemanticSymbols.db
-.vs/H4H_Backend/DesignTimeBuild/.dtbcache.v2
-.vs/H4H_Backend/FileContentIndex/b38f7a08-3bd2-4753-8c74-a1b4d88b8ee6.vsidx
-.vs/H4H_Backend/FileContentIndex/ce37eb61-d4d0-4b69-a49b-efddcbe13dd9.vsidx
-.vs/H4H_Backend/config/applicationhost.config
-.vs/H4H_Backend/v17/.futdcache.v2
-.vs/H4H_Backend/v17/.suo
-.vs/H4H_Backend/v17/.wsuo
-.vs/H4H_Backend/v17/DocumentLayout.backup.json
-.vs/H4H_Backend/v17/DocumentLayout.json
-
-backend/H4H_API/Firebase/*.json
