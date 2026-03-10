@@ -95,6 +95,10 @@ Stworzono kontroler i wpisano w niego te cztery elementy.
 Dodano funkcje czyszczącą przedawnione kody i konta do bazy danych i funkcji wysyłającej emaile (co 50 maili, przedawnione, konta niepotwierdzone starsze niz 30 dni)
 
 
+10.03.2026
+Stoi baza danych na Neonie, zajmowałem się zabezpieczaniami również, tzn. teraz appsetitngs pozostaje z pustymi miejscami na wrażliwe dane, a zamiast tego powstanie plik environment variables .env (jest już paczka nuget zainstalowana), który uzupełnia to danymi. Nie może znaleźć się on na githubie, jest w gitignore.
+Na githubie oraz dc jest plik .env.example który ma pokazać jak ma to wyglądać. Wpisujecie kody które wcześniej podaliśmy, dwa są już w jednym miejscu na pierwszej stronie excelka. Wyczyśccie co potrzeba w appsettings.json. Enjoy.
+PS: Baza się dezaktywuje po chwili. By przeszła z idle->active może minąć 2-5 sekund, więc opóźnienie naturalne.
 
 
 

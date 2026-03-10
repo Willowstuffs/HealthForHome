@@ -21,6 +21,8 @@
     <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
 
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+
+    <PackageReference Include="DotNetEnv" Version="3.1.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0">
       <PrivateAssets>all</PrivateAssets>
@@ -37,9 +39,6 @@
   </ItemGroup>
 
   <ItemGroup>
-
-    <Folder Include="Entities\" />
-    <Folder Include="Data\" />
 
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.0" />
 
