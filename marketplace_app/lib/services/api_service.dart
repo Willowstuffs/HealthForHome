@@ -144,6 +144,32 @@ class ApiService {
     }
   }
 
+  Future<void> sendVerificationCode(String email) async {
+    try {
+      await _dio.post(
+        '/api/Auth/send-verification-code',
+        data: {"email": email},
+      );
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (_) {
+      throw Exception('Nieznany błąd podczas wysyłania kodu weryfikacyjnego');
+    }
+  }
+
+  Future<void> verifyCode(String email, String code) async {
+    try {
+      await _dio.post(
+        '/api/Auth/verify-code',
+        data: {"email": email, "code": code},
+      );
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (_) {
+      throw Exception('Nieznany błąd podczas weryfikacji kodu');
+    }
+  }
+
   Future<ClientProfile> getClientProfile() async {
     try {
       final response = await _dio.get('/api/Client/profile');
