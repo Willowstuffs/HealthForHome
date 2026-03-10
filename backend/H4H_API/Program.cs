@@ -12,8 +12,13 @@ using H4H_API.Helpers;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.Authorization;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using DotNetEnv;
 
 var builder = WebApplication.CreateBuilder(args);
+// Wczytaj plik .env jesli istnieje
+Env.Load();
+//Powiedz dotnetowi zeby czytal zmienne srodowiskowe z systemu
+builder.Configuration.AddEnvironmentVariables();
 
 // aby uniknac problem�w z datami w Npgsql (np. przy DateTimeOffset), ustawiamy legacy timestamp behavior
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
