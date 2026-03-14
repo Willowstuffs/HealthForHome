@@ -62,7 +62,7 @@ namespace H4H.Data
             modelBuilder.Entity<ServiceArea>().ToTable("service_areas", t => t.ExcludeFromMigrations());
             modelBuilder.Entity<SpecialistAvailability>().ToTable("specialist_availability", t => t.ExcludeFromMigrations());
             modelBuilder.Entity<BookedSlot>().ToTable("booked_slots", t => t.ExcludeFromMigrations());
-            modelBuilder.Entity<Appointment>().ToTable("appointments", t => t.ExcludeFromMigrations());
+            //modelBuilder.Entity<Appointment>().ToTable("appointments", t => t.ExcludeFromMigrations());
             modelBuilder.Entity<Payment>().ToTable("payments", t => t.ExcludeFromMigrations());
             modelBuilder.Entity<Review>().ToTable("reviews", t => t.ExcludeFromMigrations());
             modelBuilder.Entity<SpecialistQualification>().ToTable("specialist_qualifications", t => t.ExcludeFromMigrations());
@@ -199,7 +199,7 @@ namespace H4H.Data
                 entity.ToTable("appointments"); // Upewnienie się co do nazwy tabeli
 
                 // 1. RELACJE
-                // Relacja z Klientem (opcjonalna dla gości)
+                // Relacja z Klientem 
                 entity.HasOne(a => a.Client)
                     .WithMany(c => c.Appointments)
                     .HasForeignKey(a => a.ClientId)
@@ -239,6 +239,24 @@ namespace H4H.Data
                 // 4. INDEKSY
                 entity.HasIndex(a => a.ScheduledStart);
                 entity.HasIndex(a => a.AppointmentStatus);
+
+
+                // osobne kolumny dla danych kontaktowych i notatek klienta
+                entity.Property(e => e.ContactName)
+                    .HasColumnName("contact_name")
+                    .HasMaxLength(200);
+
+                entity.Property(e => e.ContactPhoneNumber)
+                    .HasColumnName("contact_phone_number")
+                    .HasMaxLength(20);
+
+                entity.Property(e => e.ContactEmail)
+                    .HasColumnName("contact_email")
+                    .HasMaxLength(150);
+
+                // To będzie teraz TYLKO czysty opis usługi
+                entity.Property(e => e.ClientNotes)
+                    .HasColumnName("client_notes");
             });
 
             // Płatności
