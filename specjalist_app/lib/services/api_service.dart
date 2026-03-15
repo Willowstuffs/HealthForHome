@@ -323,14 +323,14 @@ Future<void> updateArea(Map<String, dynamic> dto) async {
 //TO DO: DO POPRAWIENIA PO UPDACIE BAZY I BACKENDU
 Future<void> confirmAppointment(
   String appointmentId,
-  String serviceId,
+  List<String> serviceTypeIds,
   double price,
 ) async {
   try {
     await _dio.patch(
       '/api/specialist/appointments/$appointmentId/confirm',
       data: {
-        "serviceId": serviceId,
+        "serviceTypeIds": serviceTypeIds,
         "price": price,
       },
     );
@@ -436,7 +436,7 @@ Future<void> verifyCode({
       final data = e.response?.data;
       final statusCode = e.response?.statusCode;
 
-      // 1️⃣ Obsługa walidacji
+      // Obsługa walidacji
       if (data is Map && data.containsKey('errors')) {
         final errors = data['errors'];
 
@@ -449,12 +449,12 @@ Future<void> verifyCode({
         }
       }
 
-      // 2️⃣ Obsługa message z backendu
+      // Obsługa message z backendu
       if (data is Map && data['message'] != null) {
         return Exception(data['message']);
       }
 
-      // 3️⃣ Obsługa errorCode
+      // Obsługa errorCode
       final String? errorCode = data is Map ? data['errorCode'] : null;
 
       if (errorCode != null) {
@@ -474,7 +474,7 @@ Future<void> verifyCode({
         }
       }
 
-      // 4️⃣ Fallback HTTP
+      // Fallback HTTP
       switch (statusCode) {
         case 401:
           return Exception('Sesja wygasła. Zaloguj się ponownie.');

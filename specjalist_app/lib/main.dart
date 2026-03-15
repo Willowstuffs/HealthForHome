@@ -31,7 +31,7 @@ void main() async {
 
   // Rejestracja handlera powiadomień w tle
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  await NotificationService().setupInteractions(navigatorKey);
+  await NotificationService().initializeSettings(navigatorKey);
   runApp(MyApp());
 
 

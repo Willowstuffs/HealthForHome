@@ -24,7 +24,7 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   final List<Marker> markers = [];
-  final List<CircleMarker> circles = [];
+  //final List<CircleMarker> circles = [];
   final MapController mapController = MapController();
   Map<String, dynamic>? selectedInquiry;
   double zoom = 12;
@@ -45,8 +45,7 @@ class _MapScreenState extends State<MapScreen> {
       if (areas != null && areas.isNotEmpty) {
         final city = areas.first.city;
 
-        final center =
-            await GeoService.getLatLngFromAddress(city);
+        final center = await GeoService.getLatLngFromAddress(city);
 
         if (center != null) {
           mapCenter = center;
@@ -101,8 +100,6 @@ class _MapScreenState extends State<MapScreen> {
   LatLng _getBlurredLocation(LatLng original) {
     final random = math.Random();
     
-    // Przesunięcie o ok. 0.003 to mniej więcej 300-500 metrów
-    // Możesz dostosować tę wartość, aby obszar był większy lub mniejszy
     double latOffset = (random.nextDouble() - 0.5) * 0.006;
     double lngOffset = (random.nextDouble() - 0.5) * 0.006;
 
@@ -110,7 +107,7 @@ class _MapScreenState extends State<MapScreen> {
   }
   Future<void> _buildMarkersAndCircles() async {
     final List<Marker> tempMarkers = [];
-    final List<CircleMarker> tempCircles = [];
+    //final List<CircleMarker> tempCircles = [];
 
     for (var inquiry in inquiriesList) {
       final address = inquiry['address'];
@@ -127,34 +124,75 @@ class _MapScreenState extends State<MapScreen> {
       tempMarkers.add(
         Marker(
           point: blurredLatLng,
-          width: 40,
-          height: 40,
-          child: Icon(
-            Icons.person,
-            color: AppColors.accent,
-            size: 40,
+          width: 45,
+          height: 45,
+          // child: Icon(
+          //   Icons.person,
+          //   color: AppColors.accent,
+          //   size: 40,
+          // ),
+          child: GestureDetector(
+            onTap: () => _showInquiryDetails(inquiry),
+            child: _buildCustomMarker(),
           ),
         ),
       );
 
-      tempCircles.add(
-        CircleMarker(
-          point: blurredLatLng,
-          radius: getCircleRadius(),
-          color: AppColors.accent.withValues(alpha: 0.2),
-          borderStrokeWidth: 2,
-          borderColor: AppColors.accent,
-        ),
-      );
+        // tempCircles.add(
+        //   CircleMarker(
+        //     point: blurredLatLng,
+        //     radius: getCircleRadius(),
+        //     color: AppColors.accent.withValues(alpha: 0.2),
+        //     borderStrokeWidth: 2,
+        //     borderColor: AppColors.accent,
+        //   ),
+        // );
     }
 
     markers.clear();
-    circles.clear();
+    //circles.clear();  
 
     markers.addAll(tempMarkers);
-    circles.addAll(tempCircles);
+    // circles.addAll(tempCircles);
   }
+  void _showInquiryDetails(Map<String, dynamic> inquiry) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (context) => _buildBottomSheetSafe(inquiry),
+  );
+}
 
+// Opakowanie BottomSheet w SafeArea
+Widget _buildBottomSheetSafe(Map<String, dynamic> item) {
+  return SafeArea(
+    top: false, // ignoruje górny padding SafeArea
+    child: _buildBottomSheet(item),
+  );
+}
+  Widget _buildCustomMarker() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha:0.2),
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Container(
+          width: 14,
+          height: 14,
+          decoration: BoxDecoration(
+            color: AppColors.error,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 2),
+            boxShadow: [
+              BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))
+            ],
+          ),
+        ),
+      ),
+    );
+  }
     
   double getCircleRadius() {
     double radius = zoom * 6; 
@@ -163,201 +201,101 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-     
       body: loading
-        ? const Center(child: CircularProgressIndicator())
-        : Stack(
-            children: [
-              FlutterMap(
-                mapController: mapController,
-                options: MapOptions(
-                  initialCenter: mapCenter ?? const LatLng(52.2297, 21.0122),
-                  initialZoom: zoom,
-                   interactionOptions: const InteractionOptions(
-                      flags: InteractiveFlag.all,
-                    ),
-                  onTap: (tapPosition, point) {
-                    setState(() {
-                      selectedInquiry = null;
-                    });
-                  },
-
-                  onPositionChanged: (position, hasGesture) {
-                    if (!mounted) return;
-                      setState(() {
-                        
-                          zoom = position.zoom;
-                        
-                      });
-                    
-                  },
-
-                  
-                ),
-                children: [
-                  TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName:
-                        'com.healthforhome.marketplace_app',
-                  ),
-                  CircleLayer(
-                      circles: circles
-                          .map(
-                            (c) => CircleMarker(
-                              point: c.point,
-                              radius: getCircleRadius(),
-                              color: c.color,
-                              borderColor: c.borderColor,
-                              borderStrokeWidth: c.borderStrokeWidth,
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  MarkerLayer(
-                      markers: markers.map((marker) {
-                        return Marker(
-                          point: marker.point,
-                          width: marker.width,
-                          height: marker.height,
-                          child: GestureDetector(
-                            onTap: () {
-                              final inquiry =
-                                  _findInquiryByPosition(marker.point);
-
-                              if (inquiry != null) {
-                                setState(() {
-                                  selectedInquiry = inquiry;
-                                });
-                              }
-                            },
-                            child: marker.child,
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                ],
+          ? const Center(child: CircularProgressIndicator())
+          : FlutterMap(
+              mapController: mapController,
+              options: MapOptions(
+                initialCenter: mapCenter ?? const LatLng(52.2297, 21.0122),
+                initialZoom: zoom,
               ),
-
-              if (selectedInquiry != null)
-                Positioned(
-                  left: 16,
-                  right: 16,
-                  bottom: 40,
-                  child: _buildMapPopup(),
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.healthforhome.marketplace_app',
                 ),
-            ],
-      ),
+                MarkerLayer(markers: markers),
+              ],
+            ),
     );
   }
-   Map<String, dynamic>? _findInquiryByPosition(LatLng point) {
-    const tolerance = 0.0005;
-      for (var inquiry in inquiriesList) {
-      final LatLng? latLng = inquiry['latLng'];
-      if (latLng == null) continue;
-
-      if ((latLng.latitude - point.latitude).abs() < tolerance &&
-          (latLng.longitude - point.longitude).abs() < tolerance) {
-        return inquiry;
-      }
-    }
-
-    return null;
-  }
-  Widget _buildMapPopup() {
-  final item = selectedInquiry!;
-
-  return Material(
-    elevation: 8,
-    borderRadius: BorderRadius.circular(24),
-    color: AppColors.surfaceContainer,
-    child: Padding(
-      padding: const EdgeInsets.all(20),
+   Widget _buildBottomSheet(Map<String, dynamic> item) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainer,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start, // Wyrównanie do lewej
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // IMIĘ I NAZWISKO
-                    Text(
-                      item['name'] ?? "Brak nazwy",
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    const SizedBox(height: 4), // Odstęp
-                    
-                    // DATA WIZYTY
-                    Row(
-                      children: [
-                        const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
-                        const SizedBox(width: 4),
-                        Text(
-                          item['startDate'] ?? "Data nieustalona",
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    
-                    // KRÓTKI OPIS
-                    Text(
-                      item['description'] ?? "Brak opisu",
-                      maxLines: 2, // Ograniczenie do 2 linii
-                      overflow: TextOverflow.ellipsis, // Wielokropek jeśli tekst jest za długi
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontStyle: FontStyle.italic,
-                            color: AppColors.textSecondary,
-                          ),
-                    ),
-                  ],
-                ),
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
               ),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () {
-                  setState(() {
-                    selectedInquiry = null;
-                  });
-                },
-              ),
-            ],
+            ),
           ),
-
+          Text(
+            item['name'] ?? "Brak nazwy",
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          _infoRow(Icons.calendar_month, item['startDate'] ?? "Brak daty"),
           const SizedBox(height: 8),
-
+          _infoRow(Icons.location_on_outlined, "Okolice: ${item['address']}"),
+          const SizedBox(height: 16),
+          Text(
+            item['description'] ?? "",
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
+            height: 54,
             child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
               onPressed: () {
+                Navigator.pop(context); // Zamknij modal
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => OfferFormScreen(
-                
-                      appointmentId: (item['id'] ?? "").toString(),
-                      patientName: item['name'] ?? "Brak danych",
-                      startDate: item['startDate'] ?? "",
+                      appointmentId: item['id'],
+                      patientName: item['name'],
+                      startDate: item['startDate'],
                       endDate: item['endDate'] ?? "",
-                      description: item['description'] ?? "Brak opisu",
+                      description: item['description'],
                     ),
                   ),
                 );
               },
-              child: const Text("Szczegóły oferty"),
+              child: const Text("Pokaż szczegóły i odpowiedz", style: TextStyle(fontSize: 16)),
             ),
           ),
         ],
       ),
-    ),
-  );
-}
+    );
+  }
+  Widget _infoRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: AppColors.error),
+        const SizedBox(width: 8),
+        Expanded(child: Text(text, style: const TextStyle(fontWeight: FontWeight.w500))),
+      ],
+    );
+  }
 
 }

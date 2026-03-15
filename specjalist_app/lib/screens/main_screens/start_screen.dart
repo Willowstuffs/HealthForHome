@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:specjalist_app/main.dart';
 import 'package:specjalist_app/services/user_profile.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import 'package:intl/intl.dart';
 import '../offer_from_screen.dart';
 import '../../services/notification_services.dart';
-
+import '../../services/app_refresh_service.dart';
 
 class StartScreen extends StatefulWidget {
   final String? highlightAppointmentId;
@@ -27,15 +26,21 @@ class _StartScreenState extends State<StartScreen> {
   final firstName = UserSession.firstName ?? '';
   final now = DateTime.now();
   @override
-  void initState() {
-    super.initState();
-    highlightedId = widget.highlightAppointmentId;
-    _initializeNotifications();
-    _fetchData();
-  }
+    void initState() {
+      super.initState();
+
+      highlightedId = widget.highlightAppointmentId;
+
+      _initializeNotifications();
+      _fetchData();
+
+      AppRefreshService().stream.listen((_) {
+        _fetchData();
+      });
+    }
  
   Future<void> _initializeNotifications() async {
-    await NotificationService().setupInteractions(navigatorKey);
+    await NotificationService().requestPermissionsAndToken();
     
     await NotificationService().uploadTokenToServer();
   }
@@ -45,7 +50,7 @@ class _StartScreenState extends State<StartScreen> {
         patientName: "",
         dateFrom: DateTime(now.year, now.month, now.day),
         dateTo:
-            DateTime(now.year, now.month, now.day).add(const Duration(days: 30)),
+            DateTime(now.year, now.month, now.day).add(const Duration(days: 90)),
       );
 
       final displayFormatter = DateFormat('dd-MM-yyyy HH:mm');
@@ -71,13 +76,11 @@ class _StartScreenState extends State<StartScreen> {
         String originalAddress = i['patientAddress'] ?? i['PatientAddress'] ?? '';
         String blurredAddress = originalAddress;
 
-        if (originalAddress.isNotEmpty) {
-          blurredAddress = blurredAddress.replaceAll(RegExp(r'\d{2}-\d{3}'), '');
+        // usuń wszystkie liczby (numery, kody pocztowe itp.)
+        blurredAddress = blurredAddress.replaceAll(RegExp(r'\d+'), '');
 
-          blurredAddress = blurredAddress.replaceAll(RegExp(r'\s+\d+[a-zA-Z]?(\s*/\s*\d+[a-zA-Z]?)?'), '');
-
-          blurredAddress = blurredAddress.trim().replaceAll(RegExp(r',\s*$'), '');
-        }
+        // usuń nadmiarowe spacje i przecinki na końcu
+        blurredAddress = blurredAddress.trim().replaceAll(RegExp(r',\s*$'), '');
 
         processed.add({
           'id': id?.toString() ?? '',

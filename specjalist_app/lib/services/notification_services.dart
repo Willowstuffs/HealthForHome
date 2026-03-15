@@ -1,6 +1,7 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import '../screens/offer_from_screen.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'api_service.dart';
 import 'user_profile.dart';
 import 'app_refresh_service.dart';
@@ -11,36 +12,66 @@ class NotificationService {
   NotificationService._internal();
 
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
   late GlobalKey<NavigatorState> _navigatorKey;
   // Ta metoda tylko konfiguruje nasłuchiwanie - wywołaj ją w main lub na początku app
-  Future<void> setupInteractions(
-    GlobalKey<NavigatorState> navigatorKey) async {
-  if (_initialized) return;
+  Future<void> initializeSettings(GlobalKey<NavigatorState> navigatorKey) async {
+    if (_initialized) return;
+    _navigatorKey = navigatorKey;
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'healthforhome_channel', // id
+      'Health for Home',       // nazwa widoczna w ustawieniach
+      description: 'Powiadomienia o nowych ofertach',
+      importance: Importance.max,
+    );
+    final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
+  // Konfiguracja lokalnych powiadomień
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/aaa'); // Użyj nazwy zasobu, nie ścieżki pliku!
+  
+    const InitializationSettings initializationSettings =
+        InitializationSettings(android: initializationSettingsAndroid);
+      
+    await _localNotifications.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (details) {
+        if (details.payload != null) {
+          _handleMessageData({'appointmentId': details.payload, 'screen': 'offer'});
+        }
+      },
+    );
 
-  _initialized = true;
-  _navigatorKey = navigatorKey;
-
-  await _messaging.requestPermission(
-      alert: true, badge: true, sound: true);
-
-  final token = await _messaging.getToken();
-  await uploadTokenToServer(token);
-
-  _messaging.onTokenRefresh.listen(uploadTokenToServer);
-
-  FirebaseMessaging.onMessage.listen(_handleForeground);
-  FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageClick);
+    // Nasłuchiwanie na wiadomości (nie prosi o uprawnienia)
+    FirebaseMessaging.onMessage.listen(_handleForeground);
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageClick);
+    
+    _initialized = true;
 }
+Future<void> requestPermissionsAndToken() async {
+  // Dopiero tutaj wyskoczy systemowe okno
+  NotificationSettings settings = await _messaging.requestPermission(
+    alert: true, 
+    badge: true, 
+    sound: true
+  );
 
-  // Osobna metoda do wysyłki, którą wywołasz PO ZALOGOWANIU
+  if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+    final token = await _messaging.getToken();
+    await uploadTokenToServer(token);
+    _messaging.onTokenRefresh.listen(uploadTokenToServer);
+  }
+}
+  
   Future<void> uploadTokenToServer([String? existingToken]) async {
     try {
       // Pobierz token jeśli nie został przekazany
       final token = existingToken ?? await _messaging.getToken();
       
       if (token != null) {
-        // Tu warto dodać sprawdzenie w UserSession czy mamy JWT
         if (UserSession.token != null) { 
            await ApiService().sendDeviceToken(token);
            print("Token FCM wysłany pomyślnie.");
@@ -51,29 +82,49 @@ class NotificationService {
     }
   }
 
-  void _handleForeground(RemoteMessage message) {
-    print('Foreground: ${message.notification?.title}');
+ void _handleForeground(RemoteMessage message) {
+    // Show local notification so user sees it while app is open
+    _localNotifications.show(
+      message.hashCode,
+      'Health for Home',  // stały tytuł
+      'Nowa oferta',       // stała treść
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          'healthforhome_channel',
+          'Health for Home',
+          importance: Importance.max,
+          priority: Priority.high,
+          icon: 'aaa', // własna ikona
+        ),
+      ),
+      payload: message.data['appointmentId'], // backendowe dane dalej w payloadzie
+    );
+
     AppRefreshService().refresh();
   }
 
   void _handleMessageClick(RemoteMessage message) {
-  final appointmentId = message.data['appointmentId'];
-  final screen = message.data['screen'];
-
-  if (appointmentId == null) return;
-
-  if (screen == 'offer') {
-    _navigatorKey.currentState?.push(
-      MaterialPageRoute(
-        builder: (_) => OfferFormScreen(
-          appointmentId: appointmentId,
-          patientName: message.data['patientName'] ?? '',
-          startDate: message.data['startDate'] ?? '',
-          endDate: message.data['endDate'] ?? '',
-          description: message.data['description'] ?? '',
-        ),
-      ),
-    );
+    _handleMessageData(message.data);
   }
-}
+
+  void _handleMessageData(Map<String, dynamic> data) {
+    final appointmentId = data['appointmentId'];
+    final screen = data['screen'];
+
+    if (appointmentId == null) return;
+
+    if (screen == 'offer') {
+      _navigatorKey.currentState?.push(
+        MaterialPageRoute(
+          builder: (_) => OfferFormScreen(
+            appointmentId: appointmentId,
+            patientName: data['patientName'] ?? '',
+            startDate: data['startDate'] ?? '',
+            endDate: data['endDate'] ?? '',
+            description: data['description'] ?? '',
+          ),
+        ),
+      );
+    }
+  }
 }

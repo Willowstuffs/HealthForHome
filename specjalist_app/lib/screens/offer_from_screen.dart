@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../services/specjalist_service.dart';
@@ -25,7 +26,10 @@ class OfferFormScreen extends StatefulWidget {
 
 class _OfferFormScreenState extends State<OfferFormScreen> {
   final ApiService _apiService = ApiService();
-
+  String patientName = '';
+  String startDate = '';
+  String endDate = '';
+  String description = '';
   List<SpecialistService> services = [];
   List<SpecialistService> selectedServices = [];
   SpecialistService? selectedServiceTYMCZASOWE;
@@ -39,16 +43,69 @@ class _OfferFormScreenState extends State<OfferFormScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchService();
+    patientName = widget.patientName;
+    startDate = widget.startDate;
+    endDate = widget.endDate;
+    description = widget.description;
+    _initialize();
   }
 
+  Future<void> _initialize() async {
+    await Future.wait([
+      _fetchService(),
+      _loadAppointment(),
+    ]);
+
+    setState(() {
+      isLoading = false;
+    });
+  }
+  Future<void> _loadAppointment() async {
+    try {
+      final inquiries = await _apiService.getInquiries();
+
+      final appointment = inquiries.firstWhere(
+        (e) => e['appointmentId'] == widget.appointmentId,
+        orElse: () => {},
+      );
+
+      if (appointment.isEmpty) {
+        print("Nie znaleziono wizyty ${widget.appointmentId}");
+        return;
+      }
+      DateTime? start = appointment['scheduledStart'] != null
+        ? DateTime.tryParse(appointment['scheduledStart'])
+        : (appointment['ScheduledStart'] != null
+            ? DateTime.tryParse(appointment['ScheduledStart'])
+            : null);
+
+    DateTime? end = appointment['scheduledEnd'] != null
+        ? DateTime.tryParse(appointment['scheduledEnd'])
+        : (appointment['ScheduledEnd'] != null
+            ? DateTime.tryParse(appointment['ScheduledEnd'])
+            : null);
+       final displayFormatter = DateFormat('dd-MM-yyyy HH:mm');
+      setState(() {
+        patientName = appointment['patientName'] ?? appointment['PatientName'] ?? '';
+
+        startDate = start != null ? displayFormatter.format(start) : '';
+      endDate = end != null ? displayFormatter.format(end) : '';
+
+
+        description = appointment['description'] ??
+            appointment['Description'] ??
+            '';
+      });
+    } catch (e) {
+      print(e);
+    }
+  }
   Future<void> _fetchService() async {
     try {
       final result = await _apiService.getServices();
 
       setState(() {
         services = result;
-        isLoading = false;
       });
     } catch (e) {
       setState(() => isLoading = false);
@@ -71,10 +128,13 @@ class _OfferFormScreenState extends State<OfferFormScreen> {
     }
 
     try {
-      selectedServiceTYMCZASOWE = selectedServices.first;
+      final serviceIds = selectedServices
+          .map((e) => e.id)
+          .toList();
+
       await _apiService.confirmAppointment(
         widget.appointmentId,
-        selectedServiceTYMCZASOWE!.id,
+        serviceIds,
         price,
       );
 
@@ -152,17 +212,17 @@ class _OfferFormScreenState extends State<OfferFormScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          widget.patientName,
+          patientName,
           style: Theme.of(context).textTheme.titleLarge,
         ),
 
         const SizedBox(height: 12),
 
-        _buildInfoText("Od: ${widget.startDate}"),
-        _buildInfoText("Do: ${widget.endDate}"),
+        _buildInfoText("Od: $startDate"),
+        _buildInfoText("Do: $endDate"),
         const SizedBox(height: 12),
 
-        if (widget.description.isNotEmpty) ...[
+        if (description.isNotEmpty) ...[
           const Divider(),
           const SizedBox(height: 8),
 
@@ -174,7 +234,7 @@ class _OfferFormScreenState extends State<OfferFormScreen> {
           const SizedBox(height: 6),
 
           Text(
-            widget.description,
+            description,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
         ],
