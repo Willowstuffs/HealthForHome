@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
+using NetTopologySuite.Geometries;
 
 namespace H4H.Core.Models
 {
@@ -9,14 +10,19 @@ namespace H4H.Core.Models
         public Guid Id { get; set; }
 
         [Column("client_id")]
-        public Guid ClientId { get; set; }
+        public Guid ClientId { get; set; } // usuwam opcje wysylania dla gości - nie moze byc null
 
         [Column("specialist_id")]
-        public Guid SpecialistId { get; set; }
+        public Guid? SpecialistId { get; set; } // Zmiana na nullable (dla ogłoszeń "open")
 
         [Column("specialist_service_id")]
         public Guid? SpecialistServiceId { get; set; }
 
+        [Column("service_type_id")]
+        public Guid? ServiceTypeId { get; set; } // kategoria
+
+        [Column("location")]
+        public Point? Location { get; set; } // Kolumna do obliczeń dystansu (PostGIS/NetTopologySuite)
         [Column("appointment_status")]
         public string AppointmentStatus { get; set; } = "pending";
 
@@ -31,9 +37,23 @@ namespace H4H.Core.Models
 
         [Column("client_address")]
         public string? ClientAddress { get; set; }
+        
+        // Poprawa formatowania - podzial client_notes:
 
+        // NOWE POLA:
+        [Column("contact_name")]
+        public string ContactName { get; set; } = string.Empty;
+
+        [Column("contact_phone_number")]
+        public string ContactPhoneNumber { get; set; } = string.Empty;
+
+        [Column("contact_email")]
+        public string ContactEmail { get; set; } = string.Empty;
+
+        // To zostaje, ale od teraz będzie tu TYLKO czysty opis od klienta
         [Column("client_notes")]
         public string? ClientNotes { get; set; }
+
 
         [Column("specialist_notes")]
         public string? SpecialistNotes { get; set; }
@@ -52,8 +72,10 @@ namespace H4H.Core.Models
 
 
         public virtual Client Client { get; set; } = null!;
-        public virtual Specialist Specialist { get; set; } = null!;
+        public virtual Specialist? Specialist { get; set; } 
         public virtual SpecialistService? SpecialistService { get; set; }
+        public virtual ServiceType ServiceType { get; set; } = null!;
+
         public virtual Payment? Payment { get; set; }
         public virtual Review? Review { get; set; }
         public virtual ICollection<Message> Messages { get; set; } = new List<Message>();

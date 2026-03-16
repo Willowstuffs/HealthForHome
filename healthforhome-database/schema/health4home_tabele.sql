@@ -350,4 +350,197 @@ CREATE TABLE appointments_specialists (
 -- Kto ostatecznie wziął to zlecenie (PIERWSZY który zaakceptował)
 ALTER TABLE appointments ADD COLUMN selected_specialist_id UUID REFERENCES specialists(id);
 
-SELECT * FROM "__EFMigrationsHistory"
+SELECT * FROM "__EFMigrationsHistory";
+
+-- Aktualizacja 08.02.26
+
+--czesc1
+
+-- 1. Dodanie tabeli dla tokenów urządzeń (FCM) - Kasia
+CREATE TABLE device_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    fcm_token TEXT NOT NULL,
+    last_used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, fcm_token) 
+);
+
+-- 2. Indeksy dla wydajności wyszukiwania
+CREATE INDEX idx_device_tokens_user ON device_tokens(user_id);
+CREATE INDEX idx_device_tokens_fcm_token ON device_tokens(fcm_token);
+
+SELECT * FROM device_tokens;
+SELECT * FROM "__EFMigrationsHistory";
+
+-- czesc 2
+
+-- Tabela ogłoszeń (Giełda zleceń / Zapytania o usługę)
+CREATE TABLE service_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    
+    -- ClientId jest NULLable, aby umożliwić zapytania od gości
+    client_id UUID REFERENCES clients(id) ON DELETE SET NULL,
+    service_type_id UUID NOT NULL REFERENCES service_types(id) ON DELETE CASCADE,
+    
+    -- Dane kontaktowe (szczególnie ważne dla gości)
+    contact_name VARCHAR(255),
+    phone_number VARCHAR(20),
+    email VARCHAR(255),
+    
+    -- Opis i uwagi
+    description TEXT NOT NULL,
+    
+    -- Zakres dat
+    date_from TIMESTAMP NOT NULL,
+    date_to TIMESTAMP NOT NULL,
+    
+    -- Opcjonalna cena maksymalna
+    max_price DECIMAL(10,2),
+    
+    -- Lokalizacja i PostGIS
+    address TEXT NOT NULL,
+    location geography(Point, 4326), 
+    
+    -- Statusy: open, assigned, closed, expired
+    status VARCHAR(20) DEFAULT 'open' 
+        CHECK (status IN ('open', 'assigned', 'closed', 'expired')),
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- Indeksy dla wydajności
+CREATE INDEX idx_service_requests_location ON service_requests USING GIST(location);
+CREATE INDEX idx_service_requests_status ON service_requests(status);
+CREATE INDEX idx_service_requests_client ON service_requests(client_id);
+
+-- AKTUALIZACJA SERVICE REQUEST 19.02 - mam nadzieje ze teraz zadziala ;-;
+-- 1. Zmiana nazw kolumn na na małe literki spójne z resztą tabelek
+ALTER TABLE service_requests RENAME COLUMN "Id" TO id;
+ALTER TABLE service_requests RENAME COLUMN "ClientId" TO client_id;
+ALTER TABLE service_requests RENAME COLUMN "ServiceTypeId" TO service_type_id;
+ALTER TABLE service_requests RENAME COLUMN "ContactName" TO contact_name;
+ALTER TABLE service_requests RENAME COLUMN "PhoneNumber" TO phone_number;
+ALTER TABLE service_requests RENAME COLUMN "Email" TO email;
+ALTER TABLE service_requests RENAME COLUMN "Description" TO description;
+ALTER TABLE service_requests RENAME COLUMN "DateFrom" TO date_from;
+ALTER TABLE service_requests RENAME COLUMN "DateTo" TO date_to;
+ALTER TABLE service_requests RENAME COLUMN "MaxPrice" TO max_price;
+ALTER TABLE service_requests RENAME COLUMN "Address" TO address;
+ALTER TABLE service_requests RENAME COLUMN "Location" TO location;
+ALTER TABLE service_requests RENAME COLUMN "Status" TO status;
+ALTER TABLE service_requests RENAME COLUMN "CreatedAt" TO created_at;
+ALTER TABLE service_requests RENAME COLUMN "UpdatedAt" TO updated_at;
+
+-- 2. Zmiana typów kolumn na wymagane (NOT NULL) tam, gdzie to konieczne
+-- Uwaga: Jeśli macioe tam puste dane, te komendy mogą wyrzucić błąd - wtedy najpierw DELETE FROM service_requests;
+ALTER TABLE service_requests ALTER COLUMN contact_name SET NOT NULL;
+ALTER TABLE service_requests ALTER COLUMN phone_number SET NOT NULL;
+ALTER TABLE service_requests ALTER COLUMN email SET NOT NULL;
+ALTER TABLE service_requests ALTER COLUMN location SET NOT NULL;
+
+-- 3. Ustawienie jawnych typów dla dat i geolokalizacji (PostGIS)
+ALTER TABLE service_requests ALTER COLUMN date_from TYPE timestamp without time zone;
+ALTER TABLE service_requests ALTER COLUMN date_to TYPE timestamp without time zone;
+ALTER TABLE service_requests ALTER COLUMN created_at TYPE timestamp without time zone;
+ALTER TABLE service_requests ALTER COLUMN updated_at TYPE timestamp without time zone;
+ALTER TABLE service_requests ALTER COLUMN location TYPE geography(Point, 4326);
+
+-- 4. Naprawa Kluczy Obcych (Foreign Keys)
+-- Najpierw usuwamy stare klucze (używamy nazw, które wygenerował EF wcześniej)
+ALTER TABLE service_requests DROP CONSTRAINT IF EXISTS "FK_service_requests_clients_ClientId";
+ALTER TABLE service_requests DROP CONSTRAINT IF EXISTS "FK_service_requests_service_types_ServiceTypeId";
+
+-- Dodajemy nowe klucze z poprawnym mapowaniem
+ALTER TABLE service_requests 
+    ADD CONSTRAINT FK_service_requests_clients_client_id 
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL;
+
+ALTER TABLE service_requests 
+    ADD CONSTRAINT FK_service_requests_service_types_service_type_id 
+    FOREIGN KEY (service_type_id) REFERENCES service_types(id) ON DELETE CASCADE;
+
+-- AKTUALIZACJA JEDNAK NARA SERVICE REQUESR
+-- 1. Dodanie kolumn do tabeli appointments
+ALTER TABLE appointments 
+ADD COLUMN location geography(Point, 4326),
+ADD COLUMN service_type_id uuid;
+
+-- 2. Utworzenie relacji (Klucza obcego) z tabelą service_types
+ALTER TABLE appointments
+ADD CONSTRAINT "FK_appointments_service_types_service_type_id" 
+FOREIGN KEY (service_type_id) 
+REFERENCES service_types (id) 
+ON DELETE SET NULL;
+
+-- 3. Utworzenie indeksu dla wydajności wyszukiwania po kategorii
+CREATE INDEX "IX_appointments_service_type_id" 
+ON appointments (service_type_id);
+
+-- 4. Usunięcie nieużywanej już tabeli service_requests
+DROP TABLE IF EXISTS service_requests;
+
+
+-- 1. Usuwamy stare ograniczenie
+ALTER TABLE appointments 
+DROP CONSTRAINT appointments_appointment_status_check;
+
+-- 2. Dodajemy nowe ograniczenie z uwzględnieniem statusu 'open'
+ALTER TABLE appointments 
+ADD CONSTRAINT appointments_appointment_status_check 
+CHECK (appointment_status IN ('open', 'confirmed', 'cancelled', 'completed', 'pending'));
+
+
+-- aktualizacja 01.03.2026 funkcje do czyszczenia kodow i martwych kont
+-- przez prace lokalną kazdy musi sobie odpalic raz u siebie w bazie te funkcje zeby dzialaly
+
+-- 1. Funkcja do usuwania wygasłych kodów OTP
+CREATE OR REPLACE FUNCTION delete_expired_codes()
+RETURNS integer AS $$
+DECLARE
+    deleted_count integer;
+BEGIN
+    DELETE FROM verification_codes 
+    WHERE expires_at < CURRENT_TIMESTAMP;
+    
+    GET DIAGNOSTICS deleted_count = ROW_COUNT;
+    RETURN deleted_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 2. Funkcja do czyszczenia martwych kont (nieaktywne > 30 dni)
+CREATE OR REPLACE FUNCTION cleanup_inactive_users()
+RETURNS integer AS $$
+DECLARE
+    deleted_count integer;
+BEGIN
+    DELETE FROM users 
+    WHERE is_active = false 
+      AND created_at < (CURRENT_TIMESTAMP - INTERVAL '30 days');
+    
+    GET DIAGNOSTICS deleted_count = ROW_COUNT;
+    RETURN deleted_count;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+-- AKTUALIZACJA 09.03.2026 - Dodanie ceny i obsługi wielu usług do appointments_specialists
+
+-- 1. Dodanie kolumn do appointments_specialists
+ALTER TABLE appointments_specialists 
+ADD COLUMN IF NOT EXISTS price DECIMAL(10,2),           -- cena za wszystkie usługi
+ADD COLUMN IF NOT EXISTS service_type_ids UUID[] DEFAULT '{}'; -- tablica ID usług
+
+-- 2. Indeks dla GIST (szybsze wyszukiwanie w tablicy)
+CREATE INDEX IF NOT EXISTS idx_appointments_specialists_service_ids 
+ON appointments_specialists USING GIN (service_type_ids);
+
+-- Aktualizacja 14.03.2026 - Podzial client_notes na osobne pola dla czytelnosci
+
+-- 1. Dodanie nowych kolumn do tabeli appointments
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS contact_name VARCHAR(200);
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS contact_phone_number VARCHAR(20);
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS contact_email VARCHAR(150);
