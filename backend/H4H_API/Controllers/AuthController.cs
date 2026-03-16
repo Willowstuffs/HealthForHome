@@ -5,6 +5,9 @@ using H4H_API.DTOs.Specialist;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using H4H.Core.Models;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace H4H_API.Controllers
 {
@@ -51,7 +54,6 @@ namespace H4H_API.Controllers
         /// success response if registration is successful; otherwise, returns an error response with details.</returns>
         [HttpPost("register/client")]
         public async Task<ActionResult<ApiResponse<RegisterResponse>>> RegisterClient([FromBody] ClientRegisterDto request)
-
         {
             try
             {
@@ -62,6 +64,7 @@ namespace H4H_API.Controllers
             {
                 return BadRequest(ApiResponse<RegisterResponse>.ErrorResponse(ex.Message));
             }
+
         }
 
         /// <summary>
@@ -131,7 +134,26 @@ namespace H4H_API.Controllers
             await _authService.LogoutAsync(token);
             return Ok(ApiResponse.SuccessResponse("Wylogowano pomyślnie"));
         }
-
+        /// <summary>
+        /// Aktualizuje token urządzenia dla zalogowanego użytkownika, umożliwiając otrzymywanie powiadomień push
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
+        [Authorize]
+        [HttpPost("device-token")]
+        public async Task<IActionResult> UpdateDeviceToken([FromBody] DeviceTokenDto dto)
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+                await _authService.UpdateDeviceTokenAsync(userId, dto.Token);
+                return Ok(ApiResponse<string>.SuccessResponse("Token updated"));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            }
+        }
         /// <summary>
         /// Wysyła 6-cyfrowy kod weryfikacyjny na podany adres e-mail (jeśli konto jest nieaktywne).
         /// </summary>

@@ -2,13 +2,11 @@
 using H4H_API.DTOs.Common;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
 
 namespace H4H_API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "admin")]
     // TODO: Dodać [Authorize(Roles = "admin")] gdy wdrożymy JWT dla admina
     public class AdminController : ControllerBase
     {
@@ -61,7 +59,6 @@ namespace H4H_API.Controllers
             return Ok(ApiResponse<object?>.SuccessResponse(null, "Specjalista został zatwierdzony."));
         }
 
-
         /// <summary>Odrzuca specjaliste zmieniajac status weryfikacji na rejected i logujac akcje wykonana przez admina z powodem odrzucenia.</summary>
         [HttpPost("specialists/{id}/reject")]
         public async Task<ActionResult<ApiResponse<object?>>> RejectSpecialist(Guid id, [FromBody] RejectSpecialistDto dto)
@@ -71,35 +68,50 @@ namespace H4H_API.Controllers
             await _adminService.RejectSpecialistAsync(id, tempAdminId, dto.Reason);
             return Ok(ApiResponse<object?>.SuccessResponse(null, "Specjalista został odrzucony."));
         }
-        /// <summary>Zawiesza specjalistę (blokuje możliwość przyjmowania zleceń)</summary>
-        [HttpPost("specialists/{id}/suspend")]
-        public async Task<ActionResult<ApiResponse<object?>>> SuspendSpecialist(Guid id)
+
+
+        /// <summary>
+        /// Otrzymuje liste klientow z mozliwoscia filtrowania po dacie rejestracji, sortowania po dacie rejestracji oraz paginacji.
+        /// </summary>
+        /// <param name="filter"></param>
+        /// <returns></returns>
+        [HttpGet("clients")]
+        public async Task<ActionResult<ApiResponse<PagedResponse<AdminClientListItemDto>>>> GetClients([FromQuery] AdminClientFilterDto filter)
         {
-            var tempAdminId = Guid.NewGuid();
-
-            await _adminService.SuspendSpecialistAsync(id, tempAdminId);
-
-            return Ok(ApiResponse<object?>.SuccessResponse(null, "Specjalista został zawieszony."));
+            var result = await _adminService.GetClientsAsync(filter);
+            return Ok(ApiResponse<PagedResponse<AdminClientListItemDto>>.SuccessResponse(result));
         }
 
-        /// <summary>Przywraca zawieszonego specjalistę</summary>
-        [HttpPost("specialists/{id}/unsuspend")]
-        public async Task<ActionResult<ApiResponse<object?>>> UnsuspendSpecialist(Guid id)
+        /// <summary>
+        /// Pobiera szczegółowe informacje o kliencie, w tym dane osobowe, informacje kontaktowe oraz historię wizyt.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [HttpGet("clients/{id}")]
+        public async Task<ActionResult<ApiResponse<AdminClientDetailsDto>>> GetClientDetails(Guid id)
         {
-            var tempAdminId = Guid.NewGuid();
-
-            await _adminService.UnsuspendSpecialistAsync(id, tempAdminId);
-
-            return Ok(ApiResponse<object?>.SuccessResponse(null, "Specjalista został odwieszony."));
-        }
-        [HttpPut("specialists/{id}/license-validity")]
-        public async Task<ActionResult<ApiResponse<object?>>> UpdateLicenseValidity(
-            Guid id,
-            [FromBody] UpdateLicenseValidityDto dto)
-        {
-            await _adminService.UpdateLicenseValidityAsync(id, dto.LicenseValidUntil);
-            return Ok(ApiResponse<object?>.SuccessResponse(null, "Data ważności licencji została zapisana."));
+            var result = await _adminService.GetClientDetailsAsync(id);
+            return Ok(ApiResponse<AdminClientDetailsDto>.SuccessResponse(result));
         }
 
+        /// <summary>
+        /// Pobiera ogólne statystyki systemu dla głównego ekranu panelu administratora.
+        /// </summary>
+        [HttpGet("dashboard/stats")]
+        public async Task<ActionResult<ApiResponse<AdminDashboardStatsDto>>> GetDashboardStats()
+        {
+            var result = await _adminService.GetDashboardStatsAsync();
+            return Ok(ApiResponse<AdminDashboardStatsDto>.SuccessResponse(result));
+        }
+
+        /// <summary>
+        /// Pobiera listę wszystkich wizyt w systemie z możliwością filtrowania i paginacji.
+        /// </summary>
+        [HttpGet("appointments")]
+        public async Task<ActionResult<ApiResponse<PagedResponse<AdminAppointmentListItemDto>>>> GetAppointments([FromQuery] AdminAppointmentFilterDto filter)
+        {
+            var result = await _adminService.GetAppointmentsAsync(filter);
+            return Ok(ApiResponse<PagedResponse<AdminAppointmentListItemDto>>.SuccessResponse(result));
+        }
     }
 }

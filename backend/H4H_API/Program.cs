@@ -15,6 +15,9 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// aby uniknac problem�w z datami w Npgsql (np. przy DateTimeOffset), ustawiamy legacy timestamp behavior
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 // Add services to the container.
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -91,8 +94,8 @@ builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<ISpecialistService, SpecialistService>();
-builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IGeocoder, Geocoder>();
+builder.Services.AddSingleton<FirebaseNotificationService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddHttpClient();
 
@@ -100,7 +103,7 @@ builder.Services.AddHttpClient();
 // CORS dla frontendu je�li Flutter debuguje przez przegl�dark�
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontend",
+    options.AddPolicy("AllowFlutter",
         policy => policy
             .AllowAnyOrigin()  // Ka�de �r�d�o
             .AllowAnyMethod()
@@ -123,6 +126,8 @@ builder.Services.AddHttpClient("Nominatim", client =>
 // Rate limiting dla Nominatim (max 1 request na sekund�)
 builder.Services.AddSingleton<GeocodingRateLimiter>();
 
+builder.Services.AddScoped<IAdminService, AdminService>();
+
 
 var app = builder.Build();
 
@@ -133,19 +138,17 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseRouting();
 
-app.UseCors("AllowFrontend");
-
+// Middleware 
 app.UseMiddleware<ErrorHandlingMiddleware>();
 
-// app.UseHttpsRedirection();
-
+app.UseHttpsRedirection();
+app.UseCors("AllowFlutter");
+app.UseStaticFiles();
 app.UseAuthentication();
+
 app.UseAuthorization();
-
 app.MapControllers();
-
 
 app.Run();
 
@@ -156,7 +159,7 @@ public class SecurityRequirementsOperationFilter : IOperationFilter
 {
     public void Apply(OpenApiOperation operation, OperationFilterContext context)
     {
-        var authAttributes = context.MethodInfo.DeclaringType.GetCustomAttributes(true)
+        var authAttributes = (context.MethodInfo.DeclaringType?.GetCustomAttributes(true) ?? Array.Empty<object>())
             .Union(context.MethodInfo.GetCustomAttributes(true))
             .OfType<AuthorizeAttribute>();
 

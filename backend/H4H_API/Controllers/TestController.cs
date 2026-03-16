@@ -31,7 +31,6 @@ namespace H4H_API.Controllers
             _logger = logger;
         }
 
-
         /// <summary>
         /// Checks the application's ability to connect to the database and retrieves information about the available
         /// tables.
@@ -41,7 +40,6 @@ namespace H4H_API.Controllers
         /// Sensitive information is not exposed in the response.</remarks>
         /// <returns>An HTTP 200 response containing the database name, connection status, table count, table names, and a
         /// timestamp if the check succeeds; otherwise, an HTTP 400 response with error details.</returns>
-
         [HttpGet("database")]
         public IActionResult CheckDatabase()
         {
@@ -163,7 +161,6 @@ namespace H4H_API.Controllers
             }
         }
 
-
         /// <summary>
         /// Retrieves a list of all users with basic profile information.
         /// </summary>
@@ -172,7 +169,6 @@ namespace H4H_API.Controllers
         /// response is returned with an error message.</remarks>
         /// <returns>An <see cref="IActionResult"/> containing a JSON object with the total user count and a collection of user
         /// records. Each user record includes the user's ID, email, user type, active status, and creation date.</returns>
-
         [HttpGet("users")]
         public async Task<IActionResult> GetUsers()
         {
@@ -240,6 +236,52 @@ namespace H4H_API.Controllers
         /// with the specified email already exists, no new account is created.</remarks>
         /// <returns>An <see cref="IActionResult"/> containing a success message and administrator details if the test admin is
         /// created or already exists; otherwise, a bad request result with error information.</returns>
+        [HttpPost("test-admin")]
+        public async Task<IActionResult> CreateTestAdmin()
+        {
+            try
+            {
+                var existingAdmin = await _context.admins
+                    .FirstOrDefaultAsync(a => a.Email == "admin@health4home.pl");
+
+                if (existingAdmin != null)
+                {
+                    return Ok(new
+                    {
+                        Message = "Test admin already exists",
+                        AdminId = existingAdmin.Id
+                    });
+                }
+
+                var admin = new H4H.Core.Models.Admin
+                {
+                    Id = Guid.NewGuid(),
+                    Email = "admin@health4home.pl",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
+
+                    Role = "super_admin", // Rola super administratora
+
+                    FullName = "Test Administrator",
+                    IsActive = true,
+                    CreatedAt = DateTime.Now
+                };
+
+                _context.admins.Add(admin);
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    Message = "Test admin created successfully",
+                    AdminId = admin.Id,
+                    Email = admin.Email,
+                    Role = admin.Role
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
 
         /// <summary>
         /// Tests connectivity to the Nominatim geocoding service by performing a sample address lookup.

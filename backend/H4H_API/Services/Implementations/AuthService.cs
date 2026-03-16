@@ -51,30 +51,37 @@ namespace H4H_API.Services.Implementations
         /// <exception cref="UnauthorizedAccessException">Thrown when the email or password is invalid, or the user account is inactive.</exception>
         public async Task<LoginResponse> LoginAsync(LoginRequest request)
         {
+            // Pobierz użytkownika z bazy danych wraz z powiązanymi danymi klienta/specjalisty
             var user = await _context.users
                 .Include(u => u.Client)
                 .Include(u => u.Specialist)
                 .FirstOrDefaultAsync(u => u.Email == request.Email && u.IsActive);
 
-
+            // Sprawdź czy użytkownik istnieje i czy hasło jest poprawne
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
                 throw new UnauthorizedAccessException("Nieprawidłowy email lub hasło");
 
+            // Aktualizuj last login
             user.LastLoginAt = DateTime.Now;
             await _context.SaveChangesAsync();
 
+            // Generuj tokeny
             var accessToken = _jwtService.GenerateAccessToken(user);
             var refreshToken = _jwtService.GenerateRefreshToken();
 
+            // TODO: Zapisz refresh token do bazy (do implementacji
+
+            // Przygotuj informacje o użytkowniku do odpowiedzi
             var userInfo = new UserInfoDto
             {
                 Id = user.Id,
                 Email = user.Email,
-                UserType = user.UserType,
+                UserType = user.UserType, // "client" lub "specialist"
                 PhoneNumber = user.PhoneNumber,
                 AvatarUrl = user.AvatarUrl
             };
 
+            // Pobierz imię i nazwisko w zależności od typu użytkownika
             if (user.UserType == "client" && user.Client != null)
             {
                 userInfo.FirstName = user.Client.FirstName;
@@ -86,15 +93,17 @@ namespace H4H_API.Services.Implementations
                 userInfo.LastName = user.Specialist.LastName;
             }
 
+            // Zwróć odpowiedź z tokenami i danymi użytkownika
             return new LoginResponse
             {
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
-                AccessTokenExpires = DateTime.Now.AddMinutes(15),
-                RefreshTokenExpires = DateTime.Now.AddDays(7),
+                AccessTokenExpires = DateTime.Now.AddMinutes(15), // Token dostępowy ważny 15 minut
+                RefreshTokenExpires = DateTime.Now.AddDays(7), // Token odświeżający ważny 7 dni
                 User = userInfo
             };
         }
+
         /// <summary>
         /// Asynchronously registers a new client user with the provided registration details.
         /// </summary>
@@ -180,7 +189,7 @@ namespace H4H_API.Services.Implementations
                     Email = request.Email,
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
                     UserType = "specialist",
-                    IsActive = true, //logowanie mozliwe, ale profil specjalisty wymaga weryfikacji
+                    IsActive = false, 
                     CreatedAt = DateTime.Now,
                     UpdatedAt = DateTime.Now
                 };
@@ -196,7 +205,7 @@ namespace H4H_API.Services.Implementations
                     FirstName = request.FirstName,
                     LastName = request.LastName,
                     ProfessionalTitle = request.Specialization,
-
+                    
                     //DEFAULTOWE dla nowej rejestracji
                     IsVerified = false,
                     VerificationStatus = "pending",
@@ -220,8 +229,7 @@ namespace H4H_API.Services.Implementations
                     RequiresEmailVerification = true, //tylko dla funkcji usera!
                 };
 
-            }
-            catch (Exception)
+            } catch (Exception)
             {
                 await transaction.RollbackAsync(); //w przypadku bledu, wycofaj zmiany
                 throw; //przekaz dalej wyjatek do middleware error handling
@@ -336,6 +344,33 @@ namespace H4H_API.Services.Implementations
         }
 
         /// <summary>
+        /// Akualizuje lub dodaje token urządzenia (FCM) dla użytkownika, umożliwiając wysyłanie powiadomień push na jego urządzenie. 
+        /// Jeśli token już istnieje dla tego użytkownika, aktualizuje datę ostatniego użycia; w przeciwnym razie tworzy nowy rekord tokena.
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="token"></param>
+        /// <returns></returns>
+        public async Task UpdateDeviceTokenAsync(Guid userId, string token)
+        {
+            var existingToken = await _context.device_tokens
+                .FirstOrDefaultAsync(t => t.UserId == userId && t.FcmToken == token);
+
+            if (existingToken != null)
+            {
+                existingToken.LastUsedAt = DateTime.UtcNow;
+            }
+            else
+            {
+                _context.device_tokens.Add(new DeviceToken
+                {
+                    UserId = userId,
+                    FcmToken = token,
+                    CreatedAt = DateTime.UtcNow,
+                    LastUsedAt = DateTime.UtcNow
+                });
+            }
+            await _context.SaveChangesAsync();
+        }
         /// Sends a verification code to the specified email address for account registration verification.
         /// </summary>
         /// <remarks>This method generates a new 6-digit verification code and sends it to the provided
@@ -347,6 +382,14 @@ namespace H4H_API.Services.Implementations
         /// <exception cref="AppException">Thrown if no user with the specified email exists, or if the user account is already verified.</exception>
         public async Task SendVerificationCodeAsync(string email)
         {
+            // Wywołanie funkcji SQL: sprzątanie bazy danych z nieużywanych kodów weryfikacyjnych i nieaktywnych użytkowników
+            await _context.Database.ExecuteSqlRawAsync("SELECT delete_expired_codes();"); // Kody czyścimy zawsze - to szybka operacja
+            if (new Random().Next(1, 50) == 1) // Konta czyścimy tylko raz na 50 wysłanych maili (średnio)
+            {
+                await _context.Database.ExecuteSqlRawAsync("SELECT cleanup_inactive_users();");
+            }
+            // <3
+
             var user = await _context.users.FirstOrDefaultAsync(u => u.Email == email)
                 ?? throw new AppException("Uzytkownik nie istnieje.", ErrorCodes.UserNotFound);
 
@@ -366,15 +409,6 @@ namespace H4H_API.Services.Implementations
             {
                 existingCode.IsUsed = true;
             }
-
-            // Wywołanie funkcji SQL: sprzątanie bazy danych z nieużywanych kodów weryfikacyjnych i nieaktywnych użytkowników
-            await _context.Database.ExecuteSqlRawAsync("SELECT delete_expired_codes();"); // Kody czyścimy zawsze - to szybka operacja
-            if (new Random().Next(1, 50) == 1) // Konta czyścimy tylko raz na 50 wysłanych maili (średnio)
-            {
-                await _context.Database.ExecuteSqlRawAsync("SELECT cleanup_inactive_users();");
-            }
-            // <3 
-            //re: dzieki dzastina
 
             //Zapisz nowy kod w bazie
             var verificationCode = new VerificationCode //encja z postgresika

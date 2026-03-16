@@ -10,5 +10,6 @@
         public string Status { get; set; } = string.Empty; // np. pending, accepted, rejected, completed
         public string PatientAddress { get; set; } = string.Empty;
         public decimal Price { get; set; }
+        public string? Description { get; set; }
     }
 }
