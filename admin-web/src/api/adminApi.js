@@ -92,15 +92,53 @@ export async function unsuspendSpecialist(id) {
   });
 }
 export async function listUsers(query) {
-  // Docelowo:
-  // return apiFetch(`/admin/users?${new URLSearchParams(cleanQuery(query))}`);
-  return mockListUsers(query);
+  const params = new URLSearchParams();
+  const cleaned = cleanQuery(query);
+
+  if (cleaned.q) {
+    params.set("search", cleaned.q);
+  }
+
+  if (cleaned.createdFrom) {
+    params.set("registeredFrom", cleaned.createdFrom);
+  }
+
+  if (cleaned.createdTo) {
+    params.set("registeredTo", cleaned.createdTo);
+  }
+
+  if (cleaned.sort) {
+    params.set(
+      "sortDescending",
+      cleaned.sort === "CREATED_DESC" ? "true" : "false",
+    );
+  }
+
+  if (cleaned.page) {
+    params.set("page", String(cleaned.page));
+  }
+
+  if (cleaned.pageSize) {
+    params.set("pageSize", String(cleaned.pageSize));
+  }
+
+  const queryString = params.toString();
+  const res = await apiFetch(
+    `/api/Admin/clients${queryString ? `?${queryString}` : ""}`,
+  );
+
+  const payload = res?.data ?? res;
+
+  return {
+    ...payload,
+    items: (payload?.items ?? []).map(normalizeUser),
+  };
 }
 
 export async function getUser(id) {
-  // Docelowo:
-  // return apiFetch(`/admin/users/${id}`);
-  return mockGetUser(id);
+  const res = await apiFetch(`/api/Admin/clients/${id}`);
+  const payload = res?.data ?? res;
+  return normalizeUser(payload);
 }
 export async function listOrders(query) {
   // Docelowo:
@@ -237,6 +275,22 @@ function normalizeSpecialist(item) {
     id: item.id ?? item.specialistId,
     status: rawStatus ? String(rawStatus).toUpperCase() : undefined,
     specialization: item.specialization ?? item.professionalTitle,
+  };
+}
+function normalizeUser(item) {
+  if (!item) return item;
+
+  return {
+    ...item,
+    id: item.id ?? item.clientId ?? item.userId,
+    firstName: item.firstName ?? "",
+    lastName: item.lastName ?? "",
+    email: item.email ?? "",
+    phone: item.phone ?? item.phoneNumber ?? "",
+    createdAt: item.createdAt ?? item.registeredAt ?? item.registrationDate,
+    ordersCount: item.ordersCount ?? item.totalOrders ?? item.appointmentsCount,
+    ordersTotalValue:
+      item.ordersTotalValue ?? item.totalOrdersValue ?? item.totalSpent,
   };
 }
 

@@ -84,7 +84,7 @@ namespace H4H_API.Services.Implementations
             var specialist = await _context.specialists
                 .Include(s => s.User)
                 .FirstOrDefaultAsync(s => s.Id == specialistId)
-                ?? throw new AppException ("Nie znaleziono specjalisty.", ErrorCodes.SpecialistNotFound);
+                ?? throw new AppException("Nie znaleziono specjalisty.", ErrorCodes.SpecialistNotFound);
             var qualifications = await _context.specialist_qualifications
                 .FirstOrDefaultAsync(q => q.SpecialistId == specialistId && q.IsActive);
 
@@ -184,7 +184,7 @@ namespace H4H_API.Services.Implementations
             //Pobieramy klientów z bazy danych, sortujemy po dacie rejestracji malejąco, a następnie stosujemy paginację
             var items = await query
                 .OrderByDescending(c => c.CreatedAt)
-                .Skip((filter.Page - 1) * filter.PageSize) 
+                .Skip((filter.Page - 1) * filter.PageSize)
                 .Take(filter.PageSize)
                 .Select(c => new AdminClientListItemDto
                 {
@@ -215,17 +215,11 @@ namespace H4H_API.Services.Implementations
         /// <exception cref="AppException"></exception>
         public async Task<AdminClientDetailsDto> GetClientDetailsAsync(Guid clientId)
         {
-            // Pobieramy klienta z bazy danych wraz z powiązanymi danymi (użytkownik i wizyty).
-            // Jeśli klient o podanym ID nie istnieje, rzucamy wyjątek AppException.
             var client = await _context.clients
                 .Include(c => c.User)
-                .Include(c => c.Appointments)
-                    .ThenInclude(a => a.ServiceType)
                 .FirstOrDefaultAsync(c => c.Id == clientId)
                 ?? throw new AppException("Nie znaleziono klienta.", ErrorCodes.ClientNotFound);
 
-            // Mapujemy dane klienta na DTO, w tym listę wizyt klienta, która zawiera informacje o dacie i godzinie wizyty,
-            // nazwie usługi, statusie oraz cenie. Wizyty są sortowane malejąco po dacie planowanego rozpoczęcia.
             return new AdminClientDetailsDto
             {
                 ClientId = client.Id,
@@ -234,14 +228,7 @@ namespace H4H_API.Services.Implementations
                 Email = client.User.Email,
                 PhoneNumber = client.User.PhoneNumber,
                 CreatedAt = client.CreatedAt,
-                Appointments = client.Appointments.Select(a => new AdminClientAppointmentDto
-                {
-                    AppointmentId = a.Id,
-                    ScheduledStart = a.ScheduledStart,
-                    ServiceName = a.ServiceType?.Name ?? "Nieokreślona",
-                    Status = a.AppointmentStatus,
-                    Price = a.TotalPrice
-                }).OrderByDescending(a => a.ScheduledStart).ToList()
+                Appointments = new List<AdminClientAppointmentDto>()
             };
         }
 
