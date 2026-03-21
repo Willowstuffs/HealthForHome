@@ -9,5 +9,7 @@
         public string Email { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public int TotalAppointments { get; set; }
+        public string? PhoneNumber { get; set; }
+
     }
 }

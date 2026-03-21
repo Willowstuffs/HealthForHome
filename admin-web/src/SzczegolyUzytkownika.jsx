@@ -48,7 +48,14 @@ function SzczegolyUzytkownika() {
   if (loading) return <p style={{ padding: 24 }}>Ładowanie...</p>;
   if (error) return <p style={{ padding: 24, color: "tomato" }}>{error}</p>;
   if (!data) return null;
+  const appointments = Array.isArray(data.appointments) ? data.appointments : [];
 
+  const ordersCount = appointments.length;
+
+  const ordersTotalValue = appointments.reduce((sum, item) => {
+    return sum + Number(item.price ?? item.totalPrice ?? 0);
+  }, 0);
+ 
   return (
     <div>
       <AdminHeader />
@@ -88,12 +95,12 @@ function SzczegolyUzytkownika() {
               <div className="user-kv">
                 <div className="user-kv-row">
                   <div className="user-kv-key">ID użytkownika</div>
-                  <div className="user-kv-val">{data.id}</div>
+                  <div className="user-kv-val">{data.clientId || data.id || "-"}</div>
                 </div>
 
                 <div className="user-kv-row">
                   <div className="user-kv-key">Telefon</div>
-                  <div className="user-kv-val">{data.phone || "-"}</div>
+                  <div className="user-kv-val">{data.phoneNumber || data.phone || "-"}</div>
                 </div>
 
                 <div className="user-kv-row">
@@ -109,16 +116,12 @@ function SzczegolyUzytkownika() {
               <div className="user-kv">
                 <div className="user-kv-row">
                   <div className="user-kv-key">Liczba zamówień</div>
-                  <div className="user-kv-val">
-                    {typeof data.ordersCount === "number" ? data.ordersCount : "-"}
-                  </div>
+                  <div className="user-kv-val">{ordersCount}</div>
                 </div>
 
                 <div className="user-kv-row">
                   <div className="user-kv-key">Wartość zamówień</div>
-                  <div className="user-kv-val">
-                    {typeof data.ordersTotalValue === "number" ? `${data.ordersTotalValue} PLN` : "-"}
-                  </div>
+                  <div className="user-kv-val">{ordersTotalValue} PLN</div>
                 </div>
               </div>
             </div>
@@ -136,15 +139,34 @@ function SzczegolyUzytkownika() {
                       <th>ID</th>
                       <th>Data</th>
                       <th>Status</th>
-                      <th>Status</th>
+                      <th>Wartość</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td colSpan={4} className="user-activity-empty">
-                        Użytkownik nie złożył jeszcze żadnego zamówienia.
-                      </td>
-                    </tr>
+                    {appointments.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="user-activity-empty">
+                          Użytkownik nie złożył jeszcze żadnego zamówienia.
+                        </td>
+                      </tr>
+                    ) : (
+                      appointments.map((appointment) => (
+                        <tr key={appointment.appointmentId}>
+                          <td>#{appointment.appointmentId}</td>
+                          <td>
+                            {appointment.scheduledStart
+                              ? new Date(appointment.scheduledStart).toLocaleString("pl-PL")
+                              : "-"}
+                          </td>
+                          <td>{appointment.status || "-"}</td>
+                          <td>
+                            {typeof appointment.price === "number"
+                              ? `${appointment.price} PLN`
+                              : "-"}
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
 

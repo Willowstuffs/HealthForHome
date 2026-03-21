@@ -72,10 +72,10 @@ function ListaZamowien() {
               onChange={(e) => setQuery((q) => ({ ...q, status: e.target.value, page: 1 }))}
             >
               <option value="">Wszystkie</option>
-              <option value="NEW">Nowe</option>
-              <option value="IN_PROGRESS">W trakcie</option>
-              <option value="DONE">Zrealizowane</option>
-              <option value="CANCELLED">Anulowane</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="completed">Completed</option>
             </select>
           </label>
 
@@ -146,45 +146,39 @@ function ListaZamowien() {
                     </td>
                   </tr>
                 ) : (
-                  data.items.map((o) => {
-                    const isGuest = !o.userId;
+                  data.items.map((o) => (
+                    <tr key={o.appointmentId}>
+                      <td className="mono cell-strong">#{o.appointmentId}</td>
 
-                    const guestName =
-                      o.customerFirstName || o.customerLastName
-                        ? `${o.customerFirstName ?? ""} ${o.customerLastName ?? ""}`.trim()
-                        : "Gość";
+                      <td>
+                        <div className="cell-strong">{o.contactName || "—"}</div>
+                      </td>
 
-                    const displayUser = isGuest ? guestName : o.userName || "—";
+                      <td>
+                        <div>{o.clientAddress || "—"}</div>
+                      </td>
 
-                    return (
-                      <tr key={o.id}>
-                        <td className="mono cell-strong">#{o.id}</td>
+                      <td>{o.serviceName || "—"}</td>
 
-                        <td>
-                          <div className="cell-strong">{displayUser}</div>
-                          {isGuest && <div className="cell-sub">bez konta</div>}
-                        </td>
+                      <td className="cell-strong">
+                        {typeof o.totalPrice === "number" ? `${o.totalPrice} PLN` : "—"}
+                      </td>
 
-                        <td>
-                          <div>{o.customerEmail || "—"}</div>
-                          <div className="cell-sub">{o.customerPhone || "—"}</div>
-                        </td>
+                      <td>
+                        <OrderStatusBadge status={o.status} />
+                      </td>
 
-                        <td>{o.specialistName || "—"}</td>
-                        <td className="cell-strong">{o.totalValue} PLN</td>
-                        <td>
-                          <OrderStatusBadge status={o.status} />
-                        </td>
-                        <td>{o.createdAt ? new Date(o.createdAt).toLocaleString() : "—"}</td>
+                      <td>
+                        {o.scheduledStart ? new Date(o.scheduledStart).toLocaleString() : "—"}
+                      </td>
 
-                        <td className="cell-right">
-                          <Link to={`/orders/${o.id}`} className="table-link">
-                            Szczegóły
-                          </Link>
-                        </td>
-                      </tr>
-                    );
-                  })
+                      <td className="cell-right">
+                        <Link to={`/orders/${o.appointmentId}`} className="table-link">
+                          Szczegóły
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>

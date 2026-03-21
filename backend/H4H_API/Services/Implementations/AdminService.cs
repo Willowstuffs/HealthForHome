@@ -1,9 +1,10 @@
 ﻿using H4H.Core.Models;
 using H4H.Data;
+using H4H_API.DTOs.Appointments;
 using H4H_API.DTOs.Admin;
 using H4H_API.DTOs.Common;
 using H4H_API.Services.Interfaces;
-using H4H_API.Helpers; //Do bledow
+using H4H_API.Helpers;
 using Microsoft.EntityFrameworkCore;
 using H4H_API.Exceptions;
 
@@ -12,26 +13,23 @@ namespace H4H_API.Services.Implementations
     public class AdminService : IAdminService
     {
         private readonly ApplicationDbContext _context;
+
         public AdminService(ApplicationDbContext context)
         {
-            _context = context; //kontekst bazy danych
+            _context = context;
         }
+
         /// <summary>
         /// Otrzymuje liste specjalistow z mozliwoscia filtrowania po statusie weryfikacji i dacie rejestracji,
-        /// sortowania po dacie rejestracji oraz paginacji. Ta metoda jest przeznaczona dla administratorów do 
-        /// przeglądania i zarządzania zgłoszeniami specjalistów oczekujących na weryfikację.</summary>
-        /// <param name="filter">
-        /// Obiekt zawierający opcje filtrowania, sortowania i paginacji do zastosowania przy wyborze specjalistów. Nie może być nullem.</param>
-        /// <returns>
-        /// Zwraca paged response zawierający listę specjalistów, którzy spełniają kryteria filtrowania, wraz z informacjami o paginacji 
-        /// (aktualna strona, rozmiar strony, łączna liczba elementów).</returns>
+        /// sortowania po dacie rejestracji oraz paginacji.
+        /// </summary>
         public async Task<PagedResponse<AdminSpecialistListItemDto>> GetSpecialistsAsync(AdminSpecialistFilterDto filter)
         {
             var query = _context.specialists
                 .Include(s => s.User)
+                .Include(s => s.Qualifications)
                 .AsQueryable();
 
-            //Filtrowanie
             if (!string.IsNullOrEmpty(filter.VerificationStatus))
                 query = query.Where(s => s.VerificationStatus == filter.VerificationStatus);
 
@@ -41,14 +39,12 @@ namespace H4H_API.Services.Implementations
             if (filter.RegisteredTo.HasValue)
                 query = query.Where(s => s.CreatedAt <= filter.RegisteredTo.Value);
 
-            //Sortowanie (domyślnie po dacie rejestracji malejąco)
             query = filter.SortDescending
                 ? query.OrderByDescending(s => s.CreatedAt)
                 : query.OrderBy(s => s.CreatedAt);
 
-            //Paginacja, czyli najpierw liczymy łączną liczbę elementów, a następnie pobieramy tylko te,
-            //które odpowiadają aktualnej stronie i rozmiarowi strony
             var totalCount = await query.CountAsync();
+
             var items = await query
                 .Skip((filter.Page - 1) * filter.PageSize)
                 .Take(filter.PageSize)
@@ -58,9 +54,13 @@ namespace H4H_API.Services.Implementations
                     FirstName = s.FirstName,
                     LastName = s.LastName,
                     Email = s.User.Email,
-                    ProfessionalTitle = s.ProfessionalTitle ?? string.Empty, //CS8601 fix
+                    ProfessionalTitle = s.ProfessionalTitle ?? string.Empty,
                     VerificationStatus = s.VerificationStatus,
-                    CreatedAt = s.CreatedAt
+                    CreatedAt = s.CreatedAt,
+                    LicenseValidUntil = s.Qualifications
+                        .Where(q => q.IsActive)
+                        .Select(q => q.LicenseValidUntil)
+                        .FirstOrDefault()
                 })
                 .ToListAsync();
 
@@ -72,19 +72,17 @@ namespace H4H_API.Services.Implementations
                 TotalCount = totalCount
             };
         }
+
         /// <summary>
-        /// Asynchronicznie pobiera szczegółowe informacje o specjaliście do celów administracyjnych, 
-        /// w tym dane osobowe, informacje kontaktowe, status weryfikacji, oraz aktywne kwalifikacje.</summary>
-        /// <remarks>
-        /// Zwracane szczegóły obejmują zarówno podstawowy profil specjalisty, jak i jego aktywne kwalifikacje, 
-        /// jeśli są dostępne. Pola dotyczące kwalifikacji mogą być nullem, jeśli specjalista nie posiada aktywnych kwalifikacji. 
-        /// Ta metoda jest przeznaczona do użytku administracyjnego i może ujawniać wrażliwe informacje.</remarks>
+        /// Pobiera szczegółowe informacje o specjaliście.
+        /// </summary>
         public async Task<AdminSpecialistDetailsDto> GetSpecialistDetailsAsync(Guid specialistId)
         {
             var specialist = await _context.specialists
                 .Include(s => s.User)
                 .FirstOrDefaultAsync(s => s.Id == specialistId)
                 ?? throw new AppException("Nie znaleziono specjalisty.", ErrorCodes.SpecialistNotFound);
+
             var qualifications = await _context.specialist_qualifications
                 .FirstOrDefaultAsync(q => q.SpecialistId == specialistId && q.IsActive);
 
@@ -103,10 +101,14 @@ namespace H4H_API.Services.Implementations
                 LicenseNumber = qualifications?.LicenseNumber,
                 LicensePhotoUrl = qualifications?.LicensePhotoUrl,
                 IdCardPhotoUrl = qualifications?.IdCardPhotoUrl,
-                VerificationNotes = qualifications?.VerificationNotes
+                VerificationNotes = qualifications?.VerificationNotes,
+                LicenseValidUntil = qualifications?.LicenseValidUntil
             };
         }
-        /// <summary>Zatwierdza specjaliste aktualizując status weryfikacji i logując akcje wykonaną przez admina</summary>
+
+        /// <summary>
+        /// Zatwierdza specjalistę.
+        /// </summary>
         public async Task ApproveSpecialistAsync(Guid specialistId, Guid adminId)
         {
             var specialist = await _context.specialists.FindAsync(specialistId)
@@ -116,7 +118,6 @@ namespace H4H_API.Services.Implementations
             specialist.IsVerified = true;
             specialist.VerifiedAt = DateTime.UtcNow;
 
-            // Logowanie akcji admina
             _context.verification_logs.Add(new VerificationLog
             {
                 Id = Guid.NewGuid(),
@@ -129,7 +130,9 @@ namespace H4H_API.Services.Implementations
             await _context.SaveChangesAsync();
         }
 
-        /// <summary>Odrzuca specjaliste zmieniajac status weryfikacji na rejected i logujac akcje wykonana przez admina z powodem odrzucenia.</summary>
+        /// <summary>
+        /// Odrzuca specjalistę.
+        /// </summary>
         public async Task RejectSpecialistAsync(Guid specialistId, Guid adminId, string reason)
         {
             var specialist = await _context.specialists.FindAsync(specialistId)
@@ -138,36 +141,79 @@ namespace H4H_API.Services.Implementations
             specialist.VerificationStatus = "rejected";
             specialist.IsVerified = false;
 
-            // Logowanie akcji admina
             _context.verification_logs.Add(new VerificationLog
             {
                 Id = Guid.NewGuid(),
                 SpecialistId = specialistId,
                 AdminId = adminId,
                 Action = "rejected",
-                Notes = reason, // Powód odrzucenia
+                Notes = reason,
                 CreatedAt = DateTime.UtcNow
             });
 
             await _context.SaveChangesAsync();
         }
+        /// <summary>
+        /// Licencja specjalisty - aktualizuje datę ważności licencji w tabeli specialist_qualifications. 
+        /// Jeśli rekord kwalifikacji dla specjalisty nie istnieje, zostanie utworzony nowy z podaną datą ważności licencji.
+        /// </summary>
+        public async Task UpdateLicenseValidityAsync(Guid specialistId, DateTime validUntil)
+        {
+            var specialist = await _context.specialists
+                .FirstOrDefaultAsync(s => s.Id == specialistId)
+                ?? throw new AppException("Nie znaleziono specjalisty.", ErrorCodes.SpecialistNotFound);
 
+            var qualification = await _context.specialist_qualifications
+                .FirstOrDefaultAsync(q => q.SpecialistId == specialistId && q.IsActive);
+
+            if (qualification == null)
+            {
+                qualification = new SpecialistQualification
+                {
+                    Id = Guid.NewGuid(),
+                    SpecialistId = specialistId,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    Profession = NormalizeProfession(specialist.ProfessionalTitle)
+                };
+
+                _context.specialist_qualifications.Add(qualification);
+            }
+
+            qualification.LicenseValidUntil = validUntil;
+
+            await _context.SaveChangesAsync();
+        }
+        private string NormalizeProfession(string? professionalTitle)
+        {
+            var value = professionalTitle?.Trim().ToLower();
+
+            return value switch
+            {
+                "physiotherapist" => "physiotherapist",
+                "fizjoterapeuta" => "physiotherapist",
+                "mgr fizjoterapii" => "physiotherapist",
+
+                "nurse" => "nurse",
+                "pielęgniarka" => "nurse",
+                "pielegniarka" => "nurse",
+
+                _ => throw new AppException(
+                    $"Nieobsługiwany zawód: '{professionalTitle}'",
+                    ErrorCodes.ValidationError)
+            };
+        }
 
         /// <summary>
-        /// Otrzymuje liste klientow z mozliwoscia filtrowania po imieniu, nazwisku i emailu, sortowania po dacie rejestracji oraz paginacji.
+        /// Otrzymuje listę klientów z możliwością filtrowania i paginacji.
         /// </summary>
-        /// <param name="filter"></param>
-        /// <returns></returns>
         public async Task<PagedResponse<AdminClientListItemDto>> GetClientsAsync(AdminClientFilterDto filter)
         {
-            //Podobnie jak w przypadku specjalistów, zaczynamy od zbudowania zapytania do bazy danych,
-            //które pobiera klientów wraz z powiązanymi danymi (użytkownik i wizyty).
             var query = _context.clients
                 .Include(c => c.User)
                 .Include(c => c.Appointments)
                 .AsQueryable();
 
-            //Filtrowanie po imieniu, nazwisku i emailu (jeśli podano searchTerm)
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
                 var search = filter.SearchTerm.ToLower();
@@ -177,11 +223,8 @@ namespace H4H_API.Services.Implementations
                     c.User.Email.ToLower().Contains(search));
             }
 
-            //Paginacja - najpierw liczymy łączną liczbę elementów,
-            //a następnie pobieramy tylko te, które odpowiadają aktualnej stronie i rozmiarowi strony
             var totalItems = await query.CountAsync();
 
-            //Pobieramy klientów z bazy danych, sortujemy po dacie rejestracji malejąco, a następnie stosujemy paginację
             var items = await query
                 .OrderByDescending(c => c.CreatedAt)
                 .Skip((filter.Page - 1) * filter.PageSize)
@@ -192,12 +235,12 @@ namespace H4H_API.Services.Implementations
                     FirstName = c.FirstName,
                     LastName = c.LastName,
                     Email = c.User.Email,
+                    PhoneNumber = c.User.PhoneNumber,
                     CreatedAt = c.CreatedAt,
                     TotalAppointments = c.Appointments.Count
                 })
                 .ToListAsync();
 
-            // Na koniec zwracamy paged response zawierający listę klientów oraz informacje o paginacji
             return new PagedResponse<AdminClientListItemDto>
             {
                 Items = items,
@@ -208,15 +251,13 @@ namespace H4H_API.Services.Implementations
         }
 
         /// <summary>
-        /// Pobiera szczegółowe informacje o kliencie, w tym dane osobowe, kontaktowe oraz historię wizyt.
+        /// Pobiera szczegółowe informacje o kliencie.
         /// </summary>
-        /// <param name="clientId"></param>
-        /// <returns></returns>
-        /// <exception cref="AppException"></exception>
         public async Task<AdminClientDetailsDto> GetClientDetailsAsync(Guid clientId)
         {
             var client = await _context.clients
                 .Include(c => c.User)
+                .Include(c => c.Appointments)
                 .FirstOrDefaultAsync(c => c.Id == clientId)
                 ?? throw new AppException("Nie znaleziono klienta.", ErrorCodes.ClientNotFound);
 
@@ -228,28 +269,30 @@ namespace H4H_API.Services.Implementations
                 Email = client.User.Email,
                 PhoneNumber = client.User.PhoneNumber,
                 CreatedAt = client.CreatedAt,
-                Appointments = new List<AdminClientAppointmentDto>()
+                Appointments = client.Appointments
+                    .OrderByDescending(a => a.CreatedAt)
+                    .Select(a => new AdminClientAppointmentDto
+                    {
+                        AppointmentId = a.Id,
+                        ScheduledStart = a.ScheduledStart,
+                        Status = a.AppointmentStatus,
+                        Price = a.TotalPrice
+                    })
+                    .ToList()
             };
         }
 
         /// <summary>
-        /// Pobiera statystyki dla dashboardu administratora, takie jak łączna liczba użytkowników, 
-        /// klientów, specjalistów, specjalistów oczekujących na weryfikację oraz wizyt.
+        /// Pobiera statystyki dla dashboardu administratora.
         /// </summary>
-        /// <returns></returns>
         public async Task<AdminDashboardStatsDto> GetDashboardStatsAsync()
         {
-            // Pobieramy dane dla czytelności po kolei:
             var stats = new AdminDashboardStatsDto
             {
                 TotalUsers = await _context.users.CountAsync(),
                 TotalClients = await _context.clients.CountAsync(),
                 TotalSpecialists = await _context.specialists.CountAsync(),
-
-                // Zliczamy tylko tych specjalistów, którzy czekają na weryfikację
-                PendingSpecialists = await _context.specialists
-                    .CountAsync(s => s.VerificationStatus == "pending"),
-
+                PendingSpecialists = await _context.specialists.CountAsync(s => s.VerificationStatus == "pending"),
                 TotalAppointments = await _context.appointments.CountAsync()
             };
 
@@ -257,21 +300,15 @@ namespace H4H_API.Services.Implementations
         }
 
         /// <summary>
-        /// Pobiera listę wizyt z możliwością filtrowania po statusie i zakresie dat, sortowania po dacie oraz paginacji.
+        /// Pobiera listę wizyt z możliwością filtrowania po statusie i zakresie dat.
         /// </summary>
-        /// <param name="filter"></param>
-        /// <returns></returns>
         public async Task<PagedResponse<AdminAppointmentListItemDto>> GetAppointmentsAsync(AdminAppointmentFilterDto filter)
         {
-            var query = _context.appointments
-                .Include(a => a.ServiceType)
-                .AsQueryable();
+            var query = _context.appointments.AsQueryable();
 
-            // Filtrowanie po statusie
             if (!string.IsNullOrEmpty(filter.Status))
                 query = query.Where(a => a.AppointmentStatus == filter.Status);
 
-            // Filtrowanie po dacie
             if (filter.FromDate.HasValue)
                 query = query.Where(a => a.ScheduledStart >= filter.FromDate.Value);
 
@@ -282,27 +319,115 @@ namespace H4H_API.Services.Implementations
 
             var items = await query
                 .OrderByDescending(a => a.ScheduledStart)
-                .Skip((filter.Page - 1) * filter.PageSize) // Używamy .Page z PagedRequest
+                .Skip((filter.Page - 1) * filter.PageSize)
                 .Take(filter.PageSize)
                 .Select(a => new AdminAppointmentListItemDto
                 {
                     AppointmentId = a.Id,
-                    ContactName = a.ContactName ?? "Brak danych",
-                    ServiceName = a.ServiceType.Name ?? "Nieokreślona",
+                    ContactName = a.ContactName,
+                    ServiceName = "Nieokreślona",
                     ScheduledStart = a.ScheduledStart,
                     Status = a.AppointmentStatus,
                     TotalPrice = a.TotalPrice,
-                    ClientAddress = a.ClientAddress ?? "Brak adresu"
+                    ClientAddress = a.ClientAddress ?? "Brak adresu",
+                    CreatedAt = a.CreatedAt
                 })
                 .ToListAsync();
 
-            // Na koniec zwracamy paged response zawierający listę wizyt oraz informacje o paginacji
             return new PagedResponse<AdminAppointmentListItemDto>
             {
                 Items = items,
                 Page = filter.Page,
                 PageSize = filter.PageSize,
                 TotalCount = totalCount
+            };
+        }
+
+        /// <summary>
+        /// Tworzy nową wizytę.
+        /// </summary>
+        public async Task<Guid> CreateAppointmentAsync(CreateAppointmentDto dto)
+        {
+            var clientExists = await _context.clients.AnyAsync(c => c.Id == dto.ClientId);
+            if (!clientExists)
+                throw new Exception("Klient nie istnieje.");
+
+            if (dto.SpecialistId.HasValue)
+            {
+                var specialistExists = await _context.specialists.AnyAsync(s => s.Id == dto.SpecialistId.Value);
+                if (!specialistExists)
+                    throw new Exception("Specjalista nie istnieje.");
+            }
+
+            if (dto.SpecialistServiceId.HasValue)
+            {
+                var specialistServiceExists = await _context.specialist_services.AnyAsync(ss => ss.Id == dto.SpecialistServiceId.Value);
+                if (!specialistServiceExists)
+                    throw new Exception("Usługa specjalisty nie istnieje.");
+            }
+
+            if (dto.ServiceTypeId.HasValue)
+            {
+                var serviceTypeExists = await _context.service_types.AnyAsync(st => st.Id == dto.ServiceTypeId.Value);
+                if (!serviceTypeExists)
+                    throw new Exception("Typ usługi nie istnieje.");
+            }
+
+            if (dto.ScheduledEnd <= dto.ScheduledStart)
+                throw new Exception("Data zakończenia musi być późniejsza niż data rozpoczęcia.");
+
+            var appointment = new Appointment
+            {
+                Id = Guid.NewGuid(),
+                ClientId = dto.ClientId,
+                SpecialistId = dto.SpecialistId,
+                SpecialistServiceId = dto.SpecialistServiceId,
+                ServiceTypeId = dto.ServiceTypeId,
+                ScheduledStart = DateTime.SpecifyKind(dto.ScheduledStart, DateTimeKind.Unspecified),
+                ScheduledEnd = DateTime.SpecifyKind(dto.ScheduledEnd, DateTimeKind.Unspecified),
+                TotalPrice = dto.TotalPrice,
+                ClientAddress = dto.ClientAddress,
+                ContactName = dto.ContactName,
+                ContactPhoneNumber = dto.ContactPhoneNumber,
+                ContactEmail = dto.ContactEmail,
+                ClientNotes = dto.ClientNotes,
+                SpecialistNotes = dto.SpecialistNotes,
+                SelectedSpecialistId = dto.SelectedSpecialistId,
+                AppointmentStatus = "pending",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _context.appointments.Add(appointment);
+            await _context.SaveChangesAsync();
+
+            return appointment.Id;
+        }
+        public async Task<AdminAppointmentListItemDto> GetAppointmentByIdAsync(Guid id)
+        {
+            var appointment = await _context.appointments
+                .Include(a => a.Specialist)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (appointment == null)
+                throw new AppException("Nie znaleziono wizyty.", "APPOINTMENT_NOT_FOUND");
+
+            return new AdminAppointmentListItemDto
+            {
+                AppointmentId = appointment.Id,
+                ContactName = appointment.ContactName,
+                ServiceName = "Nieokreślona",
+                ScheduledStart = appointment.ScheduledStart,
+                Status = appointment.AppointmentStatus,
+                TotalPrice = appointment.TotalPrice,
+                ClientAddress = appointment.ClientAddress,
+                ContactEmail = appointment.ContactEmail,
+                ContactPhoneNumber = appointment.ContactPhoneNumber,
+                ClientNotes = appointment.ClientNotes,
+                CreatedAt = appointment.CreatedAt,
+                SpecialistName = appointment.Specialist != null
+                    ? $"{appointment.Specialist.FirstName} {appointment.Specialist.LastName}"
+                    : null
             };
         }
     }

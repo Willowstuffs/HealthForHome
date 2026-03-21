@@ -41,30 +41,41 @@ function SzczegolyZamowienia() {
     };
   }, [id]);
 
-  const createdAtLabel = useMemo(() => {
-    if (!data?.createdAt) return "—";
-    const d = new Date(data.createdAt);
-    return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString();
-  }, [data]);
+const createdAtLabel = useMemo(() => {
+  if (!data?.createdAt) return "—";
 
+  const value = String(data.createdAt).trim();
+
+  // format typu: 2026-03-21T12:14:59.0706127
+  const match = value.match(
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/
+  );
+
+  if (!match) return value;
+
+  const [, year, month, day, hour, minute, second] = match;
+  return `${day}.${month}.${year}, ${hour}:${minute}:${second}`;
+}, [data]);
+
+  <div className="order-value order-date">{createdAtLabel}</div>
   if (loading) return <p style={{ padding: 24 }}>Ładowanie...</p>;
   if (error) return <p style={{ padding: 24, color: "tomato" }}>{error}</p>;
   if (!data) return null;
+  console.log("ORDER DETAILS DATA:", data);
 
   const customerName =
-    !data.userId
-      ? ((data.customerFirstName || data.customerLastName)
-          ? `${data.customerFirstName ?? ""} ${data.customerLastName ?? ""}`.trim()
-          : "Gość")
-      : (data.userName || "—");
+    typeof data.contactName === "string" && data.contactName.trim() !== ""
+      ? data.contactName
+      : "—";
+
   const customerEmail =
-    typeof data.customerEmail === "string" && data.customerEmail.trim() !== ""
-      ? data.customerEmail
+    typeof data.contactEmail === "string" && data.contactEmail.trim() !== ""
+      ? data.contactEmail
       : "—";
 
   const customerPhone =
-    typeof data.customerPhone === "string" && data.customerPhone.trim() !== ""
-      ? data.customerPhone
+    typeof data.contactPhoneNumber === "string" && data.contactPhoneNumber.trim() !== ""
+      ? data.contactPhoneNumber
       : "—";
 
 
@@ -110,11 +121,6 @@ function SzczegolyZamowienia() {
                     <div className="order-value" style={{ color: "rgba(15,23,42,0.65)", fontWeight: 700 }}>
                       {customerPhone}
                     </div>
-                    {!data.userId && (
-                      <div className="order-value" style={{ color: "rgba(15,23,42,0.55)", fontWeight: 800 }}>
-                        (bez konta)
-                      </div>
-                    )}
                   </div>
                 </div>
 
@@ -136,13 +142,13 @@ function SzczegolyZamowienia() {
                 <div className="order-section">
                   <div className="order-label">Wartość zamówienia</div>
                   <div className="order-value" style={{ fontWeight: 900 }}>
-                    {typeof data.totalValue === "number" ? `${data.totalValue} PLN` : "—"}
+                    {typeof data.totalPrice === "number" ? `${data.totalPrice} PLN` : "—"}
                   </div>
                 </div>
 
                 <div className="order-section">
                   <div className="order-label">Opis</div>
-                  <div className="order-value">{data.description || "—"}</div>
+                  <div className="order-value">{data.clientNotes || "—"}</div>
                 </div>
               </div>
             </div>

@@ -137,30 +137,63 @@ export async function listUsers(query) {
 
 export async function getUser(id) {
   const res = await apiFetch(`/api/Admin/clients/${id}`);
-  const payload = res?.data ?? res;
-  return normalizeUser(payload);
+  const payload = res?.data?.data ?? res?.data ?? res;
+
+  return {
+    ...payload,
+    appointments: payload?.appointments ?? [],
+  };
 }
 export async function listOrders(query) {
-  // Docelowo:
-  // const params = new URLSearchParams();
-  // if (query.status) params.set("status", query.status);
-  // if (query.createdFrom) params.set("createdFrom", query.createdFrom);
-  // if (query.createdTo) params.set("createdTo", query.createdTo);
-  // if (query.sort) params.set("sort", query.sort);
-  // if (query.page) params.set("page", String(query.page));
-  // if (query.pageSize) params.set("pageSize", String(query.pageSize));
-  // return apiFetch(`/admin/orders?${params.toString()}`);
+  const params = new URLSearchParams();
 
-  // MOCK:
-  return mockListOrders(query);
+  if (query.status) params.set("status", query.status);
+  if (query.createdFrom) params.set("fromDate", query.createdFrom);
+  if (query.createdTo) params.set("toDate", query.createdTo);
+  if (query.page) params.set("page", String(query.page));
+  if (query.pageSize) {
+    params.set("pageSize", String(Math.min(query.pageSize || 20, 100)));
+  }
+
+  const queryString = params.toString();
+  const res = await apiFetch(
+    `/api/Admin/appointments${queryString ? `?${queryString}` : ""}`,
+  );
+
+  const payload = res?.data?.data ?? res?.data ?? res;
+
+  return {
+    items: payload?.items ?? [],
+    total: payload?.totalCount ?? 0,
+    page: payload?.page ?? 1,
+    pageSize: payload?.pageSize ?? 20,
+  };
 }
 
 export async function getOrder(id) {
-  return mockGetOrder(id);
+  const res = await apiFetch(`/api/Admin/appointments/${id}`);
+  const payload = res?.data?.data ?? res?.data ?? res;
+
+  return {
+    id: payload?.appointmentId ?? payload?.id,
+    appointmentId: payload?.appointmentId ?? payload?.id,
+    contactName: payload?.contactName ?? "—",
+    serviceName: payload?.serviceName ?? "—",
+    scheduledStart: payload?.scheduledStart,
+    status: payload?.status,
+    totalPrice: payload?.totalPrice,
+    clientAddress: payload?.clientAddress ?? "—",
+    specialistName: payload?.specialistName ?? "—",
+    contactEmail: payload?.contactEmail ?? "—",
+    contactPhoneNumber: payload?.contactPhoneNumber ?? "—",
+    clientNotes: payload?.clientNotes ?? "",
+    createdAt: payload?.createdAt ?? null,
+  };
 }
 
 export async function getAdminStats() {
-  return mockGetAdminStats();
+  const res = await apiFetch(`/api/Admin/dashboard/stats`);
+  return res?.data?.data ?? res?.data ?? res;
 }
 
 function mockListSpecialists(query) {
@@ -292,65 +325,4 @@ function normalizeUser(item) {
     ordersTotalValue:
       item.ordersTotalValue ?? item.totalOrdersValue ?? item.totalSpent,
   };
-}
-
-function mockListOrders(query) {
-  const q = cleanQuery(query);
-
-  const page = Number(q.page || 1);
-  const pageSize = Number(q.pageSize || 20);
-
-  let items = [...ORDERS];
-
-  if (q.status) items = items.filter((o) => o.status === q.status);
-
-  if (q.createdFrom) {
-    const from = new Date(`${q.createdFrom}T00:00:00.000Z`);
-    items = items.filter((o) => new Date(o.createdAt) >= from);
-  }
-
-  if (q.createdTo) {
-    const to = new Date(`${q.createdTo}T23:59:59.999Z`);
-    items = items.filter((o) => new Date(o.createdAt) <= to);
-  }
-
-  items.sort((a, b) => {
-    const diff = new Date(a.createdAt) - new Date(b.createdAt);
-    return q.sort === "CREATED_ASC" ? diff : -diff;
-  });
-
-  const total = items.length;
-  const start = (page - 1) * pageSize;
-  const paged = items.slice(start, start + pageSize);
-
-  return Promise.resolve({ items: paged, total, page, pageSize });
-}
-
-function mockGetOrder(id) {
-  const found = ORDERS.find((o) => o.id === id);
-  if (!found) return Promise.reject(new Error("NOT_FOUND"));
-  return Promise.resolve(found);
-}
-
-function mockGetAdminStats() {
-  // UWAGA: to jest mock – docelowo backend
-  const usersTotal = typeof USERS !== "undefined" ? USERS.length : 0;
-  const specialistsTotal = DB.length;
-  const specialistsPending = DB.filter((s) => s.status === "PENDING").length;
-
-  const ordersTotal = ORDERS.length;
-  const ordersNew = ORDERS.filter((o) => o.status === "NEW").length;
-  const ordersTotalValue = ORDERS.reduce(
-    (sum, o) => sum + (Number(o.totalValue) || 0),
-    0,
-  );
-
-  return Promise.resolve({
-    usersTotal,
-    specialistsTotal,
-    specialistsPending,
-    ordersTotal,
-    ordersNew,
-    ordersTotalValue,
-  });
 }

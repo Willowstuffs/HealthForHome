@@ -226,7 +226,7 @@ function ListaSpecjalistow() {
                         <td className="cell-strong">
                           {s.firstName} {s.lastName}
                         </td>
-                        <td>{specializationLabels[s.specialization] || s.specialization}</td>
+                        <td>{specializationLabels[s.professionalTitle] || s.professionalTitle}</td>
                         <td>{s.email}</td>
                         <td>
                           <StatusBadge status={s.status || s.verificationStatus} />

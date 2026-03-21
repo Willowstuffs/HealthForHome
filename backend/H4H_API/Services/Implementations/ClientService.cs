@@ -40,7 +40,7 @@ namespace H4H_API.Services.Implementations
         {
             _context = context;
             _mapper = mapper;
-            _firebaseNotificationService = firebaseNotificationService;
+            // _firebaseNotificationService = firebaseNotificationService;
             _geocoder = geocoder;
         }
 
@@ -500,7 +500,7 @@ namespace H4H_API.Services.Implementations
         /// <param name="userId"></param>
         /// <returns></returns>
         public async Task<Guid> CreateServiceRequestAsync(CreateServiceRequestDto dto, Guid? userId = null)
-        {            
+        {
             Guid? finalClientId = null;
             if (userId.HasValue)
             {

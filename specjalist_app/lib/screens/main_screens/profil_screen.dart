@@ -74,7 +74,7 @@ Widget _buildSection() {
   final avatarPath = UserSession.profile?.avatarUrl;
 
   // Korzystamy z portu HTTPS, bo mamy HttpOverrides w main.dart
-  const String baseUrl = "https://192.168.100.24:7026"; 
+  const String baseUrl = "http://192.168.8.128:5187";
   
   final String? fullAvatarUrl = (avatarPath != null && avatarPath.isNotEmpty)
       ? (avatarPath.startsWith('http') ? avatarPath : '$baseUrl$avatarPath')

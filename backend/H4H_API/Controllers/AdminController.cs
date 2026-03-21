@@ -1,7 +1,9 @@
 ﻿using H4H_API.DTOs.Admin;
+using H4H_API.DTOs.Appointments;
 using H4H_API.DTOs.Common;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using H4H_API.Exceptions; 
 
 namespace H4H_API.Controllers
 {
@@ -68,6 +70,16 @@ namespace H4H_API.Controllers
             await _adminService.RejectSpecialistAsync(id, tempAdminId, dto.Reason);
             return Ok(ApiResponse<object?>.SuccessResponse(null, "Specjalista został odrzucony."));
         }
+        [HttpPut("specialists/{id}/license-validity")]
+        public async Task<ActionResult<ApiResponse<object?>>> UpdateLicenseValidity(Guid id, [FromBody] UpdateLicenseValidityDto dto)
+        {
+            if (!dto.LicenseValidUntil.HasValue)
+                throw new AppException("Data ważności licencji jest wymagana.", "INVALID_LICENSE_DATE");
+
+            await _adminService.UpdateLicenseValidityAsync(id, dto.LicenseValidUntil.Value);
+
+            return Ok(ApiResponse<object?>.SuccessResponse(null, "Data ważności licencji została zaktualizowana."));
+        }
 
 
         /// <summary>
@@ -113,5 +125,25 @@ namespace H4H_API.Controllers
             var result = await _adminService.GetAppointmentsAsync(filter);
             return Ok(ApiResponse<PagedResponse<AdminAppointmentListItemDto>>.SuccessResponse(result));
         }
+        /// <summary>
+        /// Tworzy nową wizytę w systemie.
+        /// </summary>
+        [HttpPost("appointments")]
+        public async Task<ActionResult<ApiResponse<object>>> CreateAppointment([FromBody] CreateAppointmentDto dto)
+        {
+            var appointmentId = await _adminService.CreateAppointmentAsync(dto);
+
+            return Ok(ApiResponse<object>.SuccessResponse(new
+            {
+                appointmentId
+            }, "Wizyta została utworzona."));
+        }
+        [HttpGet("appointments/{id}")]
+        public async Task<ActionResult<ApiResponse<AdminAppointmentListItemDto>>> GetAppointment(Guid id)
+        {
+            var result = await _adminService.GetAppointmentByIdAsync(id);
+            return Ok(ApiResponse<AdminAppointmentListItemDto>.SuccessResponse(result));
+        }
+
     }
 }

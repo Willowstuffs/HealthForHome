@@ -126,7 +126,7 @@ namespace H4H_API.Services.Implementations
             var specialist = await _context.specialists
                 .FirstOrDefaultAsync(s => s.UserId == userId)
                 ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
-      
+
             var qualification = await _context.specialist_qualifications
                 .FirstOrDefaultAsync(q => q.SpecialistId == specialist.Id);
 
@@ -137,19 +137,41 @@ namespace H4H_API.Services.Implementations
                 {
                     Id = Guid.NewGuid(),
                     SpecialistId = specialist.Id,
-                    CreatedAt = DateTime.Now
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    Profession = NormalizeProfession(specialist.ProfessionalTitle)
                 };
                 _context.specialist_qualifications.Add(qualification);
             }
 
             qualification.LicenseNumber = licenseNumber;
-            qualification.Profession = specialist.ProfessionalTitle!;
+            qualification.Profession = NormalizeProfession(specialist.ProfessionalTitle);
             qualification.IsActive = true;
 
             specialist.VerificationStatus = "pending";
 
             await _context.SaveChangesAsync();
         }
+        private string NormalizeProfession(string? professionalTitle)
+        {
+            var value = professionalTitle?.Trim().ToLower();
+
+            return value switch
+            {
+                "physiotherapist" => "physiotherapist",
+                "fizjoterapeuta" => "physiotherapist",
+                "mgr fizjoterapii" => "physiotherapist",
+
+                "nurse" => "nurse",
+                "pielęgniarka" => "nurse",
+                "pielegniarka" => "nurse",
+
+                _ => throw new AppException(
+                    $"Nieobsługiwany zawód: '{professionalTitle}'",
+                    ErrorCodes.ValidationError)
+            };
+        }
+
         public async Task<string?> GetLicenseNumberAsync(Guid userId)
         {
             //sieganie do tabeli specialist_qualifications poprzez specjaliste
@@ -249,7 +271,7 @@ namespace H4H_API.Services.Implementations
 
                 await _context.SaveChangesAsync();
             }
-                throw new AppException("Usługa nie znaleziona.", ErrorCodes.ServiceNotFound); //SERV_002
+            throw new AppException("Usługa nie znaleziona.", ErrorCodes.ServiceNotFound); //SERV_002
         }
 
         public async Task DeleteServiceAsync(Guid userId, Guid serviceId)
@@ -300,14 +322,16 @@ namespace H4H_API.Services.Implementations
                 var geometryFactory = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
                 area.Location = geometryFactory.CreatePoint(new NetTopologySuite.Geometries.Coordinate(dto.Longitude.Value, dto.Latitude.Value));
                 area.LocationUpdatedAt = DateTime.UtcNow;
-            } else {
+            }
+            else
+            {
                 //Majac tylko miasto i kod pocztowy, mozna zrobic geokodowanie (kiedys)
                 area.Location = null;
             }
             await _context.SaveChangesAsync();
         }
 
-        public async Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId,Guid serviceId, decimal price)
+        public async Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId, Guid serviceId, decimal price)
         {
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
                 ?? throw new AppException("Profil nie istnieje.", ErrorCodes.SpecialistNotFound);

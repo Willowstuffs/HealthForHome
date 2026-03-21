@@ -8,7 +8,7 @@ import 'package:http_parser/http_parser.dart'; // dla MediaType
 
 class ApiService {
   static const bool isEmulator = true;
-  static const String _baseUrl = 'https://10.0.2.2:7026';
+  static const String _baseUrl = 'http://192.168.8.128:5187';
   late final Dio _dio;
   ApiService() {
     _dio = Dio(

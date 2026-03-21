@@ -142,11 +142,14 @@ if (app.Environment.IsDevelopment())
 // Middleware 
 app.UseMiddleware<ErrorHandlingMiddleware>();
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseCors("AllowFlutter");
 app.UseStaticFiles();
 app.UseAuthentication();
-
 app.UseAuthorization();
 app.MapControllers();
 

@@ -211,7 +211,7 @@ Widget _buildEditableCard(String title, TextEditingController controller, {TextI
  Widget _buildAvatarSection() {
   ImageProvider? avatarImage;
   
-  const String baseUrl = "https://192.168.100.24:7026";
+  const String baseUrl = "http://192.168.8.128:5187";
 
   if (_selectedImage != null) {
     avatarImage = FileImage(_selectedImage!);

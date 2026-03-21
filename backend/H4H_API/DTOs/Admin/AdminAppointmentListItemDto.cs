@@ -12,5 +12,10 @@
         public string Status { get; set; } = string.Empty;
         public decimal? TotalPrice { get; set; }
         public string? ClientAddress { get; set; }
+        public string? ContactEmail { get; set; }
+        public string? ContactPhoneNumber { get; set; }
+        public string? ClientNotes { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public string? SpecialistName { get; set; }
     }
 }

@@ -129,7 +129,7 @@ namespace H4H_API.Services.Implementations
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
                 UserType = "client",
                 PhoneNumber = request.PhoneNumber,
-                IsActive = false, // Zmienione z true żeby zablokować dostęp do czasu weryfikacji kodu!!!
+                IsActive = true, // Zmienione z true żeby zablokować dostęp do czasu weryfikacji kodu!!!
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now
             };

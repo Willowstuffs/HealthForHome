@@ -2,21 +2,21 @@
 
 #nullable disable
 
-namespace H4H.Data.Migrations
+namespace H4H.Data.Migrations.Manual
 {
     /// <inheritdoc />
-    public partial class AddPostGISAndGeolocationColumns : Migration
+    public partial class AddLicenseValidUntilToSpecialistQualifications : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql("CREATE EXTENSION IF NOT EXISTS postgis;");
+
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql("DROP EXTENSION IF EXISTS postgis;");
+
         }
     }
 }

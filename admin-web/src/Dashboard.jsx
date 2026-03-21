@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { getAdminStats, listOrders } from "./api/adminApi";
+import {
+  getAdminStats,
+  listOrders,
+  listUsers,
+  listSpecialists,
+} from "./api/adminApi";
 
 /** ---------- helpers (daty / etykiety) ---------- */
 function pad2(n) {
@@ -16,13 +21,35 @@ function dayLabelPL(d) {
   return days[d.getDay()];
 }
 
-// createdAt z backendu/moka to ISO string -> bierzemy YYYY-MM-DD
 function orderDayKey(o) {
-  if (!o?.createdAt) return null;
-  if (typeof o.createdAt === "string" && o.createdAt.length >= 10) return o.createdAt.slice(0, 10);
-  const d = new Date(o.createdAt);
+  const value = o?.createdAt || o?.scheduledStart;
+  if (!value) return null;
+
+  if (typeof value === "string" && value.length >= 10) {
+    return value.slice(0, 10);
+  }
+
+  const d = new Date(value);
   if (Number.isNaN(d.getTime())) return null;
   return toYMDLocal(d);
+}
+
+function timeAgoPL(value) {
+  if (!value) return "—";
+
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+
+  const diffMs = Date.now() - d.getTime();
+  const diffMin = Math.max(0, Math.floor(diffMs / 60000));
+
+  if (diffMin < 60) return `${diffMin} min temu`;
+
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `${diffH} godz. temu`;
+
+  const diffD = Math.floor(diffH / 24);
+  return `${diffD} dni temu`;
 }
 
 /** ---------- small components ---------- */
@@ -34,7 +61,11 @@ function StatCard({ title, value, hint, to, className = "" }) {
       </div>
 
       <div className="stat-number">{value}</div>
-      {hint ? <div className="muted" style={{ marginTop: 6 }}>{hint}</div> : null}
+      {hint ? (
+        <div className="muted" style={{ marginTop: 6 }}>
+          {hint}
+        </div>
+      ) : null}
     </div>
   );
 
@@ -47,7 +78,7 @@ function StatCard({ title, value, hint, to, className = "" }) {
   );
 }
 
-/** ---------- chart card (z orders) ---------- */
+/** ---------- chart card ---------- */
 function OrdersChart({ series, totalRevenue, newOrders, successRate, loading }) {
   if (loading) {
     return (
@@ -55,10 +86,14 @@ function OrdersChart({ series, totalRevenue, newOrders, successRate, loading }) 
         <div className="card-head" style={{ justifyContent: "space-between" }}>
           <div>
             <h2>Przychody</h2>
-            <div className="muted" style={{ marginTop: 6 }}>Ostatnie 7 dni</div>
+            <div className="muted" style={{ marginTop: 6 }}>
+              Ostatnie 7 dni
+            </div>
           </div>
         </div>
-        <div className="muted" style={{ padding: "18px 0" }}>Ładowanie danych wykresu...</div>
+        <div className="muted" style={{ padding: "18px 0" }}>
+          Ładowanie danych wykresu...
+        </div>
       </div>
     );
   }
@@ -69,10 +104,14 @@ function OrdersChart({ series, totalRevenue, newOrders, successRate, loading }) 
         <div className="card-head" style={{ justifyContent: "space-between" }}>
           <div>
             <h2>Przychody</h2>
-            <div className="muted" style={{ marginTop: 6 }}>Ostatnie 7 dni</div>
+            <div className="muted" style={{ marginTop: 6 }}>
+              Ostatnie 7 dni
+            </div>
           </div>
         </div>
-        <div className="muted" style={{ padding: "18px 0" }}>Brak danych z ostatnich 7 dni.</div>
+        <div className="muted" style={{ padding: "18px 0" }}>
+          Brak danych z ostatnich 7 dni.
+        </div>
       </div>
     );
   }
@@ -85,21 +124,35 @@ function OrdersChart({ series, totalRevenue, newOrders, successRate, loading }) 
   const max = Math.max(1, ...values);
   const min = Math.min(...values);
 
-  const scaleX = (i) => (series.length === 1 ? P : P + (i * (W - 2 * P)) / (series.length - 1));
+  const steps = 4;
+const stepValues = [];
+
+for (let i = 0; i <= steps; i++) {
+  const value = Math.round((max / steps) * i);
+  stepValues.push(value);
+}
+
+  const scaleX = (i) =>
+    series.length === 1 ? P : P + (i * (W - 2 * P)) / (series.length - 1);
+
   const scaleY = (v) => {
     if (max === min) return H / 2;
     const t = (v - min) / (max - min);
     return H - P - t * (H - 2 * P);
   };
 
-  const points = series.map((p, i) => `${scaleX(i)},${scaleY(Number(p.value || 0))}`).join(" ");
+  const points = series
+    .map((p, i) => `${scaleX(i)},${scaleY(Number(p.value || 0))}`)
+    .join(" ");
 
   return (
     <div className="card card-pad">
       <div className="card-head" style={{ justifyContent: "space-between" }}>
         <div>
           <h2>Przychody</h2>
-          <div className="muted" style={{ marginTop: 6 }}>Ostatnie 7 dni</div>
+          <div className="muted" style={{ marginTop: 6 }}>
+            Ostatnie 7 dni
+          </div>
         </div>
 
         <select className="btn" style={{ height: 40 }} defaultValue="7" disabled>
@@ -108,7 +161,38 @@ function OrdersChart({ series, totalRevenue, newOrders, successRate, loading }) 
       </div>
 
       <div style={{ marginTop: 12 }}>
-        <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="180" role="img" aria-label="Wykres przychodów">
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          width="100%"
+          height="180"
+          role="img"
+          aria-label="Wykres przychodów"
+        >
+          {stepValues.map((v, i) => {
+  const y = scaleY(v);
+  return (
+    <g key={i}>
+      <line
+        x1={P}
+        x2={W - P}
+        y1={y}
+        y2={y}
+        stroke="currentColor"
+        strokeWidth="1"
+        opacity="0.1"
+      />
+      <text
+        x={P - 6}
+        y={y + 4}
+        textAnchor="end"
+        fontSize="12"
+        opacity="0.5"
+      >
+        {v} zł
+      </text>
+    </g>
+  );
+})}
           <polyline
             fill="none"
             stroke="currentColor"
@@ -138,31 +222,65 @@ function OrdersChart({ series, totalRevenue, newOrders, successRate, loading }) 
         </svg>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12, marginTop: 6 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+          gap: 12,
+          marginTop: 6,
+        }}
+      >
         <div>
           <div className="muted">Łączny przychód</div>
-          <div className="stat-number" style={{ fontSize: 22 }}>{totalRevenue} PLN</div>
+          <div className="stat-number" style={{ fontSize: 22 }}>
+            {totalRevenue} PLN
+          </div>
         </div>
         <div>
           <div className="muted">Nowe zamówienia</div>
-          <div className="stat-number" style={{ fontSize: 22 }}>{newOrders}</div>
+          <div className="stat-number" style={{ fontSize: 22 }}>
+            {newOrders}
+          </div>
         </div>
         <div>
           <div className="muted">Skuteczność</div>
-          <div className="stat-number" style={{ fontSize: 22 }}>{successRate}%</div>
+          <div className="stat-number" style={{ fontSize: 22 }}>
+            {successRate}%
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-/** ---------- później podmienimy na API ---------- */
-function ActivityMock() {
-  const items = [
-    { name: "Marek Mazur", email: "marek.mazur@example.com", text: "Zarejestrował się.", time: "25 min temu" },
-    { name: "Jakub Nowak", email: "jakub.nowak@example.com", text: "Dodał nowe zamówienie.", time: "12 dni temu" },
-    { name: "Ewa Kowalska", email: "ewa.kowalska@example.com", text: "Zaktualizowała profil.", time: "2 dni temu" },
-  ];
+function ActivityList({ items, loading }) {
+  if (loading) {
+    return (
+      <div className="card card-pad">
+        <div className="card-head" style={{ justifyContent: "space-between" }}>
+          <h2>Ostatnia aktywność</h2>
+          <span className="muted">…</span>
+        </div>
+        <div className="muted" style={{ marginTop: 12 }}>
+          Ładowanie aktywności...
+        </div>
+      </div>
+    );
+  }
+
+  if (!items || items.length === 0) {
+    return (
+      <div className="card card-pad">
+        <div className="card-head" style={{ justifyContent: "space-between" }}>
+          <h2>Ostatnia aktywność</h2>
+          <span className="muted">…</span>
+        </div>
+        <div className="muted" style={{ marginTop: 12 }}>
+          Brak aktywności.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="card card-pad">
@@ -172,19 +290,41 @@ function ActivityMock() {
       </div>
 
       <div style={{ display: "grid", gap: 12, marginTop: 8 }}>
-        {items.map((x) => (
-          <div key={x.email} style={{ display: "grid", gridTemplateColumns: "42px 1fr auto", gap: 12, alignItems: "center" }}>
+        {items.map((x, idx) => (
+          <div
+            key={`${x.type}-${x.id}-${idx}`}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "42px 1fr auto",
+              gap: 12,
+              alignItems: "center",
+            }}
+          >
             <div className="card-ico" style={{ width: 42, height: 42, borderRadius: 999 }}>
-              {x.name.split(" ").map((p) => p[0]).join("").slice(0, 2)}
+              {String(x.name || "?")
+                .split(" ")
+                .map((p) => p[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase()}
             </div>
 
             <div style={{ minWidth: 0 }}>
               <div style={{ fontWeight: 900 }}>{x.name}</div>
-              <div className="muted" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{x.email}</div>
+              <div
+                className="muted"
+                style={{
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {x.subtitle || "—"}
+              </div>
               <div className="muted">{x.text}</div>
             </div>
 
-            <div className="muted">{x.time}</div>
+            <div className="muted">{timeAgoPL(x.date)}</div>
           </div>
         ))}
       </div>
@@ -192,18 +332,12 @@ function ActivityMock() {
   );
 }
 
-function OrdersTableMock() {
-  const rows = [
-    { id: 1234, client: "Jakub Nowak", specialist: "Andrzej Wiśniewski", date: "18.02.2026", status: "new" },
-    { id: 1233, client: "Marek Mazur", specialist: "Andrzej Jakalk", date: "16.02.2026", status: "progress" },
-    { id: 1232, client: "Janina Nowak", specialist: "Andrzej Kedreryk", date: "12.02.2026", status: "done" },
-    { id: 1231, client: "Ewa Kowalska", specialist: "Piotr Kwiatkowski", date: "05.02.2026", status: "done" },
-  ];
-
+function OrdersTable({ rows, loading }) {
   const badge = (s) => {
-    if (s === "new") return <span className="badge badge-new">Nowe</span>;
-    if (s === "progress") return <span className="badge badge-progress">W realizacji</span>;
-    return <span className="badge badge-done">Zakończone</span>;
+    if (s === "pending") return <span className="badge badge-new">Pending</span>;
+    if (s === "completed") return <span className="badge badge-done">Zakończone</span>;
+    if (s === "cancelled") return <span className="badge badge-progress">Anulowane</span>;
+    return <span className="badge badge-progress">{s || "—"}</span>;
   };
 
   return (
@@ -220,28 +354,46 @@ function OrdersTableMock() {
             <tr>
               <th>ID</th>
               <th>Klient</th>
-              <th>Specjalista</th>
+              <th>Usługa</th>
               <th>Data</th>
               <th>Status</th>
             </tr>
           </thead>
 
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.id}>
-                <td style={{ fontWeight: 900 }}>#{r.id}</td>
-                <td>{r.client}</td>
-                <td>{r.specialist}</td>
-                <td>{r.date}</td>
-                <td>{badge(r.status)}</td>
+            {loading ? (
+              <tr>
+                <td colSpan={5} className="muted">
+                  Ładowanie...
+                </td>
               </tr>
-            ))}
+            ) : !rows || rows.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="muted">
+                  Brak zamówień
+                </td>
+              </tr>
+            ) : (
+              rows.map((r) => (
+                <tr key={r.appointmentId}>
+                  <td style={{ fontWeight: 900 }}>#{r.appointmentId}</td>
+                  <td>{r.contactName || "—"}</td>
+                  <td>{r.serviceName || "—"}</td>
+                  <td>
+                    {r.scheduledStart
+                      ? new Date(r.scheduledStart).toLocaleString("pl-PL")
+                      : "—"}
+                  </td>
+                  <td>{badge(r.status)}</td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
       <div className="card-pad muted" style={{ paddingTop: 10 }}>
-        Wyświetlanie 1-4 z 4 zamówień (mock)
+        {rows?.length ? `Wyświetlanie ${rows.length} ostatnich zamówień` : "Brak danych"}
       </div>
     </div>
   );
@@ -261,7 +413,12 @@ export default function Dashboard() {
   });
   const [loadingChart, setLoadingChart] = useState(false);
 
-  // 1) stats cards (mock)
+  const [activityItems, setActivityItems] = useState([]);
+  const [loadingActivity, setLoadingActivity] = useState(false);
+
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [loadingRecentOrders, setLoadingRecentOrders] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -269,14 +426,21 @@ export default function Dashboard() {
     setErrorStats("");
 
     getAdminStats()
-      .then((res) => { if (!cancelled) setStats(res); })
-      .catch((e) => { if (!cancelled) setErrorStats(e?.message || "Błąd pobierania statystyk"); })
-      .finally(() => { if (!cancelled) setLoadingStats(false); });
+      .then((res) => {
+        if (!cancelled) setStats(res);
+      })
+      .catch((e) => {
+        if (!cancelled) setErrorStats(e?.message || "Błąd pobierania statystyk");
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingStats(false);
+      });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // 2) chart from orders API (mock listOrders)
   useEffect(() => {
     let cancelled = false;
 
@@ -294,15 +458,17 @@ export default function Dashboard() {
         const createdTo = toYMDLocal(today);
 
         const res = await listOrders({
-          status: "",
-          createdFrom,
-          createdTo,
-          sort: "CREATED_ASC",
           page: 1,
           pageSize: 5000,
         });
 
-        const orders = res?.items ?? [];
+        const allOrders = res?.items ?? [];
+
+        const orders = allOrders.filter((o) => {
+          const key = orderDayKey(o);
+          if (!key) return false;
+          return key >= createdFrom && key <= createdTo;
+        });
 
         const sumByDay = new Map();
         let total = 0;
@@ -310,11 +476,11 @@ export default function Dashboard() {
         let doneCount = 0;
 
         for (const o of orders) {
-          const v = Number(o.totalValue ?? 0);
+          const v = Number(o.totalPrice ?? 0);
           total += v;
 
-          if (o.status === "NEW") newCount += 1;
-          if (o.status === "DONE") doneCount += 1;
+          if (o.status === "pending") newCount += 1;
+          if (o.status === "completed") doneCount += 1;
 
           const key = orderDayKey(o);
           if (!key) continue;
@@ -335,7 +501,9 @@ export default function Dashboard() {
           });
         }
 
-        const successRate = orders.length ? Math.round((doneCount / orders.length) * 100) : 0;
+        const successRate = orders.length
+          ? Math.round((doneCount / orders.length) * 100)
+          : 0;
 
         if (!cancelled) {
           setChart({
@@ -356,18 +524,123 @@ export default function Dashboard() {
     }
 
     loadChart7d();
-    return () => { cancelled = true; };
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadActivity() {
+      setLoadingActivity(true);
+
+      try {
+        const [usersRes, specialistsRes, ordersRes] = await Promise.all([
+          listUsers({ page: 1, pageSize: 5, sort: "CREATED_DESC" }),
+          listSpecialists({ page: 1, pageSize: 5, sort: "CREATED_DESC" }),
+          listOrders({ page: 1, pageSize: 5 }),
+        ]);
+
+        const userItems = (usersRes?.items ?? []).map((u) => ({
+          id: u.id,
+          type: "user",
+          name: `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.email || "Użytkownik",
+          subtitle: u.email || "—",
+          text: "Zarejestrował się jako klient.",
+          date: u.createdAt,
+        }));
+
+        const specialistItems = (specialistsRes?.items ?? []).map((s) => ({
+          id: s.id,
+          type: "specialist",
+          name: `${s.firstName || ""} ${s.lastName || ""}`.trim() || s.email || "Specjalista",
+          subtitle: s.email || "—",
+          text: "Zarejestrował się jako specjalista.",
+          date: s.createdAt,
+        }));
+
+        const orderItems = (ordersRes?.items ?? []).map((o) => ({
+          id: o.appointmentId,
+          type: "order",
+          name: o.contactName || "Klient",
+          subtitle: o.clientAddress || "—",
+          text: "Dodał nowe zamówienie.",
+          date: o.scheduledStart,
+        }));
+
+        const merged = [...userItems, ...specialistItems, ...orderItems]
+          .filter((x) => x.date)
+          .sort((a, b) => new Date(b.date) - new Date(a.date))
+          .slice(0, 5);
+
+        if (!cancelled) setActivityItems(merged);
+      } catch (e) {
+        console.error("Błąd pobierania aktywności:", e);
+        if (!cancelled) setActivityItems([]);
+      } finally {
+        if (!cancelled) setLoadingActivity(false);
+      }
+    }
+
+    loadActivity();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadRecentOrders() {
+      setLoadingRecentOrders(true);
+
+      try {
+        const res = await listOrders({
+          page: 1,
+          pageSize: 5,
+        });
+
+        if (!cancelled) {
+          setRecentOrders(res?.items ?? []);
+        }
+      } catch (e) {
+        console.error("Błąd pobierania ostatnich zamówień:", e);
+        if (!cancelled) setRecentOrders([]);
+      } finally {
+        if (!cancelled) setLoadingRecentOrders(false);
+      }
+    }
+
+    loadRecentOrders();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const cards = useMemo(() => {
     if (!stats) return [];
+
     return [
-      { title: "Użytkownicy", value: stats.usersTotal, hint: "Łączna liczba klientów", to: "/users" },
-      { title: "Specjaliści", value: stats.specialistsTotal, hint: `Oczekuje: ${stats.specialistsPending}`, to: "/specialists" },
+      {
+        title: "Użytkownicy",
+        value: stats.totalClients ?? 0,
+        hint: "Łączna liczba klientów",
+        to: "/users",
+      },
+      {
+        title: "Specjaliści",
+        value: stats.totalSpecialists ?? 0,
+        hint: `Oczekuje: ${stats.pendingSpecialists ?? 0}`,
+        to: "/specialists",
+      },
       {
         title: "Zamówienia",
-        value: stats.ordersTotal,
-        hint: `Suma: ${stats.ordersTotalValue} PLN • Nowe: ${stats.ordersNew}`,
+        value: stats.totalAppointments ?? 0,
+        hint: "Łączna liczba wizyt w systemie",
         to: "/orders",
       },
     ];
@@ -393,10 +666,10 @@ export default function Dashboard() {
             successRate={chart.successRate}
             loading={loadingChart}
           />
-          <ActivityMock />
+          <ActivityList items={activityItems} loading={loadingActivity} />
         </div>
 
-        <OrdersTableMock />
+        <OrdersTable rows={recentOrders} loading={loadingRecentOrders} />
       </div>
     </div>
   );
