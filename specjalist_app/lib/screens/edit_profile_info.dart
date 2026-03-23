@@ -5,6 +5,7 @@ import '../../theme/app_theme.dart';
 import '../services/api_service.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import '../services/app_refresh_service.dart';
 
 class EditProfilScreen extends StatefulWidget {
   const EditProfilScreen({super.key});
@@ -33,7 +34,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
     try {
       final api = ApiService();
       final profileData = await api.getProfile();
-      UserSession.setProfileFromApi(profileData);
+      UserSession.setProfileFromApi(profileData, UserSession.token ?? '');
 
       // Wypełnianie kontrolerów
       firstNameController.text = UserSession.profile?.firstName ?? '';
@@ -98,8 +99,8 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
 
       // Pobranie zaktualizowanego profilu i zapis do UserSession
       final updatedProfile = await api.getProfile();
-      UserSession.setProfileFromApi(updatedProfile);
-
+      UserSession.setProfileFromApi(updatedProfile,UserSession.token ?? '');
+      AppRefreshService().refresh();
       setState(() {}); // odśwież UI
 
 
@@ -124,142 +125,124 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
 @override
 Widget build(BuildContext context) {
   return Scaffold(
-  backgroundColor: AppColors.background,
-  body: isLoading
-      ? const Center(child: CircularProgressIndicator())
-      : SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 50),
-          child: Center(
-            child: Container(
-              width: 350, // ograniczenie szerokości
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.secondary,
-                    AppColors.onBackground,
+    backgroundColor: AppColors.surface,
+    appBar: AppBar(
+      title: const Text("Edytuj profil"),
+      centerTitle: true,
+    ),
+    body: isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Column(
+                  children: [
+                    _buildAvatarSection(),
+                    const SizedBox(height: 24),
+
+                    _buildEditableCard("Imię", firstNameController),
+                    _buildEditableCard("Nazwisko", lastNameController),
+                    _buildEditableCard("Email", emailController),
+                    _buildEditableCard("Telefon", phoneController),
+                    _buildEditableCard("Miasto", cityController),
+                    _buildEditableCard(
+                      "Zasięg pracy (km)",
+                      areaController,
+                      keyboardType: TextInputType.number,
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _saveProfile,
+                        child: const Text("Zapisz zmiany"),
+                      ),
+                    ),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(12),
               ),
-              child: _buildSection(),
             ),
           ),
-        ),
-);
-
-      
-    
-  }
-Widget _buildSection() {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 400),
-      child: Column(
-        children: [
-          const SizedBox(height: 16),
-          _buildAvatarSection(),
-          _buildEditableCard('Imię', firstNameController),
-          _buildEditableCard('Nazwisko', lastNameController),
-          _buildEditableCard('Email', emailController),
-          _buildEditableCard('Telefon', phoneController),
-          _buildEditableCard('Miasto', cityController),
-          _buildEditableCard('Zasięg pracy (km)', areaController,
-              keyboardType: TextInputType.number),
-          const SizedBox(height: 16),
-          _buildButton('Zapisz'),
-        ],
-      ),
-    );
-  }
-
-// Pomocniczy widget do edytowalnych pól
-Widget _buildEditableCard(String title, TextEditingController controller, {TextInputType? keyboardType}) {
+  );
+}
+  Widget _buildEditableCard(
+  String title,
+  TextEditingController controller, {
+  TextInputType? keyboardType,
+}) {
   return Padding(
-    padding: const EdgeInsets.only(bottom: 12),
-    child: Card(
-      color: AppColors.onPrimary,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
-      elevation: 3,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            TextField(
-              controller: controller,
-              keyboardType: keyboardType,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                isDense: true,
+    padding: const EdgeInsets.only(bottom: 16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
               ),
-              
-            ),
-          ],
         ),
-      ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          keyboardType: keyboardType,
+          decoration: const InputDecoration(),
+        ),
+      ],
     ),
   );
 }
- Widget _buildAvatarSection() {
+
+Widget _buildAvatarSection() {
   ImageProvider? avatarImage;
-  
-  const String baseUrl = "http://192.168.8.128:5187";
+  const String baseUrl = "https://192.168.100.24:7026";
 
   if (_selectedImage != null) {
     avatarImage = FileImage(_selectedImage!);
   } else if (UserSession.profile?.avatarUrl != null) {
-    final String url = UserSession.profile!.avatarUrl!;
-    
-    final String fullUrl = url.startsWith('http') ? url : '$baseUrl$url';
+    final url = UserSession.profile!.avatarUrl!;
+    final fullUrl = url.startsWith('http') ? url : '$baseUrl$url';
     avatarImage = NetworkImage(fullUrl);
   }
 
   return Column(
     children: [
-      CircleAvatar(
-        radius: 50,
-        backgroundColor: Colors.grey[300],
-        backgroundImage: avatarImage,
-        // Jeśli nie ma ani wybranego zdjęcia, ani zapisanego na serwerze, pokaż ikonę
-        child: avatarImage == null 
-            ? const Icon(Icons.person, size: 50, color: Colors.white) 
-            : null,
+      Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+            ),
+          ],
+        ),
+        child: CircleAvatar(
+          radius: 48,
+          backgroundColor: AppColors.surfaceContainerHighest,
+          backgroundImage: avatarImage,
+          child: avatarImage == null
+              ? Icon(
+                  Icons.person,
+                  size: 40,
+                  color: AppColors.textSecondary,
+                )
+              : null,
+        ),
       ),
-      const SizedBox(height: 8),
+      const SizedBox(height: 12),
       TextButton.icon(
         onPressed: _pickImage,
-        icon: const Icon(Icons.photo_library),
-        label: const Text('Zmień zdjęcie'),
-        style: TextButton.styleFrom(foregroundColor: Colors.white),
+        icon: const Icon(Icons.photo_library_outlined),
+        label: const Text("Zmień zdjęcie"),
       ),
     ],
   );
 }
-Widget _buildButton(String text) {
-  return Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: ElevatedButton(
-      onPressed: _saveProfile,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.onSurface,
-        foregroundColor: Colors.white,
-        fixedSize: const Size(125, 29),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
-      child: Text(text),
-    ),
-  );
-}
+
   @override
   void dispose() {
     firstNameController.dispose();

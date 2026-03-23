@@ -136,7 +136,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                AppColors.onBackground,
+                AppColors.surface,
                 AppColors.primary,
               ],
             ),

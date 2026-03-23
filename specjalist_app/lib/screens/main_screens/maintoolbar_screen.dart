@@ -9,28 +9,39 @@ import '../../theme/app_theme.dart';
 
 class MainScreen extends StatefulWidget {
   final int startIndex;
+  final String? highlightAppointmentId;
 
-  const MainScreen({super.key, this.startIndex = 0});
+  const MainScreen({
+    super.key,
+    this.startIndex = 0,
+    this.highlightAppointmentId,
+  });
 
   @override
   State<MainScreen> createState() => _MainScreenState();
-}class _MainScreenState extends State<MainScreen> {
+}
+class _MainScreenState extends State<MainScreen> {
   late int _selectedIndex;
+  List<Map<String, dynamic>> inquiries = [];
 
-  final List<Widget> _screens = const [
-    StartScreen(),       // index 0
-    WorkScreen(),        // index 1
-    MapScreen(),         // index 2
-    UpcomingScreen(),    // index 3
-    ProfilScreen(),      // index 4
-  ];
+  late final List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
-    // ustawiamy początkowy index z widgetu
     _selectedIndex = widget.startIndex;
+
+    _screens = [
+      StartScreen(
+        highlightAppointmentId: widget.highlightAppointmentId,
+      ),
+      const WorkScreen(),
+      MapScreen(inquiries: inquiries),
+      const UpcomingScreen(),
+      const ProfilScreen(),
+    ];
   }
+
 
   void _onItemTapped(int index) {
     setState(() {

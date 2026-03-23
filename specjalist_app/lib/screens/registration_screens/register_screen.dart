@@ -29,7 +29,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
-
+    if (passwordController.text != repeatPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Hasła nie są identyczne!')),
+      );
+      return;
+    }
     setState(() => isLoading = true);
     final apiService = ApiService();
 
@@ -78,7 +83,7 @@ Widget build(BuildContext context) {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            AppColors.onBackground,
+            AppColors.surface,
             AppColors.primary,
           ],
         ),

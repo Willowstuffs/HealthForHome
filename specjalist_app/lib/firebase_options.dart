@@ -51,7 +51,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDhkjee1XYe3vUm3vz_K8yQ6zfYO2vo8U0',
+    apiKey: 'AIzaSyBVoY7dGTdG-8u9pZgCzIG7aI9xZznHhqk',
     appId: '1:745638645574:android:9fda9548867d3252b9df47',
     messagingSenderId: '745638645574',
     projectId: 'test-e1dc5',

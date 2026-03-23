@@ -8,7 +8,9 @@ import 'package:http_parser/http_parser.dart'; // dla MediaType
 
 class ApiService {
   static const bool isEmulator = true;
-  static const String _baseUrl = 'http://192.168.8.128:5187';
+  static const String _baseUrl = isEmulator
+    ? 'https://192.168.100.24:7026'
+    : 'https://10.0.2.2:7026';
   late final Dio _dio;
   ApiService() {
     _dio = Dio(
@@ -318,9 +320,20 @@ Future<void> updateArea(Map<String, dynamic> dto) async {
   }
 }
 // PATCH: potwierdzenie wizyty przez specjalistę
-Future<void> confirmAppointment(String appointmentId) async {
+//TO DO: DO POPRAWIENIA PO UPDACIE BAZY I BACKENDU
+Future<void> confirmAppointment(
+  String appointmentId,
+  List<String> serviceTypeIds,
+  double price,
+) async {
   try {
-    await _dio.patch('/api/specialist/appointments/$appointmentId/confirm');
+    await _dio.patch(
+      '/api/specialist/appointments/$appointmentId/confirm',
+      data: {
+        "serviceTypeIds": serviceTypeIds,
+        "price": price,
+      },
+    );
   } on DioException catch (e) {
     throw _handleDioError(e);
   }
@@ -420,22 +433,64 @@ Future<void> verifyCode({
 
   Exception _handleDioError(DioException e) {
     if (e.response != null) {
+      final data = e.response?.data;
       final statusCode = e.response?.statusCode;
 
+      // Obsługa walidacji
+      if (data is Map && data.containsKey('errors')) {
+        final errors = data['errors'];
+
+        if (errors is Map && errors.isNotEmpty) {
+          final firstFieldErrors = errors.values.first;
+
+          if (firstFieldErrors is List && firstFieldErrors.isNotEmpty) {
+            return Exception(firstFieldErrors.first.toString());
+          }
+        }
+      }
+
+      // Obsługa message z backendu
+      if (data is Map && data['message'] != null) {
+        return Exception(data['message']);
+      }
+
+      // Obsługa errorCode
+      final String? errorCode = data is Map ? data['errorCode'] : null;
+
+      if (errorCode != null) {
+        switch (errorCode) {
+          case "AUTH_001":
+            return Exception('Niepoprawny e-mail lub hasło.');
+          case "AUTH_002":
+            return Exception('Ten adres e-mail jest już zajęty.');
+          case "AUTH_003":
+            return Exception('Użytkownik nie został odnaleziony.');
+          case "AUTH_005":
+            return Exception('Niepoprawny kod weryfikacyjny.');
+          case "AUTH_006":
+            return Exception('Kod weryfikacyjny wygasł.');
+          case "VAL_001":
+            return Exception('Błąd walidacji danych.');
+        }
+      }
+
+      // Fallback HTTP
       switch (statusCode) {
         case 401:
-          return Exception('Brak tokenu');
-        case 400:
-          return Exception('Niepoprawne dane rejestracyjne');
-        case 409:
-          return Exception('Użytkownik już istnieje');
+          return Exception('Sesja wygasła. Zaloguj się ponownie.');
+        case 403:
+          return Exception('Brak uprawnień.');
         case 500:
-          return Exception('Błąd serwera');
+          return Exception('Błąd serwera.');
         default:
-          return Exception(e.response?.data['message'] ?? 'Błąd rejestracji');
+          return Exception('Nieoczekiwany błąd ($statusCode)');
       }
-    } else {
-      return Exception('Brak połączenia z serwerem');
     }
+
+    if (e.type == DioExceptionType.connectionTimeout) {
+      return Exception('Timeout połączenia.');
+    }
+
+    return Exception('Brak internetu.');
   }
 }

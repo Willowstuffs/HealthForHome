@@ -18,6 +18,8 @@ dependencies:
   firebase_messaging: ^14.7.0
   flutter_local_notifications: ^19.0.0
   image_picker: ^0.8.7+4
+  table_calendar: ^3.0.9
+  geocoding: ^2.1.0
 
 dev_dependencies:
   flutter_test:
