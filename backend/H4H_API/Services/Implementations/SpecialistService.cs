@@ -521,5 +521,75 @@ namespace H4H_API.Services.Implementations
             await _context.SaveChangesAsync();
 
         }
-    }
-}
+
+
+
+
+
+        /// <summary>
+        /// Pobiera publiczny profil specjalisty na podstawie jego ID (nie userId), zawierający podstawowe informacje, średnią ocen, profesję i obszary działania.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public async Task<SpecialistProfileDto?> GetPublicProfileAsync(Guid id)
+        {
+            // 1. Pobieramy dane z bazy (bez mapowania współrzędnych w SQL)
+            var specialist = await _context.specialists
+                .Include(s => s.User)
+                .Include(s => s.ServiceAreas)
+                .FirstOrDefaultAsync(s => s.Id == id);
+
+            if (specialist == null) return null;
+
+            // 2. Pobieramy profesję osobnym zapytaniem (prostsze i bezpieczniejsze)
+            var profession = await _context.specialist_qualifications
+                .Where(q => q.SpecialistId == id && q.IsActive)
+                .Select(q => q.Profession)
+                .FirstOrDefaultAsync();
+
+            // 3. Mapujemy na DTO w pamięci (tutaj .Y i .X zadziałają bez błędu bazy)
+            return new SpecialistProfileDto
+            {
+                Id = specialist.Id,
+                FirstName = specialist.FirstName,
+                LastName = specialist.LastName,
+                ProfessionalTitle = specialist.ProfessionalTitle,
+                Bio = specialist.Bio,
+                AvatarUrl = specialist.User?.AvatarUrl,
+                PhoneNumber = specialist.User?.PhoneNumber,
+                Profession = profession,
+                Areas = specialist.ServiceAreas.Select(a => new ServiceAreaManageDto
+                {
+                    City = a.City,
+                    PostalCode = a.PostalCode,
+                    MaxDistanceKm = (int)a.MaxDistanceKm,
+                    // Tutaj procesor C# obsłuży to poprawnie, bo dane są już pobrane z bazy
+                    Latitude = a.Location?.Y,
+                    Longitude = a.Location?.X
+                }).ToList()
+            };
+        }
+
+        /// <summary>
+        /// Pobiera listę aktywnych usług oferowanych przez specjalistę na podstawie jego ID (nie userId), zawierającą nazwę usługi, kategorię, czas trwania, cenę i opis.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public async Task<List<SpecialistOfferDto>> GetPublicServicesAsync(Guid id)
+        {
+            return await _context.specialist_services
+                .Include(ss => ss.ServiceType)
+                .Where(ss => ss.SpecialistId == id && ss.IsActive)
+                .Select(ss => new SpecialistOfferDto
+                {
+                    ServiceId = ss.Id,
+                    Name = ss.ServiceType.Name,
+                    Category = ss.ServiceType.Category,
+                    DurationMinutes = ss.DurationMinutes,
+                    Price = ss.Price,
+                    Description = ss.Description
+                })
+                .ToListAsync();
+        }
+    } 
+} 
