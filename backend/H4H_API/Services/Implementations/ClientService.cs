@@ -534,7 +534,15 @@ namespace H4H_API.Services.Implementations
                 SpecialistId = null, // To jest ogłoszenie otwarte
                 ServiceTypeId = serviceType.Id,
 
-                ClientNotes = $"Kontakt: {dto.ContactName}, Tel: {dto.PhoneNumber}. Opis: {dto.Description}",
+                // --- TUTAJ ZMIANA AJAJ: ---
+                // Zapisujemy dane do dedykowanych kolumn:
+                ContactName = dto.ContactName ?? string.Empty,
+                ContactPhoneNumber = dto.PhoneNumber ?? string.Empty,
+                ContactEmail = dto.Email ?? string.Empty,
+
+                // W notatkach zostawiamy czysty opis (bez "Kontakt: ... Tel: ...")
+                ClientNotes = dto.Description,
+                // --------------------
                 ClientAddress = geocoded?.FormattedAddress ?? dto.Address,
 
                 // Zapisujemy punkt GPS (jeśli geokodowanie się udało)

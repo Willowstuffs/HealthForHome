@@ -131,6 +131,8 @@ builder.Services.AddHttpClient("Nominatim", client =>
 // Rate limiting dla Nominatim (max 1 request na sekund�)
 builder.Services.AddSingleton<GeocodingRateLimiter>();
 
+builder.Services.AddScoped<IAdminService, AdminService>();
+
 
 var app = builder.Build();
 

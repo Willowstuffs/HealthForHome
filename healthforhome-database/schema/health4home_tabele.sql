@@ -539,3 +539,10 @@ ADD COLUMN IF NOT EXISTS service_type_ids UUID[] DEFAULT '{}'; -- tablica ID us≈
 -- 2. Indeks dla GIST (szybsze wyszukiwanie w tablicy)
 CREATE INDEX IF NOT EXISTS idx_appointments_specialists_service_ids 
 ON appointments_specialists USING GIN (service_type_ids);
+
+-- Aktualizacja 14.03.2026 - Podzial client_notes na osobne pola dla czytelnosci
+
+-- 1. Dodanie nowych kolumn do tabeli appointments
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS contact_name VARCHAR(200);
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS contact_phone_number VARCHAR(20);
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS contact_email VARCHAR(150);

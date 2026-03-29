@@ -5,6 +5,7 @@ using H4H_API.DTOs.Common;
 using H4H_API.DTOs.Client;
 using H4H_API.DTOs.Appointments;
 using System.Security.Claims;
+using H4H_API.DTOs.Specialist;
 
 
 
@@ -24,10 +25,12 @@ namespace H4H_API.Controllers
     public class ClientController : ControllerBase
     {
         private readonly IClientService _clientService;
+        private readonly ISpecialistService _specialistService;
 
-        public ClientController(IClientService clientService)
+        public ClientController(IClientService clientService, ISpecialistService specialistService)
         {
             _clientService = clientService;
+            _specialistService = specialistService;
         }
 
         // Pobiera profil zalogowanego klienta
@@ -105,6 +108,35 @@ namespace H4H_API.Controllers
             var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value!);
             var requests = await _clientService.GetMyServiceRequestsAsync(userId);
             return Ok(ApiResponse<List<ServiceRequestDto>>.SuccessResponse(requests));
+        }
+
+
+
+
+        /// <summary>
+        /// Pobiera profil specjalisty (widok dla klienta)
+        /// </summary>
+        [HttpGet("specialist/{id}/profile")]
+        [AllowAnonymous] //TODO: poprawić aby tylko zalogowani klienci mogli widzieć profil specjalisty (nie dla gości)
+        public async Task<ActionResult<ApiResponse<SpecialistProfileDto>>> GetSpecialistProfile(Guid id)
+        {
+            var profile = await _specialistService.GetPublicProfileAsync(id); // Używamy poprawionej metody z poprzedniego kroku
+            if (profile == null)
+                return NotFound(ApiResponse<SpecialistProfileDto>.ErrorResponse("Specjalista nie istnieje"));
+
+            return Ok(ApiResponse<SpecialistProfileDto>.SuccessResponse(profile));
+        }
+
+        /// <summary>
+        /// Pobiera ofertę specjalisty (widok dla klienta)
+        /// </summary>
+        [HttpGet("specialist/{id}/full-offer")]
+        [AllowAnonymous] //TODO: poprawić aby tylko zalogowani klienci mogli widzieć pełną ofertę (nie dla gości)
+        public async Task<ActionResult<ApiResponse<List<SpecialistOfferDto>>>> GetSpecialistOffer(Guid id)
+        {
+            var services = await _specialistService.GetPublicServicesAsync(id);
+
+            return Ok(ApiResponse<List<SpecialistOfferDto>>.SuccessResponse(services));
         }
     }
 }
