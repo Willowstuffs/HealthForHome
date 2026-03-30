@@ -6,6 +6,9 @@ using H4H_API.DTOs.Client;
 using H4H_API.DTOs.Appointments;
 using System.Security.Claims;
 using H4H_API.DTOs.Specialist;
+using H4H_API.Helpers;
+using Microsoft.EntityFrameworkCore;
+using H4H_API.Services.Implementations;
 
 
 
@@ -26,11 +29,13 @@ namespace H4H_API.Controllers
     {
         private readonly IClientService _clientService;
         private readonly ISpecialistService _specialistService;
+        private readonly IGeocoder _geocoder;
 
-        public ClientController(IClientService clientService, ISpecialistService specialistService)
+        public ClientController(IClientService clientService, ISpecialistService specialistService, IGeocoder geocoder)
         {
             _clientService = clientService;
             _specialistService = specialistService;
+            _geocoder = geocoder; 
         }
 
         // Pobiera profil zalogowanego klienta
@@ -137,6 +142,86 @@ namespace H4H_API.Controllers
             var services = await _specialistService.GetPublicServicesAsync(id);
 
             return Ok(ApiResponse<List<SpecialistOfferDto>>.SuccessResponse(services));
+        }
+
+        /// <summary>
+        /// Pobiera specjalistów, którzy obsługują lokalizację klienta
+        /// </summary>
+        /// <param name="lat">Szerokość geograficzna klienta</param>
+        /// <param name="lng">Długość geograficzna klienta</param>
+        [HttpGet("specialists/nearby")]
+        public async Task<ActionResult<ApiResponse<List<NearbySpecialistDto>>>> GetNearbySpecialists(
+                [FromQuery] double lat,
+                [FromQuery] double lng)
+        {
+            // Tutaj walidacja współrzędnych
+            if (lat == 0 && lng == 0)
+            {
+                return BadRequest(ApiResponse<List<NearbySpecialistDto>>.ErrorResponse(
+                    "Nieprawidłowe współrzędne", ErrorCodes.InvalidCoordinates));
+            }
+
+            var specialists = await _specialistService.GetNearbySpecialistsAsync(lat, lng);
+            return Ok(ApiResponse<List<NearbySpecialistDto>>.SuccessResponse(specialists));
+        }
+
+        /// <summary>
+        /// Pobiera specjalistów, którzy obsługują lokalizację klienta na podstawie adresu ustawionego w profilu klienta
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet("specialists/nearby/my-address")]
+        public async Task<ActionResult<ApiResponse<List<NearbySpecialistDto>>>> GetNearbyMyAddress()
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+
+            // Pobieramy punkt geograficzny (współrzędne) na podstawie adresu ustawionego w profilu klienta
+            var addressPoint = await _clientService.GetClientAddressPointAsync(userId);
+
+            // Jeśli klient nie ma ustawionego adresu lub nie można go geokodować, zwracamy błąd
+            if (addressPoint == null)
+            {
+                return BadRequest(ApiResponse<List<NearbySpecialistDto>>.ErrorResponse(
+                    "Brak zapisanego adresu w profilu", ErrorCodes.AddressNotFound)); 
+            }
+
+            var specialists = await _specialistService.GetNearbySpecialistsAsync(
+                addressPoint.Y, // Latitude
+                addressPoint.X  // Longitude
+            );
+
+            return Ok(ApiResponse<List<NearbySpecialistDto>>.SuccessResponse(specialists));
+        }
+
+        /// <summary>
+        /// Pobiera specjalistów, którzy obsługują lokalizację klienta na podstawie tekstowego adresu podanego w zapytaniu
+        /// </summary>
+        /// <param name="address"></param>
+        /// <returns></returns>
+        [HttpGet("specialists/nearby/by-address-text")]
+        public async Task<ActionResult<ApiResponse<List<NearbySpecialistDto>>>> GetNearbyByAddressText([FromQuery] string address)
+        {
+            if (string.IsNullOrWhiteSpace(address))
+            {
+                return BadRequest(ApiResponse<List<NearbySpecialistDto>>.ErrorResponse(
+                    "Adres nie może być pusty", ErrorCodes.ValidationError));
+            }
+
+            // 1. Używamy serwisu geokodowania, aby przekształcić tekstowy adres na współrzędne geograficzne
+            var geocodeResult = await _geocoder.GeocodeAddressAsync(address);
+
+            if (geocodeResult == null)
+            {
+                return NotFound(ApiResponse<List<NearbySpecialistDto>>.ErrorResponse(
+                    "Nie udało się odnaleźć podanego adresu", ErrorCodes.AddressNotFound)); 
+            }
+
+            // 2. Szukamy specjalistów w tych współrzędnych
+            var specialists = await _specialistService.GetNearbySpecialistsAsync(
+                geocodeResult.Latitude,
+                geocodeResult.Longitude
+            );
+
+            return Ok(ApiResponse<List<NearbySpecialistDto>>.SuccessResponse(specialists));
         }
     }
 }

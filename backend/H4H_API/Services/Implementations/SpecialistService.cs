@@ -8,6 +8,7 @@ using SpecialistServiceEntity = H4H.Core.Models.SpecialistService;
 using H4H_API.Helpers;
 using ErrorCodes = H4H_API.Helpers.ErrorCodes;
 using NetTopologySuite;
+using H4H_API.DTOs.Client;
 
 namespace H4H_API.Services.Implementations
 {
@@ -589,6 +590,39 @@ namespace H4H_API.Services.Implementations
                     Price = ss.Price,
                     Description = ss.Description
                 })
+                .ToListAsync();
+        }
+
+        /// <summary>
+        /// Pobiera listę specjalistów znajdujących się w pobliżu klienta na podstawie jego współrzędnych geograficznych (latitude i longitude). Zwraca podstawowe informacje o specjaliście, średnią ocenę, stawkę godzinową oraz odległość od klienta. Wykorzystuje funkcje geograficzne PostGIS do obliczenia odległości między klientem a obszarami działania specjalistów, filtrując tylko tych, którzy znajdują się w zasięgu określonym przez ich maksymalną odległość działania. Wyniki są sortowane według odległości rosnąco, aby najbliżsi specjaliści byli wyświetlani jako pierwsi.
+        /// </summary>
+        /// <param name="lat"></param>
+        /// <param name="lng"></param>
+        /// <returns></returns>
+        public async Task<List<NearbySpecialistDto>> GetNearbySpecialistsAsync(double lat, double lng)
+        {
+            var geometryFactory = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
+            var clientPoint = geometryFactory.CreatePoint(new NetTopologySuite.Geometries.Coordinate(lng, lat));
+
+            return await _context.specialists
+                .Include(s => s.ServiceAreas)
+                .Where(s => s.ServiceAreas.Any(sa =>
+                    sa.Location != null &&
+                    sa.Location.Distance(clientPoint) <= sa.MaxDistanceKm * 1000)) // Distance w PostGIS dla Geography jest w metrach
+                .Select(s => new NearbySpecialistDto
+                {
+                    Id = s.Id,
+                    FirstName = s.FirstName,
+                    LastName = s.LastName,
+                    ProfessionalTitle = s.ProfessionalTitle,
+                    AvatarUrl = s.User.AvatarUrl,
+                    HourlyRate = s.HourlyRate ?? 0,
+                    DistanceKm = s.ServiceAreas
+                        .Where(sa => sa.Location != null)
+                        .Select(sa => sa.Location!.Distance(clientPoint) / 1000)
+                        .Min()
+                })
+                .OrderBy(s => s.DistanceKm)
                 .ToListAsync();
         }
     } 
