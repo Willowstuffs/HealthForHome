@@ -32,5 +32,7 @@ namespace H4H_API.Services.Interfaces
         Task<Guid> CreateServiceRequestAsync(CreateServiceRequestDto dto, Guid? userId = null);
         Task<List<ServiceRequestDto>> GetMyServiceRequestsAsync(Guid userId);
 
+        // Wyszukiwanie specjalistów na podstawie lokalizacji klienta
+        Task<NetTopologySuite.Geometries.Point?> GetClientAddressPointAsync(Guid userId);
     }
 }

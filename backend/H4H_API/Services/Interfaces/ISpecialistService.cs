@@ -1,5 +1,5 @@
-
-﻿using H4H_API.DTOs.Specialist;
+using H4H_API.DTOs.Specialist;
+using H4H_API.DTOs.Client;
 
 
 namespace H4H_API.Services.Interfaces
@@ -80,6 +80,7 @@ namespace H4H_API.Services.Interfaces
         /// <returns></returns>
         Task<SpecialistProfileDto?> GetPublicProfileAsync(Guid id);
         Task<List<SpecialistOfferDto>> GetPublicServicesAsync(Guid id);
+        Task<List<NearbySpecialistDto>> GetNearbySpecialistsAsync(double lat, double lng);
 
     }
 }
