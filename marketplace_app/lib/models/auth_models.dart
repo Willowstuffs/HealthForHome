@@ -22,6 +22,16 @@ class LoginResponse {
       user: UserInfoDto.fromJson(json['user']),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'accessToken': accessToken,
+      'refreshToken': refreshToken,
+      'accessTokenExpires': accessTokenExpires.toIso8601String(),
+      'refreshTokenExpires': refreshTokenExpires.toIso8601String(),
+      'user': user.toJson(),
+    };
+  }
 }
 
 class UserInfoDto {
@@ -53,5 +63,17 @@ class UserInfoDto {
       phoneNumber: json['phoneNumber'],
       avatarUrl: json['avatarUrl'],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'email': email,
+      'userType': userType,
+      'firstName': firstName,
+      'lastName': lastName,
+      'phoneNumber': phoneNumber,
+      'avatarUrl': avatarUrl,
+    };
   }
 }

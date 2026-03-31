@@ -1,5 +1,6 @@
 using H4H.Core.Models;
 using H4H.Data;
+using H4H_API.DTOs.Client;
 using H4H_API.DTOs.Specialist;
 using H4H_API.Exceptions;
 using H4H_API.Services.Interfaces;
@@ -7,10 +8,6 @@ using Microsoft.EntityFrameworkCore;
 using NetTopologySuite;
 using ErrorCodes = H4H_API.Helpers.ErrorCodes;
 using SpecialistServiceEntity = H4H.Core.Models.SpecialistService;
-using H4H_API.Helpers;
-using ErrorCodes = H4H_API.Helpers.ErrorCodes;
-using NetTopologySuite;
-using H4H_API.DTOs.Client;
 
 namespace H4H_API.Services.Implementations
 {
@@ -629,5 +626,5 @@ namespace H4H_API.Services.Implementations
                 .OrderBy(s => s.DistanceKm)
                 .ToListAsync();
         }
-    } 
-} 
+    }
+}

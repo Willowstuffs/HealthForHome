@@ -8,9 +8,11 @@ import '../../widgets/appointment_card.dart';
 import '../../data/mock_data.dart';
 import '../../models/client_profile.dart';
 import '../../models/appointment.dart';
+import 'package:latlong2/latlong.dart';
 import '../../theme/app_theme.dart';
 import '../../screens/map_screen.dart';
 import '../../screens/calendar_screen.dart';
+import '../../screens/search_specialists_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,6 +25,14 @@ class HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   ClientProfile? _clientProfile;
   bool _isLoadingProfile = false;
+  LatLng? _mapTarget;
+
+  void _showOnMap(double lat, double lng) {
+    setState(() {
+      _mapTarget = LatLng(lat, lng);
+      _currentIndex = 2;
+    });
+  }
 
   @override
   void initState() {
@@ -152,12 +162,10 @@ class HomeScreenState extends State<HomeScreen> {
         bodyContent = _buildDashboard();
         break;
       case 1:
-        bodyContent = const Center(
-          child: Text("Szukaj specjalistów (Wkrótce)"),
-        );
+        bodyContent = SearchSpecialistsScreen(onShowMap: _showOnMap);
         break;
       case 2:
-        bodyContent = const MapScreen();
+        bodyContent = MapScreen(initialLocation: _mapTarget);
         break;
       case 3:
         bodyContent = const CalendarScreen();

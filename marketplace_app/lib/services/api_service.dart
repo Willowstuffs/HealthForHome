@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import '../models/auth_models.dart';
@@ -6,6 +7,9 @@ import '../models/client_profile.dart';
 import '../models/client_update_dto.dart';
 import '../models/appointment.dart';
 import '../models/specialist.dart';
+import '../models/nearby_specialist.dart';
+import '../models/specialist_profile_details.dart';
+import '../models/specialist_offer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
@@ -13,9 +17,12 @@ class ApiService {
   static const String _baseUrl = 'https://10.0.2.2:7026';
 
   late final Dio _dio;
-  String? _token;
+  String? _accessToken;
+  String? _refreshToken;
+  UserInfoDto? _currentUser;
 
-  bool get isLoggedIn => _token != null;
+  bool get isLoggedIn => _accessToken != null;
+  UserInfoDto? get currentUser => _currentUser;
 
   // Singleton pattern
   static final ApiService _instance = ApiService._internal();
@@ -47,8 +54,8 @@ class ApiService {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
-          if (_token != null) {
-            options.headers['Authorization'] = 'Bearer $_token';
+          if (_accessToken != null) {
+            options.headers['Authorization'] = 'Bearer $_accessToken';
           }
           return handler.next(options);
         },
@@ -67,19 +74,86 @@ class ApiService {
 
   Future<void> initToken() async {
     final prefs = await SharedPreferences.getInstance();
-    _token = prefs.getString('auth_token');
+    _accessToken = prefs.getString('auth_token');
+    _refreshToken = prefs.getString('refresh_token');
+    final accessTokenExpiresStr = prefs.getString('access_token_expires');
+
+    final userJson = prefs.getString('user_info');
+    if (userJson != null) {
+      try {
+        _currentUser = UserInfoDto.fromJson(jsonDecode(userJson));
+      } catch (_) {}
+    }
+
+    if (_accessToken != null && _refreshToken != null) {
+      // Sprawdźmy, czy token wciąż jest ważny
+      if (accessTokenExpiresStr != null) {
+        try {
+          final expDate = DateTime.parse(accessTokenExpiresStr);
+          // Zostawmy ułamek czasowy (np. 1 minutę buforu)
+          if (expDate.isAfter(DateTime.now().add(const Duration(minutes: 1)))) {
+            // Token jest nadal ważny (initialized pomyślnie)
+            return;
+          }
+        } catch (_) {}
+      }
+
+      // Jeśli wygasł, próbujemy go odświeżyć
+      await refreshSession();
+    } else {
+      await clearToken();
+    }
   }
 
-  Future<void> setToken(String token) async {
-    _token = token;
+  Future<void> refreshSession() async {
+    try {
+      final response = await _dio.post(
+        '/api/Auth/refresh-token',
+        data: {"accessToken": _accessToken, "refreshToken": _refreshToken},
+        options: Options(
+          validateStatus: (status) =>
+              true, // Przepuść wszystkie statusy (nawet 400) bez rzucania wyjątku
+        ),
+      );
+
+      if (response.data != null &&
+          response.data['success'] == true &&
+          response.data['data'] != null) {
+        final loginResponse = LoginResponse.fromJson(response.data['data']);
+        await saveSession(loginResponse);
+      } else {
+        await clearToken();
+      }
+    } catch (_) {
+      await clearToken();
+    }
+  }
+
+  Future<void> saveSession(LoginResponse response) async {
+    _accessToken = response.accessToken;
+    _refreshToken = response.refreshToken;
+    _currentUser = response.user;
+
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('auth_token', token);
+    await prefs.setString('auth_token', response.accessToken);
+    await prefs.setString('refresh_token', response.refreshToken);
+    await prefs.setString(
+      'access_token_expires',
+      response.accessTokenExpires.toIso8601String(),
+    );
+    await prefs.setString('user_info', jsonEncode(response.user.toJson()));
   }
 
   Future<void> clearToken() async {
-    _token = null;
+    _accessToken = null;
+    _refreshToken = null;
+    _currentUser = null;
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
+    await prefs.remove('refresh_token');
+    await prefs.remove('access_token_expires');
+    await prefs.remove('user_info');
   }
 
   Future<void> register({
@@ -125,7 +199,7 @@ class ApiService {
       );
 
       final loginResponse = LoginResponse.fromJson(response.data['data']);
-      await setToken(loginResponse.accessToken);
+      await saveSession(loginResponse);
       return loginResponse;
     } on DioException catch (e) {
       throw _handleDioError(e);
@@ -302,6 +376,80 @@ class ApiService {
       throw _handleDioError(e);
     } catch (e) {
       throw Exception('Błąd podczas pobierania ogłoszeń: $e');
+    }
+  }
+
+  Future<List<NearbySpecialist>> getNearbySpecialistsByAddressText(
+    String address,
+  ) async {
+    try {
+      final response = await _dio.get(
+        '/api/Client/specialists/nearby/by-address-text',
+        queryParameters: {'address': address},
+      );
+      final List<dynamic> list = response.data['data'] ?? [];
+      return list.map((e) => NearbySpecialist.fromJson(e)).toList();
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (_) {
+      throw Exception('Nie udało się pobrać specjalistów po adresie.');
+    }
+  }
+
+  Future<List<NearbySpecialist>> getNearbySpecialists(
+    double lat,
+    double lng,
+  ) async {
+    try {
+      final response = await _dio.get(
+        '/api/Client/specialists/nearby',
+        queryParameters: {'lat': lat, 'lng': lng},
+      );
+      final List<dynamic> list = response.data['data'] ?? [];
+      return list.map((e) => NearbySpecialist.fromJson(e)).toList();
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (_) {
+      throw Exception('Nie udało się pobrać pobliskich specjalistów.');
+    }
+  }
+
+  Future<List<NearbySpecialist>> getNearbySpecialistsMyAddress() async {
+    try {
+      final response = await _dio.get(
+        '/api/Client/specialists/nearby/my-address',
+      );
+      final List<dynamic> list = response.data['data'] ?? [];
+      return list.map((e) => NearbySpecialist.fromJson(e)).toList();
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (_) {
+      throw Exception('Nie udało się pobrać specjalistów dla twojego adresu.');
+    }
+  }
+
+  Future<SpecialistProfileDetails> getSpecialistProfileDetails(
+    String id,
+  ) async {
+    try {
+      final response = await _dio.get('/api/Client/specialist/$id/profile');
+      return SpecialistProfileDetails.fromJson(response.data['data']);
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (_) {
+      throw Exception('Błąd podczas pobierania profilu specjalisty.');
+    }
+  }
+
+  Future<List<SpecialistOffer>> getSpecialistFullOffer(String id) async {
+    try {
+      final response = await _dio.get('/api/Client/specialist/$id/full-offer');
+      final List<dynamic> list = response.data['data'] ?? [];
+      return list.map((e) => SpecialistOffer.fromJson(e)).toList();
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (_) {
+      throw Exception('Błąd podczas pobierania oferty specjalisty.');
     }
   }
 
