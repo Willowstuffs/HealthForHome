@@ -15,5 +15,8 @@
 
         // Opcjonalnie dane kontaktowe, jeśli klient chce je widzieć w podglądzie
         public string? ContactName { get; set; }
+
+        //dodane pole z info o odleglosci do wyszukiwania ofert dla specjalistow
+        public double? DistanceKm { get; set; }
     }
 }
