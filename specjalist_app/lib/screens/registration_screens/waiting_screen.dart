@@ -98,11 +98,13 @@ Widget build(BuildContext context) {
           const SizedBox(height: 16),
          Text(
             'Oczekiwanie na potwierdzenie \n'
-            'Zostaniesz przekierowany automatycznie po potwierdzeniu',
+            'Jeśli twoje konto zostanie zaakceptowane to \n zostaniesz przepuszczony do aplikacji \n '
+            'aktualny stan: oczekujący',
+          
 
             style: Theme.of(context).textTheme.headlineLarge!.copyWith(
               fontSize: 30,
-              color: AppColors.surface,
+              color: AppColors.onSurface,
             ),
             textAlign: TextAlign.center,
           ),

@@ -4,8 +4,10 @@ import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import 'package:intl/intl.dart';
 import '../offer_from_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/notification_services.dart';
 import '../../services/app_refresh_service.dart';
+import 'package:specjalist_app/screens/main_screens/maintoolbar_screen.dart';
 
 class StartScreen extends StatefulWidget {
   final String? highlightAppointmentId;
@@ -21,24 +23,53 @@ class StartScreen extends StatefulWidget {
 
 class _StartScreenState extends State<StartScreen> {
   List<Map<String, dynamic>> inquiries = [];
+  final Set<String> _readIds = {};
   bool isLoading = true;
   String? highlightedId;
   final firstName = UserSession.firstName ?? '';
   final now = DateTime.now();
-  @override
-    void initState() {
-      super.initState();
+ @override
+  void initState() {
+    super.initState();
+    _initializeData(); 
+  }
 
-      highlightedId = widget.highlightAppointmentId;
+  Future<void> _initializeData() async {
+    await _loadReadStatus(); 
+    await _initializeNotifications();
+    await _fetchData(); 
 
-      _initializeNotifications();
-      _fetchData();
-
-      AppRefreshService().stream.listen((_) {
-        _fetchData();
+    AppRefreshService().stream.listen((_) => _fetchData());
+  }
+ Future<void> _loadReadStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final List<String>? savedIds = prefs.getStringList('read_appointments');
+    if (savedIds != null) {
+      setState(() {
+        _readIds.addAll(savedIds);
       });
     }
- 
+  }
+  Future<void> markAsRead(String id) async {
+    if (!mounted) return;
+
+    setState(() {
+      _readIds.add(id);
+      final index = inquiries.indexWhere((i) => i['id'] == id);
+      if (index != -1) {
+        inquiries[index]['isNew'] = false;
+      }
+      
+      
+      inquiries.sort((a, b) {
+        if (a['isNew'] == b['isNew']) return 0;
+        return a['isNew'] ? -1 : 1;
+      });
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('read_appointments', _readIds.toList());
+  }
   Future<void> _initializeNotifications() async {
     await NotificationService().requestPermissionsAndToken();
     
@@ -72,15 +103,25 @@ class _StartScreenState extends State<StartScreen> {
                 ? DateTime.tryParse(i['ScheduledEnd'])
                 : null);
 
-        /// --- ADDRESS PROCESSING ---
-        String originalAddress = i['patientAddress'] ?? i['PatientAddress'] ?? '';
-        String blurredAddress = originalAddress;
+       String originalAddress = i['patientAddress'] ?? i['PatientAddress'] ?? '';
+        String streetAndCity = '';
 
-        // usuń wszystkie liczby (numery, kody pocztowe itp.)
-        blurredAddress = blurredAddress.replaceAll(RegExp(r'\d+'), '');
+        final parts = originalAddress.split(',');
 
-        // usuń nadmiarowe spacje i przecinki na końcu
-        blurredAddress = blurredAddress.trim().replaceAll(RegExp(r',\s*$'), '');
+
+        
+        if (parts.length >= 2) {
+          String street = parts[0].trim();
+          String city = parts[1].trim();
+
+          street = street.replaceAll(RegExp(r'[\d-]'), '');
+
+          streetAndCity = '$street, $city';
+        } else {
+          streetAndCity = originalAddress.replaceAll(RegExp(r'[\d-]'), '');
+        }
+        bool apiIsRead = i['isRead'] == true || i['IsRead'] == true;
+        bool isNew = !apiIsRead && !_readIds.contains(id);
 
         processed.add({
           'id': id?.toString() ?? '',
@@ -88,11 +129,15 @@ class _StartScreenState extends State<StartScreen> {
           'startDate': start != null ? displayFormatter.format(start) : '',
           'endDate': end != null ? displayFormatter.format(end) : '',
           'service': i['serviceName'] ?? i['ServiceName'] ?? '',
-          'address': blurredAddress,
+          'address': streetAndCity,
           'description': i['description'] ?? i['Description'] ?? '',
+          'isNew': isNew,
         });
       }
-
+      processed.sort((a, b) {
+        if (a['isNew'] == b['isNew']) return 0;
+        return a['isNew'] ? -1 : 1;
+      });
       if (!mounted) return;
 
       setState(() {
@@ -107,7 +152,7 @@ class _StartScreenState extends State<StartScreen> {
       }
     }
 }
-  
+
 @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -136,6 +181,7 @@ class _StartScreenState extends State<StartScreen> {
     );
   }
 Widget _buildHeader() {
+   final newCount = inquiries.where((i) => i['isNew'] == true).length;
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -179,7 +225,7 @@ Widget _buildHeader() {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Masz ${inquiries.length} nowych zapytań',
+                  'Masz $newCount nowych zapytań',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
@@ -234,6 +280,7 @@ Widget _buildHeader() {
         width: double.infinity,
         padding: const EdgeInsets.all(32),
         decoration: BoxDecoration(
+          
           color: AppColors.surfaceContainer,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(color: AppColors.outlineVariant),
@@ -288,19 +335,28 @@ Widget _buildHeader() {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      width: 28,
+                      height: 28,
+                      alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: AppColors.secondary.withValues(alpha: 0.2),
+                        color: item['isNew']
+                            ? AppColors.secondary.withValues(alpha: 0.15)
+                            : Colors.green.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        item['service'],
-                        style: TextStyle(
-                          color: AppColors.livingColor10,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                        border: Border.all(
+                          color: item['isNew']
+                              ? AppColors.secondary
+                              : Colors.green,
+                          width: 1.5,
                         ),
                       ),
+                      child: item['isNew']
+                          ? null
+                          : const Icon(
+                              Icons.check,
+                              size: 18,
+                              color: Colors.green,
+                            ),
                     ),
                   ],
                 ),
@@ -309,25 +365,54 @@ Widget _buildHeader() {
                 const SizedBox(height: 8),
                 _buildInfoRow(Icons.location_on_outlined, item['address']),
                 const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => OfferFormScreen(
-                            appointmentId: item['id'],
-                            patientName: item['name'],
-                            startDate: item['startDate'],
-                            endDate: item['endDate'],
-                            description: item['description'], // NOWE
-                          ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 60,
+                        child: ElevatedButton(
+                          onPressed: () async{
+                            markAsRead(item['id']);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => OfferFormScreen(
+                                  appointmentId: item['id'],
+                                  patientName: item['name'],
+                                  startDate: item['startDate'],
+                                  endDate: item['endDate'],
+                                  description: item['description'],
+                                ),
+                              ),
+                            ).then((_) => _fetchData());
+                          },
+                          child: const Text('Szczegóły'),
                         ),
-                      ).then((_) => _fetchData());
-                    },
-                    child: const Text('Szczegóły oferty'),
-                  ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SizedBox(
+                        height: 60,
+                        width: 60,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => MainScreen(
+                                  startIndex: 2,
+                                  highlightAppointmentId: item['id'],
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.location_on_outlined),
+                          label: const Text('Mapa'),
+                        )
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

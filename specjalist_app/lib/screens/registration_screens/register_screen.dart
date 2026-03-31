@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../registration_screens/verify_code_scren.dart';
 import '../../theme/app_theme.dart';
-
+import '../../theme/widgets/auth_scaffold.dart';
 import '../../services/api_service.dart';
 
 
@@ -74,93 +74,67 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 @override
 Widget build(BuildContext context) {
-  return Scaffold(
-    body: Container(
-      width: double.infinity,
-      height: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            AppColors.surface,
-            AppColors.primary,
-          ],
-        ),
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
-            children: [
-              const SizedBox(height: 40), // przesunięcie w dół
-              _buildLogoSection(),
-              const SizedBox(height: 16),
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        _buildDropdownField(),
-                        const SizedBox(height: 16),
-                        _buildTextField(firstNameController, 'Imię'),
-                        const SizedBox(height: 16),
-                        _buildTextField(lastNameController, 'Nazwisko'),
-                        const SizedBox(height: 16),
-                        _buildTextField(
-                          emailController,
-                          'Email',
-                          keyboardType: TextInputType.emailAddress,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildTextField(passwordController, 'Hasło', obscureText: true),
-                        const SizedBox(height: 16),
-                        _buildTextField(
-                          repeatPasswordController,
-                          'Powtórz hasło',
-                          obscureText: true,
-                        ),
-                      ],
-                    ),
+  return AuthScaffold(
+    child: Form(
+      key: _formKey,
+        child: Column(
+          children: [
+            _buildDropdownField(),
+            const SizedBox(height: 16),
+            _buildTextField(firstNameController, 'Imię'),
+            const SizedBox(height: 16),
+            _buildTextField(lastNameController, 'Nazwisko'),
+            const SizedBox(height: 16),
+            _buildTextField(
+              emailController,
+              'Email',
+              keyboardType: TextInputType.emailAddress,
+            ),
+            const SizedBox(height: 16),
+            _buildTextField(
+              passwordController,
+              'Hasło',
+              obscureText: true
+            ),
+            const SizedBox(height: 16),
+            _buildTextField(
+              repeatPasswordController,
+              'Powtórz hasło',
+              obscureText: true,
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: 250,
+              height: 53, // wysokość przycisku
+              child: ElevatedButton(
+                onPressed: isLoading ? null : _register,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.onSurface, 
+                  foregroundColor: AppColors.surface, 
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: 250,
-                height: 53, // wysokość przycisku
-                child: ElevatedButton(
-                  onPressed: isLoading ? null : _register,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.onSurface, 
-                    foregroundColor: AppColors.surface, 
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: isLoading
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white, // biały wskaźnik
-                          ),
-                        )
-                      : const Text(
-                          'Załóż konto',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                child: isLoading
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white, // biały wskaźnik
                         ),
+                      )
+                    : const Text(
+                        'Załóż konto',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
                 ),
               ),
               const SizedBox(height: 16), // margines od dołu ekranu
             ],
           ),
         ),
-      ),
-    ),
-  );
+      );
 }
 
 
@@ -198,6 +172,8 @@ Widget build(BuildContext context) {
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
+       textInputAction: TextInputAction.next,
+        
       validator: (v) => v == null || v.isEmpty ? 'Pole wymagane' : null,
       decoration: InputDecoration(
         labelText: label,
@@ -209,19 +185,7 @@ Widget build(BuildContext context) {
       ),
     );
   }
-  Widget _buildLogoSection(){
-    return Column(
-      children: [
-        Image.asset(
-          'lib/images/aaa.png',
-          width: 150,
-          height: 150,
-          ),
-          const SizedBox(height: 16),
-         
-      ],
-    );
-  }
+
   String mapSpecializationToProfession(String specialization) {
   switch (specialization) {
     case 'Pielęgniarz':

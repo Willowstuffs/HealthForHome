@@ -20,6 +20,7 @@ dependencies:
   image_picker: ^0.8.7+4
   table_calendar: ^3.0.9
   geocoding: ^2.1.0
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:

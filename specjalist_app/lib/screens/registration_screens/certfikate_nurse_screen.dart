@@ -82,7 +82,7 @@ Widget build(BuildContext context) {
                     child: Column(
                       children: [
                         const SizedBox(height: 16),
-                        _buildTextField(pwzController, 'numer PWZ')
+                        _buildTextField(pwzController, 'by dokończyć rejsetracje podaj numer PWZ')
                         
                       ],
                     ),

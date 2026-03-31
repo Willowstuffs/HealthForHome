@@ -8,6 +8,7 @@ import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../services/token_storage.dart';
 import '../../services/user_profile.dart';
+import '../../theme/widgets/auth_scaffold.dart';
 
 
 class LoginScreen extends StatefulWidget {
@@ -94,53 +95,27 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 @override
 Widget build(BuildContext context) {
-  return Scaffold(
-    body: Container(
-      width: double.infinity,
-      height: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            AppColors.surface,
-            AppColors.primary,
-          ],
-        ),
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
-            children: [
-              const SizedBox(height: 40), // przesunięcie w dół
-              _buildLogoSection(),
-              const SizedBox(height: 16),
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
+  return AuthScaffold(
+    child: Form(
+      key: _formKey,
+        child: Column(
+          children: [
                        
-                        _buildTextField(
-                          emailController,
-                          'Email',
-                          keyboardType: TextInputType.emailAddress,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildTextField(passwordController, 'Hasło', obscureText: true),
-                        const SizedBox(height: 16),
-                        
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
+            _buildTextField(
+              emailController,
+              'Email',
+              keyboardType: TextInputType.emailAddress,
+            ),
+            const SizedBox(height: 16),
+            _buildTextField(
+              passwordController,
+              'Hasło',
+              obscureText: true
+            ),
+            const SizedBox(height: 24),
               SizedBox(
                 width: 250,
-                height: 53, // wysokość przycisku
+                height: 53,
                 child: ElevatedButton(
                   onPressed: isLoading ? null : _login,
                   style: ElevatedButton.styleFrom(
@@ -151,28 +126,22 @@ Widget build(BuildContext context) {
                     ),
                   ),
                   child: isLoading
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white, // biały wskaźnik
-                          ),
-                        )
+                      ? const CircularProgressIndicator(
+                        color: Colors.white,
+                      )
                       : const Text(
                           'Zaloguj się',
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                 ),
               ),
-              const SizedBox(height: 16), // margines od dołu ekranu
+              const SizedBox(height: 16), 
             ],
           ),
         ),
-      ),
-    ),
-  );
-}
+      );
+    
+    }
 
 
 
@@ -183,6 +152,8 @@ Widget build(BuildContext context) {
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
+       textInputAction: TextInputAction.next,
+        
       validator: (v) => v == null || v.isEmpty ? 'Pole wymagane' : null,
       decoration: InputDecoration(
         labelText: label,
@@ -194,19 +165,7 @@ Widget build(BuildContext context) {
       ),
     );
   }
-  Widget _buildLogoSection(){
-    return Column(
-      children: [
-        Image.asset(
-          'lib/images/aaa.png',
-          width: 150,
-          height: 150,
-          ),
-          const SizedBox(height: 16),
-         
-      ],
-    );
-  }
+ 
   @override
   void dispose() {
     emailController.dispose();

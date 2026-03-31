@@ -12,10 +12,12 @@ import '../offer_from_screen.dart';
 
 class MapScreen extends StatefulWidget {
   final List<Map<String, dynamic>> inquiries;
+  final String? highlightId;
 
   const MapScreen({
     super.key,
     required this.inquiries,
+    this.highlightId,
   });
 
   @override
@@ -24,7 +26,6 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   final List<Marker> markers = [];
-  //final List<CircleMarker> circles = [];
   final MapController mapController = MapController();
   Map<String, dynamic>? selectedInquiry;
   double zoom = 12;
@@ -32,6 +33,7 @@ class _MapScreenState extends State<MapScreen> {
   final now = DateTime.now();
   bool loading = true;
   List<Map<String, dynamic>> inquiriesList = [];
+  final Map<String, LatLng> _addressCache = {};
   @override
   void initState() {
     super.initState();
@@ -58,7 +60,7 @@ class _MapScreenState extends State<MapScreen> {
         patientName: "",
         dateFrom: DateTime(now.year, now.month, now.day),
         dateTo: DateTime(now.year, now.month, now.day)
-            .add(const Duration(days: 30)),
+            .add(const Duration(days: 90)),
       ))
           .map((i) {
         final id = i['appointmentId'] ?? i['AppointmentId'];
@@ -84,9 +86,17 @@ class _MapScreenState extends State<MapScreen> {
           'address': i['patientAddress'] ?? i['PatientAddress'] ?? '',
         };
       }).toList();
-
+  
       await _buildMarkersAndCircles();
 
+      if (widget.highlightId != null && selectedInquiry != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Future.delayed(const Duration(milliseconds: 300), () {
+            mapController.move(selectedInquiry!['latLng'], 14);
+            _showInquiryDetails(selectedInquiry!);
+          });
+        });
+      }
     } catch (e) {
       debugPrint("MAP ERROR: $e");
     }
@@ -97,63 +107,64 @@ class _MapScreenState extends State<MapScreen> {
       loading = false;
     });
   }
-  LatLng _getBlurredLocation(LatLng original) {
-    final random = math.Random();
-    
+  Future<LatLng?> getCachedLatLng(String address) async {
+    if (_addressCache.containsKey(address)) {
+      return _addressCache[address];
+    }
+    final LatLng? latLng = await GeoService.getLatLngFromAddress(address);
+    if (latLng != null) _addressCache[address] = latLng;
+    return latLng;
+  }
+
+  // --- deterministyczne rozmycie lokalizacji ---
+  LatLng _getBlurredLocation(LatLng original, String seed) {
+    final random = math.Random(seed.hashCode);
     double latOffset = (random.nextDouble() - 0.5) * 0.006;
     double lngOffset = (random.nextDouble() - 0.5) * 0.006;
-
     return LatLng(original.latitude + latOffset, original.longitude + lngOffset);
   }
+
   Future<void> _buildMarkersAndCircles() async {
     final List<Marker> tempMarkers = [];
-    //final List<CircleMarker> tempCircles = [];
 
     for (var inquiry in inquiriesList) {
       final address = inquiry['address'];
-
       if (address == null || address.toString().isEmpty) continue;
 
-      final LatLng? exactLatLng = await GeoService.getLatLngFromAddress(address);
+      // --- użycie cache ---
+      final LatLng? exactLatLng = await getCachedLatLng(address);
       if (exactLatLng == null) continue;
-      final LatLng blurredLatLng = _getBlurredLocation(exactLatLng);
-      final String? blurredAddress = await GeoService.getAddressFromLatLng(blurredLatLng);
-       inquiry['address'] = blurredAddress ?? address;
 
+      final LatLng blurredLatLng = _getBlurredLocation(exactLatLng, inquiry['id']);
+      
+      // uproszczenie adresu
+      final String? fullAddress = await GeoService.getAddressFromLatLng(blurredLatLng);
+      String simpleAddress = address;
+      if (fullAddress != null && fullAddress.isNotEmpty) {
+        final parts = fullAddress.split(',');
+        if (parts.length >= 2) simpleAddress = '${parts[0].trim()}, ${parts[1].trim()}';
+      }
+      inquiry['address'] = simpleAddress;
       inquiry['latLng'] = blurredLatLng;
+
+      if (inquiry['id'] == widget.highlightId) selectedInquiry = inquiry;
+
       tempMarkers.add(
         Marker(
           point: blurredLatLng,
           width: 45,
           height: 45,
-          // child: Icon(
-          //   Icons.person,
-          //   color: AppColors.accent,
-          //   size: 40,
-          // ),
           child: GestureDetector(
             onTap: () => _showInquiryDetails(inquiry),
             child: _buildCustomMarker(),
           ),
         ),
       );
-
-        // tempCircles.add(
-        //   CircleMarker(
-        //     point: blurredLatLng,
-        //     radius: getCircleRadius(),
-        //     color: AppColors.accent.withValues(alpha: 0.2),
-        //     borderStrokeWidth: 2,
-        //     borderColor: AppColors.accent,
-        //   ),
-        // );
     }
 
-    markers.clear();
-    //circles.clear();  
-
-    markers.addAll(tempMarkers);
-    // circles.addAll(tempCircles);
+    markers
+      ..clear()
+      ..addAll(tempMarkers);
   }
   void _showInquiryDetails(Map<String, dynamic> inquiry) {
   showModalBottomSheet(

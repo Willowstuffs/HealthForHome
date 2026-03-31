@@ -4,8 +4,21 @@ import 'package:dio/io.dart';
 import '../services/login_response.dart';
 import '../services/token_storage.dart';
 import '../services/specjalist_service.dart';
-import 'package:http_parser/http_parser.dart'; // dla MediaType
+import 'package:http_parser/http_parser.dart'; 
 
+// class ApiService {
+//   static const String _baseUrl = 'https://healthforhome.onrender.com';
+//   late final Dio _dio;
+
+//   ApiService() {
+//     _dio = Dio(
+//       BaseOptions(
+//         baseUrl: _baseUrl,
+//         connectTimeout: const Duration(seconds: 600), // 10 minut
+//         receiveTimeout: const Duration(seconds: 600),
+//         headers: {'Content-Type': 'application/json'},
+//       ),
+//     );
 class ApiService {
   static const bool isEmulator = true;
   static const String _baseUrl = isEmulator
@@ -31,6 +44,7 @@ class ApiService {
         return client;
       },
     );
+
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
@@ -42,6 +56,7 @@ class ApiService {
         },
       ),
     );
+
     _dio.interceptors.add(
       LogInterceptor(
         request: true,
@@ -52,18 +67,6 @@ class ApiService {
     );
   }
 
-Future<String?> sendTestNotification(String fcmToken) async {
-    try {
-      final response = await _dio.post(
-        '/api/specialist/send-test-notification',
-        data: '"$fcmToken"', // <-- FCM token jako string JSON
-      );
-      return response.data['MessageId'] as String?;
-    } catch (e) {
-      print('Błąd wysyłania powiadomienia: $e');
-      return null;
-    }
-  }
   // register
 
   Future<void> registerSpecialist({

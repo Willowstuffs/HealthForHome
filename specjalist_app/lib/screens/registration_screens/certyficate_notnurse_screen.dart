@@ -89,7 +89,7 @@ Widget build(BuildContext context) {
                     child: Column(
                       children: [
                         const SizedBox(height: 16),
-                        _buildTextField(nipController, 'NIP'),
+                        _buildTextField(nipController, 'by dokończyć rejsetracje podaj \n NIP'),
                         const SizedBox(height: 16),
                         _buildTextField(registrationbooknumberController, 'Numer Księgi Rejestrowej'),
                         const SizedBox(height: 16),

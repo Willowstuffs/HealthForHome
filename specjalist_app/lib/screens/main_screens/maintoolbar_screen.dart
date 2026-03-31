@@ -36,7 +36,11 @@ class _MainScreenState extends State<MainScreen> {
         highlightAppointmentId: widget.highlightAppointmentId,
       ),
       const WorkScreen(),
-      MapScreen(inquiries: inquiries),
+      MapScreen(
+        key: ValueKey(widget.highlightAppointmentId), 
+        inquiries: inquiries,
+        highlightId: widget.highlightAppointmentId,
+      ),
       const UpcomingScreen(),
       const ProfilScreen(),
     ];
