@@ -7,18 +7,20 @@ using H4H_API.Services.Interfaces;
 using H4H_API.Helpers;
 using Microsoft.EntityFrameworkCore;
 using H4H_API.Exceptions;
+using System.Linq.Expressions;
 
 namespace H4H_API.Services.Implementations
 {
     public class AdminService : IAdminService
     {
+        private readonly IEmailService _emailService;
         private readonly ApplicationDbContext _context;
 
-        public AdminService(ApplicationDbContext context)
+        public AdminService(ApplicationDbContext context, IEmailService emailService)
         {
             _context = context;
+            _emailService = emailService;
         }
-
         /// <summary>
         /// Otrzymuje liste specjalistow z mozliwoscia filtrowania po statusie weryfikacji i dacie rejestracji,
         /// sortowania po dacie rejestracji oraz paginacji.
@@ -111,23 +113,32 @@ namespace H4H_API.Services.Implementations
         /// </summary>
         public async Task ApproveSpecialistAsync(Guid specialistId, Guid adminId)
         {
-            var specialist = await _context.specialists.FindAsync(specialistId)
+            var specialist = await _context.specialists
+                .Include(s => s.User)
+                .FirstOrDefaultAsync(s => s.Id == specialistId)
                 ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
 
             specialist.VerificationStatus = "approved";
             specialist.IsVerified = true;
             specialist.VerifiedAt = DateTime.UtcNow;
 
-            _context.verification_logs.Add(new VerificationLog
-            {
-                Id = Guid.NewGuid(),
-                SpecialistId = specialistId,
-                AdminId = adminId,
-                Action = "approved",
-                CreatedAt = DateTime.UtcNow
-            });
-
             await _context.SaveChangesAsync();
+
+            try
+            {
+                await _emailService.SendEmailAsync(
+                    specialist.User.Email,
+                    "Weryfikacja konta specjalisty - zaakceptowano",
+                    $@"
+            <p>Dzień dobry {specialist.FirstName},</p>
+            <p>Twoje konto specjalisty w <strong>Health4Home</strong> zostało zaakceptowane.</p>
+            <p>Możesz teraz korzystać z funkcji dostępnych dla zweryfikowanych specjalistów.</p>
+            <p>Pozdrawiamy,<br/>Zespół Health4Home</p>
+            ");
+            }
+            catch
+            {
+            }
         }
 
         /// <summary>
@@ -135,23 +146,36 @@ namespace H4H_API.Services.Implementations
         /// </summary>
         public async Task RejectSpecialistAsync(Guid specialistId, Guid adminId, string reason)
         {
-            var specialist = await _context.specialists.FindAsync(specialistId)
+            var specialist = await _context.specialists
+                .Include(s => s.User)
+                .FirstOrDefaultAsync(s => s.Id == specialistId)
                 ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
 
             specialist.VerificationStatus = "rejected";
             specialist.IsVerified = false;
 
-            _context.verification_logs.Add(new VerificationLog
-            {
-                Id = Guid.NewGuid(),
-                SpecialistId = specialistId,
-                AdminId = adminId,
-                Action = "rejected",
-                Notes = reason,
-                CreatedAt = DateTime.UtcNow
-            });
-
             await _context.SaveChangesAsync();
+
+            var rejectionReason = string.IsNullOrWhiteSpace(reason)
+                ? "Nie podano powodu."
+                : reason;
+
+            try
+            {
+                await _emailService.SendEmailAsync(
+                    specialist.User.Email,
+                    "Weryfikacja konta specjalisty - odrzucono",
+                    $@"
+            <p>Dzień dobry {specialist.FirstName},</p>
+            <p>Twoje konto specjalisty w <strong>Health4Home</strong> zostało odrzucone.</p>
+            <p><strong>Powód:</strong> {rejectionReason}</p>
+            <p>W razie potrzeby popraw dane i spróbuj ponownie.</p>
+            <p>Pozdrawiamy,<br/>Zespół Health4Home</p>
+            ");
+            }
+            catch
+            {
+            }
         }
         /// <summary>
         /// Licencja specjalisty - aktualizuje datę ważności licencji w tabeli specialist_qualifications. 

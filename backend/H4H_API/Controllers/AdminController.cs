@@ -3,13 +3,15 @@ using H4H_API.DTOs.Appointments;
 using H4H_API.DTOs.Common;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using H4H_API.Exceptions; 
+using H4H_API.Exceptions;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace H4H_API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    // TODO: Dodać [Authorize(Roles = "admin")] gdy wdrożymy JWT dla admina
+    [Authorize(Roles = "admin")]
     public class AdminController : ControllerBase
     {
         private readonly IAdminService _adminService;
@@ -54,10 +56,13 @@ namespace H4H_API.Controllers
         [HttpPost("specialists/{id}/approve")]
         public async Task<ActionResult<ApiResponse<object?>>> ApproveSpecialist(Guid id)
         {
-            // Tymczasowo generujemy fake'owy Guid dla admina na potrzeby testów postman/swagger
-            var tempAdminId = Guid.NewGuid();
+            var adminIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(adminIdClaim))
+                throw new UnauthorizedAccessException("Brak identyfikatora administratora w tokenie.");
 
-            await _adminService.ApproveSpecialistAsync(id, tempAdminId);
+            var adminId = Guid.Parse(adminIdClaim);
+
+            await _adminService.ApproveSpecialistAsync(id, adminId);
             return Ok(ApiResponse<object?>.SuccessResponse(null, "Specjalista został zatwierdzony."));
         }
 
@@ -65,9 +70,13 @@ namespace H4H_API.Controllers
         [HttpPost("specialists/{id}/reject")]
         public async Task<ActionResult<ApiResponse<object?>>> RejectSpecialist(Guid id, [FromBody] RejectSpecialistDto dto)
         {
-            var tempAdminId = Guid.NewGuid();
+            var adminIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(adminIdClaim))
+                throw new UnauthorizedAccessException("Brak identyfikatora administratora w tokenie.");
 
-            await _adminService.RejectSpecialistAsync(id, tempAdminId, dto.Reason);
+            var adminId = Guid.Parse(adminIdClaim);
+
+            await _adminService.RejectSpecialistAsync(id, adminId, dto.Reason);
             return Ok(ApiResponse<object?>.SuccessResponse(null, "Specjalista został odrzucony."));
         }
         [HttpPut("specialists/{id}/license-validity")]
