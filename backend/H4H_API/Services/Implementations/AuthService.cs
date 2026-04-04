@@ -129,7 +129,7 @@ namespace H4H_API.Services.Implementations
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
                 UserType = "client",
                 PhoneNumber = request.PhoneNumber,
-                IsActive = false, // Zmienione z true żeby zablokować dostęp do czasu weryfikacji kodu!!!
+                IsActive = true, // Zmienione z true żeby zablokować dostęp do czasu weryfikacji kodu!!!
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now
             };
@@ -409,15 +409,6 @@ namespace H4H_API.Services.Implementations
             {
                 existingCode.IsUsed = true;
             }
-
-            // Wywołanie funkcji SQL: sprzątanie bazy danych z nieużywanych kodów weryfikacyjnych i nieaktywnych użytkowników
-            await _context.Database.ExecuteSqlRawAsync("SELECT delete_expired_codes();"); // Kody czyścimy zawsze - to szybka operacja
-            if (new Random().Next(1, 50) == 1) // Konta czyścimy tylko raz na 50 wysłanych maili (średnio)
-            {
-                await _context.Database.ExecuteSqlRawAsync("SELECT cleanup_inactive_users();");
-            }
-            // <3 
-            //re: dzieki dzastina
 
             //Zapisz nowy kod w bazie
             var verificationCode = new VerificationCode //encja z postgresika

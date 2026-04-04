@@ -151,6 +151,24 @@ namespace H4H.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("client_notes");
 
+                    b.Property<string>("ContactEmail")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("contact_email");
+
+                    b.Property<string>("ContactName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("contact_name");
+
+                    b.Property<string>("ContactPhoneNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("contact_phone_number");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone")
                         .HasColumnName("created_at");
@@ -209,10 +227,7 @@ namespace H4H.Data.Migrations
 
                     b.HasIndex("SpecialistServiceId");
 
-                    b.ToTable("appointments", null, t =>
-                        {
-                            t.ExcludeFromMigrations();
-                        });
+                    b.ToTable("appointments", (string)null);
                 });
 
             modelBuilder.Entity("H4H.Core.Models.AppointmentSpecialist", b =>
@@ -841,6 +856,10 @@ namespace H4H.Data.Migrations
                     b.Property<string>("LicensePhotoUrl")
                         .HasColumnType("text")
                         .HasColumnName("license_photo_url");
+
+                    b.Property<DateTime?>("LicenseValidUntil")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("license_valid_until");
 
                     b.Property<string>("Profession")
                         .IsRequired()
