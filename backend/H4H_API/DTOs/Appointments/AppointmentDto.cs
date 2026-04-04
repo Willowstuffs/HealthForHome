@@ -43,11 +43,13 @@ namespace H4H_API.DTOs.Appointments
     public class CreateAppointmentDto
     {
         [Required]
-        public Guid SpecialistId { get; set; }
+        public Guid ClientId { get; set; }
 
-        [Required]
+        public Guid? SpecialistId { get; set; }
+
         public Guid? SpecialistServiceId { get; set; }
 
+        public Guid? ServiceTypeId { get; set; }
 
         [Required]
         public DateTime ScheduledStart { get; set; }
@@ -55,11 +57,31 @@ namespace H4H_API.DTOs.Appointments
         [Required]
         public DateTime ScheduledEnd { get; set; }
 
+        public decimal? TotalPrice { get; set; }
+
         [MaxLength(500)]
-        public string? ClientAddress { get; set; } // Adres dla wizyty domowej
+        public string? ClientAddress { get; set; }
+
+        [Required]
+        [MaxLength(150)]
+        public string ContactName { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(30)]
+        public string ContactPhoneNumber { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(150)]
+        [EmailAddress]
+        public string ContactEmail { get; set; } = string.Empty;
 
         [MaxLength(1000)]
-        public string? ClientNotes { get; set; }  // Dodatkowe uwagi klienta
+        public string? ClientNotes { get; set; }
+
+        [MaxLength(1000)]
+        public string? SpecialistNotes { get; set; }
+
+        public Guid? SelectedSpecialistId { get; set; }
     }
 
     /// <summary>

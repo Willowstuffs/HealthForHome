@@ -9,7 +9,7 @@ namespace H4H_API.Services.Implementations
 {
     public class FirebaseNotificationService
     {
-        
+
         private readonly FirebaseApp _app;
 
         public FirebaseNotificationService()
