@@ -17,8 +17,8 @@ namespace H4H_API.Services.Implementations
             // Sprawdzenie, czy domyślny app już istnieje
             _app = FirebaseApp.DefaultInstance ?? FirebaseApp.Create(new AppOptions()
             {
-                Credential = GoogleCredential.FromFile("Firebase/test-e1dc5-firebase-adminsdk-fbsvc-1ab20af410.json"),
-                ProjectId = "test-e1dc5" // dokładnie jak w pliku JSON i projekcie Firebase
+                Credential = GoogleCredential.FromFile("Firebase/health4home-firebase-adminsdk-fbsvc-87018f7028.json"),
+                ProjectId = "health4home" // dokładnie jak w pliku JSON i projekcie Firebase
             });
         }
 
@@ -58,10 +58,9 @@ namespace H4H_API.Services.Implementations
             {
                 Token = token,
 
-                Notification = new Notification()
+                Notification = new Notification
                 {
-                    Title = title,
-                    Body = body
+                    Title = title
                 },
 
                 Data = new Dictionary<string, string>
@@ -84,6 +83,7 @@ namespace H4H_API.Services.Implementations
                 }
 
             }).ToList();
+            Console.WriteLine(messages);
 
             var response = await FirebaseMessaging.DefaultInstance.SendEachAsync(messages);
 

@@ -1,14 +1,13 @@
 using H4H.Core.Models;
 using H4H.Data;
+using H4H_API.DTOs.Client;
 using H4H_API.DTOs.Specialist;
 using H4H_API.Exceptions;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using SpecialistServiceEntity = H4H.Core.Models.SpecialistService;
-using H4H_API.Helpers;
-using ErrorCodes = H4H_API.Helpers.ErrorCodes;
 using NetTopologySuite;
-using H4H_API.DTOs.Client;
+using ErrorCodes = H4H_API.Helpers.ErrorCodes;
+using SpecialistServiceEntity = H4H.Core.Models.SpecialistService;
 
 namespace H4H_API.Services.Implementations
 {
@@ -127,7 +126,7 @@ namespace H4H_API.Services.Implementations
             var specialist = await _context.specialists
                 .FirstOrDefaultAsync(s => s.UserId == userId)
                 ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
-      
+
             var qualification = await _context.specialist_qualifications
                 .FirstOrDefaultAsync(q => q.SpecialistId == specialist.Id);
 
@@ -250,7 +249,7 @@ namespace H4H_API.Services.Implementations
 
                 await _context.SaveChangesAsync();
             }
-                throw new AppException("Usługa nie znaleziona.", ErrorCodes.ServiceNotFound); //SERV_002
+            throw new AppException("Usługa nie znaleziona.", ErrorCodes.ServiceNotFound); //SERV_002
         }
 
         public async Task DeleteServiceAsync(Guid userId, Guid serviceId)
@@ -301,14 +300,16 @@ namespace H4H_API.Services.Implementations
                 var geometryFactory = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
                 area.Location = geometryFactory.CreatePoint(new NetTopologySuite.Geometries.Coordinate(dto.Longitude.Value, dto.Latitude.Value));
                 area.LocationUpdatedAt = DateTime.UtcNow;
-            } else {
+            }
+            else
+            {
                 //Majac tylko miasto i kod pocztowy, mozna zrobic geokodowanie (kiedys)
                 area.Location = null;
             }
             await _context.SaveChangesAsync();
         }
 
-        public async Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId,Guid serviceId, decimal price)
+        public async Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId, List<Guid> serviceTypeIds, decimal price)
         {
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
                 ?? throw new AppException("Profil nie istnieje.", ErrorCodes.SpecialistNotFound);
@@ -329,12 +330,12 @@ namespace H4H_API.Services.Implementations
                 Id = Guid.NewGuid(),
                 AppointmentId = appointment.Id,
                 SpecialistId = specialist.Id,
+                Price = price,
+                ServiceTypeIds = serviceTypeIds,
                 CreatedAt = DateTime.UtcNow
             };
             _context.appointments_specialists.Add(appointmentSpecialist);
 
-            appointment.TotalPrice = price;
-            appointment.SpecialistServiceId = serviceId;
             appointment.AppointmentStatus = "pending";
 
             await _context.SaveChangesAsync();
@@ -625,5 +626,5 @@ namespace H4H_API.Services.Implementations
                 .OrderBy(s => s.DistanceKm)
                 .ToListAsync();
         }
-    } 
-} 
+    }
+}

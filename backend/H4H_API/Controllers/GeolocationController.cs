@@ -1,12 +1,12 @@
-﻿using H4H_API.DTOs.Common;
+﻿using H4H.Data;
+using H4H_API.DTOs.Common;
 using H4H_API.DTOs.Geolocation;
+using H4H_API.Exceptions;
+using H4H_API.Helpers;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using H4H_API.Helpers;
-using H4H.Data;
 using Microsoft.EntityFrameworkCore;
-using H4H_API.Exceptions;
 
 namespace H4H_API.Controllers
 {
@@ -88,7 +88,7 @@ namespace H4H_API.Controllers
         [Authorize(Roles = "client")] // nie zezwalamy juz na anonimowosc - gosci
         public async Task<ActionResult<ApiResponse<DistanceInfoDto>>> CalculateDistanceToSpecialist(
             Guid specialistId,
-            [FromQuery] Guid serviceRequestId) 
+            [FromQuery] Guid serviceRequestId)
         {
             try
             {
