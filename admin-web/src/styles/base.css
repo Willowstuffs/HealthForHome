@@ -1,0 +1,27 @@
+:root {
+  --text: #0f172a;
+  --muted: #64748b;
+
+  --primary: #1ea69a;
+  --primary-hover: #168a81;
+
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--text);
+}

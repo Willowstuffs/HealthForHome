@@ -1,0 +1,14 @@
+export const VerificationStatus = {
+  PENDING: "PENDING",
+  APPROVED: "APPROVED",
+  REJECTED: "REJECTED",
+  BLOCKED: "BLOCKED",
+};
+
+export const Specialization = {
+  PIELEGNIARKA: "PIELEGNIARKA",
+  POLOZNA: "POLOZNA",
+  FIZJOTERAPEUTA: "FIZJOTERAPEUTA",
+  REHABILITANT: "REHABILITANT",
+  INNE: "INNE",
+};
