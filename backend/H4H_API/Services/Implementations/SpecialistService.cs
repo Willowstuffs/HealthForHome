@@ -1,8 +1,10 @@
+using Google.Apis.Requests;
 using H4H.Core.Models;
 using H4H.Data;
 using H4H_API.DTOs.Client;
 using H4H_API.DTOs.Specialist;
 using H4H_API.Exceptions;
+using H4H_API.Helpers;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using NetTopologySuite;
@@ -525,9 +527,6 @@ namespace H4H_API.Services.Implementations
         }
 
 
-
-
-
         /// <summary>
         /// Pobiera publiczny profil specjalisty na podstawie jego ID (nie userId), zawierający podstawowe informacje, średnią ocen, profesję i obszary działania.
         /// </summary>
@@ -624,6 +623,44 @@ namespace H4H_API.Services.Implementations
                         .Min()
                 })
                 .OrderBy(s => s.DistanceKm)
+                .ToListAsync();
+        }
+        //Pobieranie ofert w zakresie dzialania specjalisty
+        public async Task<List<ServiceRequestDto>> GetOffersInRangeAsync(Guid userId)
+        {
+            var specialist = await _context.specialists
+                .Include(s => s.ServiceAreas)
+                .FirstOrDefaultAsync(s => s.UserId == userId)
+                ?? throw new AppException("Specjalista nie istnieje", ErrorCodes.SpecialistNotFound);
+
+            var area = specialist.ServiceAreas.FirstOrDefault(a => a.IsPrimary)
+                       ?? specialist.ServiceAreas.FirstOrDefault();
+
+            if (area == null || area.Location == null)
+                throw new AppException("Nie ustawiono obszaru świadczenia usług.", ErrorCodes.NoServiceAreaDefined);
+            //PostGIS uzywa metrow
+            var maxMeters = area.MaxDistanceKm * 1000;
+
+            return await _context.appointments
+                .Include(a => a.ServiceType)
+                .Where(a => a.AppointmentStatus == "open" && a.SpecialistId == null && a.Location != null)
+                // Filtrowanie po dystansie w bazie
+                .Where(a => a.Location!.Distance(area.Location) <= maxMeters)
+                .OrderBy(a => a.Location!.Distance(area.Location))
+                .Select(o => new ServiceRequestDto
+                {
+                    Id = o.Id,
+                    ServiceTypeName = o.ServiceType != null ? o.ServiceType.Name : "Nieznana usługa",
+                    Description = o.ClientNotes ?? string.Empty,
+                    DateFrom = o.ScheduledStart,
+                    DateTo = o.ScheduledEnd,
+                    Address = o.ClientAddress ?? "Adres niepodany",
+                    Status = o.AppointmentStatus,
+                    CreatedAt = o.CreatedAt,
+                    ContactName = "Ukryte do czasu akceptacji", //jakaś logika prywatnosci moze kiedys?
+                    // Obliczanie dystansu (wynik w km, zaokrąglony do 2 miejsc):
+                    DistanceKm = Math.Round(o.Location!.Distance(area.Location) / 1000, 2)
+                })
                 .ToListAsync();
         }
     }
