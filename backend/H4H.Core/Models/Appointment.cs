@@ -24,7 +24,7 @@ namespace H4H.Core.Models
         [Column("location")]
         public Point? Location { get; set; } // Kolumna do obliczeń dystansu (PostGIS/NetTopologySuite)
         [Column("appointment_status")]
-        public string AppointmentStatus { get; set; } = "pending";
+        public string AppointmentStatus { get; set; } = "open";
 
         [Column("scheduled_start", TypeName = "timestamp without time zone")]
         public DateTime ScheduledStart { get; set; }

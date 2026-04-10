@@ -129,6 +129,13 @@ namespace H4H.Data
 
                 entity.Property(s => s.VerificationStatus)
                     .HasMaxLength(20); // Status weryfikacji specjalisty
+
+                // NOWE: Obsługa zawieszeń konta
+                entity.Property(e => e.IsSuspended)
+                    .HasDefaultValue(false);
+
+                entity.Property(e => e.SuspendedAt)
+                    .HasColumnType("timestamp without time zone");
             });
 
             // Konfiguracja typów usług
@@ -322,6 +329,10 @@ namespace H4H.Data
                     .OnDelete(DeleteBehavior.SetNull); // Usunięcie admina ustawia NULL
 
                 entity.Property(sq => sq.Profession).HasMaxLength(50); // Nazwa zawodu
+
+                // NOWE: Data ważności licencji (jeśli dotyczy)
+                entity.Property(e => e.LicenseValidUntil)
+                    .HasColumnType("date");
             });
 
             // Administratorzy systemu
