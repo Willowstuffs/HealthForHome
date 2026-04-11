@@ -38,6 +38,10 @@ namespace H4H.Core.Models
         [Column("created_at", TypeName = "timestamp without time zone")]
         public DateTime CreatedAt { get; set; } = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified);
 
+        // Nowe pole do zarządzania ważnością licencji specjalisty 
+        [Column("license_valid_until", TypeName = "date")]
+        public DateTime? LicenseValidUntil { get; set; }
+
         public virtual Specialist Specialist { get; set; } = null!;
         public virtual Admin? VerifiedByAdmin { get; set; }
     }

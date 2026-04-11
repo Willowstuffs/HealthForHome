@@ -9,7 +9,7 @@ namespace H4H_API.Services.Implementations
 {
     public class FirebaseNotificationService
     {
-        
+
         private readonly FirebaseApp _app;
 
         public FirebaseNotificationService()
@@ -17,8 +17,8 @@ namespace H4H_API.Services.Implementations
             // Sprawdzenie, czy domyślny app już istnieje
             _app = FirebaseApp.DefaultInstance ?? FirebaseApp.Create(new AppOptions()
             {
-                Credential = GoogleCredential.FromFile("Firebase/test-e1dc5-firebase-adminsdk-fbsvc-1ab20af410.json"),
-                ProjectId = "test-e1dc5" // dokładnie jak w pliku JSON i projekcie Firebase
+                Credential = GoogleCredential.FromFile("Firebase/health4home-firebase-adminsdk-fbsvc-87018f7028.json"),
+                ProjectId = "health4home" // dokładnie jak w pliku JSON i projekcie Firebase
             });
         }
 
@@ -49,7 +49,7 @@ namespace H4H_API.Services.Implementations
             var result = await FirebaseMessaging.DefaultInstance.SendAsync(message);
             return result; // Zwraca messageId
         }
-        public async Task SendNotificationToManyAsync(List<string> fcmTokens,string title,string body,string appointmentId)
+        public async Task SendNotificationToManyAsync(List<string> fcmTokens, string title, string body, string appointmentId)
         {
             if (fcmTokens == null || !fcmTokens.Any())
                 return;
