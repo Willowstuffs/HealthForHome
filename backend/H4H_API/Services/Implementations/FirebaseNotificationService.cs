@@ -9,7 +9,7 @@ namespace H4H_API.Services.Implementations
 {
     public class FirebaseNotificationService
     {
-        
+
         private readonly FirebaseApp _app;
 
         public FirebaseNotificationService()
@@ -17,7 +17,7 @@ namespace H4H_API.Services.Implementations
             var json = Environment.GetEnvironmentVariable("FIREBASE_CREDENTIALS_JSON");
 
             if (string.IsNullOrEmpty(json))
-                throw new Exception("Nie ma FIREBASE_CREDENTIALS_JSON environment variable");
+                throw new Exception("Brakuje FIREBASE_CREDENTIALS_JSON environment variable");
 
             _app = FirebaseApp.DefaultInstance ?? FirebaseApp.Create(new AppOptions()
             {
@@ -53,7 +53,7 @@ namespace H4H_API.Services.Implementations
             var result = await FirebaseMessaging.DefaultInstance.SendAsync(message);
             return result; // Zwraca messageId
         }
-        public async Task SendNotificationToManyAsync(List<string> fcmTokens,string title,string body,string appointmentId)
+        public async Task SendNotificationToManyAsync(List<string> fcmTokens, string title, string body, string appointmentId)
         {
             if (fcmTokens == null || !fcmTokens.Any())
                 return;

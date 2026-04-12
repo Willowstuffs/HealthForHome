@@ -1,5 +1,4 @@
-
-﻿using H4H_API.DTOs.Specialist;
+using H4H_API.DTOs.Specialist;
 using H4H_API.DTOs.Client;
 
 
@@ -71,6 +70,15 @@ namespace H4H_API.Services.Interfaces
         /// <returns></returns>
         Task UpdateProfileAsync(Guid userId, UpdateSpecialistProfileDto dto);
 
+        /// <summary>
+        /// Pobiera publiczny profil specjalisty na podstawie ID specjalisty (nie użytkownika) - do wyświetlania dla klientów
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        Task<SpecialistProfileDto?> GetPublicProfileAsync(Guid id);
+        Task<List<SpecialistOfferDto>> GetPublicServicesAsync(Guid id);
+        Task<List<NearbySpecialistDto>> GetNearbySpecialistsAsync(double lat, double lng);
+        
         /// <summary>  Asynchronicznie pobiera liste ofert uslug dostepnych dla okreslonego specjalisty. </summary>
         Task<List<ServiceRequestDto>> GetOffersInRangeAsync(Guid userId);
 

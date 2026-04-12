@@ -128,7 +128,7 @@ namespace H4H_API.Services.Implementations
             var specialist = await _context.specialists
                 .FirstOrDefaultAsync(s => s.UserId == userId)
                 ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
-      
+
             var qualification = await _context.specialist_qualifications
                 .FirstOrDefaultAsync(q => q.SpecialistId == specialist.Id);
 
@@ -251,7 +251,7 @@ namespace H4H_API.Services.Implementations
 
                 await _context.SaveChangesAsync();
             }
-                throw new AppException("Usługa nie znaleziona.", ErrorCodes.ServiceNotFound); //SERV_002
+            throw new AppException("Usługa nie znaleziona.", ErrorCodes.ServiceNotFound); //SERV_002
         }
 
         public async Task DeleteServiceAsync(Guid userId, Guid serviceId)
@@ -302,7 +302,9 @@ namespace H4H_API.Services.Implementations
                 var geometryFactory = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
                 area.Location = geometryFactory.CreatePoint(new NetTopologySuite.Geometries.Coordinate(dto.Longitude.Value, dto.Latitude.Value));
                 area.LocationUpdatedAt = DateTime.UtcNow;
-            } else {
+            }
+            else
+            {
                 //Majac tylko miasto i kod pocztowy, mozna zrobic geokodowanie (kiedys)
                 area.Location = null;
             }
@@ -524,6 +526,105 @@ namespace H4H_API.Services.Implementations
 
         }
 
+
+        /// <summary>
+        /// Pobiera publiczny profil specjalisty na podstawie jego ID (nie userId), zawierający podstawowe informacje, średnią ocen, profesję i obszary działania.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public async Task<SpecialistProfileDto?> GetPublicProfileAsync(Guid id)
+        {
+            // 1. Pobieramy dane z bazy (bez mapowania współrzędnych w SQL)
+            var specialist = await _context.specialists
+                .Include(s => s.User)
+                .Include(s => s.ServiceAreas)
+                .FirstOrDefaultAsync(s => s.Id == id);
+
+            if (specialist == null) return null;
+
+            // 2. Pobieramy profesję osobnym zapytaniem (prostsze i bezpieczniejsze)
+            var profession = await _context.specialist_qualifications
+                .Where(q => q.SpecialistId == id && q.IsActive)
+                .Select(q => q.Profession)
+                .FirstOrDefaultAsync();
+
+            // 3. Mapujemy na DTO w pamięci (tutaj .Y i .X zadziałają bez błędu bazy)
+            return new SpecialistProfileDto
+            {
+                Id = specialist.Id,
+                FirstName = specialist.FirstName,
+                LastName = specialist.LastName,
+                ProfessionalTitle = specialist.ProfessionalTitle,
+                Bio = specialist.Bio,
+                AvatarUrl = specialist.User?.AvatarUrl,
+                PhoneNumber = specialist.User?.PhoneNumber,
+                Profession = profession,
+                Areas = specialist.ServiceAreas.Select(a => new ServiceAreaManageDto
+                {
+                    City = a.City,
+                    PostalCode = a.PostalCode,
+                    MaxDistanceKm = (int)a.MaxDistanceKm,
+                    // Tutaj procesor C# obsłuży to poprawnie, bo dane są już pobrane z bazy
+                    Latitude = a.Location?.Y,
+                    Longitude = a.Location?.X
+                }).ToList()
+            };
+        }
+
+        /// <summary>
+        /// Pobiera listę aktywnych usług oferowanych przez specjalistę na podstawie jego ID (nie userId), zawierającą nazwę usługi, kategorię, czas trwania, cenę i opis.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public async Task<List<SpecialistOfferDto>> GetPublicServicesAsync(Guid id)
+        {
+            return await _context.specialist_services
+                .Include(ss => ss.ServiceType)
+                .Where(ss => ss.SpecialistId == id && ss.IsActive)
+                .Select(ss => new SpecialistOfferDto
+                {
+                    ServiceId = ss.Id,
+                    Name = ss.ServiceType.Name,
+                    Category = ss.ServiceType.Category,
+                    DurationMinutes = ss.DurationMinutes,
+                    Price = ss.Price,
+                    Description = ss.Description
+                })
+                .ToListAsync();
+        }
+
+        /// <summary>
+        /// Pobiera listę specjalistów znajdujących się w pobliżu klienta na podstawie jego współrzędnych geograficznych (latitude i longitude). Zwraca podstawowe informacje o specjaliście, średnią ocenę, stawkę godzinową oraz odległość od klienta. Wykorzystuje funkcje geograficzne PostGIS do obliczenia odległości między klientem a obszarami działania specjalistów, filtrując tylko tych, którzy znajdują się w zasięgu określonym przez ich maksymalną odległość działania. Wyniki są sortowane według odległości rosnąco, aby najbliżsi specjaliści byli wyświetlani jako pierwsi.
+        /// </summary>
+        /// <param name="lat"></param>
+        /// <param name="lng"></param>
+        /// <returns></returns>
+        public async Task<List<NearbySpecialistDto>> GetNearbySpecialistsAsync(double lat, double lng)
+        {
+            var geometryFactory = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
+            var clientPoint = geometryFactory.CreatePoint(new NetTopologySuite.Geometries.Coordinate(lng, lat));
+
+            return await _context.specialists
+                .Include(s => s.ServiceAreas)
+                .Where(s => s.ServiceAreas.Any(sa =>
+                    sa.Location != null &&
+                    sa.Location.Distance(clientPoint) <= sa.MaxDistanceKm * 1000)) // Distance w PostGIS dla Geography jest w metrach
+                .Select(s => new NearbySpecialistDto
+                {
+                    Id = s.Id,
+                    FirstName = s.FirstName,
+                    LastName = s.LastName,
+                    ProfessionalTitle = s.ProfessionalTitle,
+                    AvatarUrl = s.User.AvatarUrl,
+                    HourlyRate = s.HourlyRate ?? 0,
+                    DistanceKm = s.ServiceAreas
+                        .Where(sa => sa.Location != null)
+                        .Select(sa => sa.Location!.Distance(clientPoint) / 1000)
+                        .Min()
+                })
+                .OrderBy(s => s.DistanceKm)
+                .ToListAsync();
+        }
         //Pobieranie ofert w zakresie dzialania specjalisty
         public async Task<List<ServiceRequestDto>> GetOffersInRangeAsync(Guid userId)
         {

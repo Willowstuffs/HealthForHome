@@ -44,6 +44,15 @@ namespace H4H.Core.Models
         [Column("created_at", TypeName = "timestamp without time zone")]
         public DateTime CreatedAt { get; set; } = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified);
 
+        // Nowe pola do zarządzania zawieszeniem konta specjalisty 
+        [Column("is_suspended")]
+        public bool IsSuspended { get; set; } = false;
+
+        [Column("suspended_at", TypeName = "timestamp without time zone")]
+        public DateTime? SuspendedAt { get; set; }
+
+
+
         public virtual User User { get; set; } = null!;
         public virtual ICollection<SpecialistService> Services { get; set; } = new List<SpecialistService>();
         public virtual ICollection<ServiceArea> ServiceAreas { get; set; } = new List<ServiceArea>();
