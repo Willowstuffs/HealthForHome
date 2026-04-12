@@ -14,11 +14,15 @@ namespace H4H_API.Services.Implementations
 
         public FirebaseNotificationService()
         {
-            // Sprawdzenie, czy domyślny app już istnieje
+            var json = Environment.GetEnvironmentVariable("FIREBASE_CREDENTIALS_JSON");
+
+            if (string.IsNullOrEmpty(json))
+                throw new Exception("Brakuje FIREBASE_CREDENTIALS_JSON environment variable");
+
             _app = FirebaseApp.DefaultInstance ?? FirebaseApp.Create(new AppOptions()
             {
-                Credential = GoogleCredential.FromFile("Firebase/health4home-firebase-adminsdk-fbsvc-87018f7028.json"),
-                ProjectId = "health4home" // dokładnie jak w pliku JSON i projekcie Firebase
+                Credential = GoogleCredential.FromJson(json),
+                ProjectId = "test-e1dc5"
             });
         }
 
