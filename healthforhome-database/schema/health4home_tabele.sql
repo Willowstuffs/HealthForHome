@@ -1,3 +1,5 @@
+
+
 -- TWORZENIE TABEL
 -- uzytkownicy
 CREATE TABLE users (
@@ -544,3 +546,43 @@ ON appointments_specialists USING GIN (service_type_ids);
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS contact_name VARCHAR(200);
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS contact_phone_number VARCHAR(20);
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS contact_email VARCHAR(150);
+
+
+
+-- Aktualizacja 10.04.2026 - Dostosowanie bazy do potrzeb panelu administratora
+
+-- 1. users
+-- Aktualizacja typów użytkowników (dodanie admina)
+-- Najpierw usuwamy stary warunek, potem dodajemy nowy, który pozwala na 'admin'
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_user_type_check;
+ALTER TABLE users ADD CONSTRAINT users_user_type_check 
+    CHECK (user_type IN ('client', 'specialist', 'admin'));
+
+-- 2. appointments - pola contact_name, contact_phone_number, contact_email juz byly dodawane
+
+-- 3. specialists
+-- Aktualizacja tabeli specialists (obsługa zawieszeń kont)
+ALTER TABLE specialists 
+    ADD COLUMN IF NOT EXISTS is_suspended BOOLEAN DEFAULT false,
+    ADD COLUMN IF NOT EXISTS suspended_at TIMESTAMP;
+
+-- 4. specialist_qualifications
+-- Aktualizacja kwalifikacji (termin ważności licencji)
+ALTER TABLE specialist_qualifications 
+    ADD COLUMN IF NOT EXISTS license_valid_until DATE;
+
+-- 5. appointments -> appointment_status
+-- Usuwamy stare ograniczenie
+ALTER TABLE appointments DROP CONSTRAINT IF EXISTS appointments_appointment_status_check;
+-- Nowa lista z wszystkimi statusami żeby juz nie zmieniac
+ALTER TABLE appointments ADD CONSTRAINT appointments_appointment_status_check 
+    CHECK (appointment_status IN (
+        'open',          
+        'pending',      
+        'confirmed',     
+        'in_progress',   -- dodane
+        'completed',     
+        'cancelled',     
+        'no_show'        -- dodane
+    ));
+
