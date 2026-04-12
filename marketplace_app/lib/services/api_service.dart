@@ -1,7 +1,5 @@
-import 'dart:io';
 import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:dio/io.dart';
 import '../models/auth_models.dart';
 import '../models/client_profile.dart';
 import '../models/client_update_dto.dart';
@@ -13,8 +11,7 @@ import '../models/specialist_offer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  // 10.0.2.2 - bridge localhost dla emulatora Android
-  static const String _baseUrl = 'https://10.0.2.2:7026';
+  static const String _baseUrl = 'https://h4h.makolino.com';
 
   late final Dio _dio;
   String? _accessToken;
@@ -39,16 +36,6 @@ class ApiService {
         receiveTimeout: const Duration(seconds: 10),
         headers: {'Content-Type': 'application/json'},
       ),
-    );
-
-    // TODO: usunac w produkcji (samo podpisany certyfikat)
-    _dio.httpClientAdapter = IOHttpClientAdapter(
-      createHttpClient: () {
-        final client = HttpClient();
-        client.badCertificateCallback =
-            (X509Certificate cert, String host, int port) => true;
-        return client;
-      },
     );
 
     _dio.interceptors.add(
