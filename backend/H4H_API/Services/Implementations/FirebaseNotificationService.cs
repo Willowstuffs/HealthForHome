@@ -62,10 +62,9 @@ namespace H4H_API.Services.Implementations
             {
                 Token = token,
 
-                Notification = new Notification()
+                Notification = new Notification
                 {
-                    Title = title,
-                    Body = body
+                    Title = title
                 },
 
                 Data = new Dictionary<string, string>
@@ -88,6 +87,7 @@ namespace H4H_API.Services.Implementations
                 }
 
             }).ToList();
+            Console.WriteLine(messages);
 
             var response = await FirebaseMessaging.DefaultInstance.SendEachAsync(messages);
 

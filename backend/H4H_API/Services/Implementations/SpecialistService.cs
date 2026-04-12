@@ -309,7 +309,7 @@ namespace H4H_API.Services.Implementations
             await _context.SaveChangesAsync();
         }
 
-        public async Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId,Guid serviceId, decimal price)
+        public async Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId, List<Guid> serviceTypeIds, decimal price)
         {
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
                 ?? throw new AppException("Profil nie istnieje.", ErrorCodes.SpecialistNotFound);
@@ -330,12 +330,12 @@ namespace H4H_API.Services.Implementations
                 Id = Guid.NewGuid(),
                 AppointmentId = appointment.Id,
                 SpecialistId = specialist.Id,
+                Price = price,
+                ServiceTypeIds = serviceTypeIds,
                 CreatedAt = DateTime.UtcNow
             };
             _context.appointments_specialists.Add(appointmentSpecialist);
 
-            appointment.TotalPrice = price;
-            appointment.SpecialistServiceId = serviceId;
             appointment.AppointmentStatus = "pending";
 
             await _context.SaveChangesAsync();
