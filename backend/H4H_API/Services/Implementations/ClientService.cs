@@ -522,6 +522,18 @@ namespace H4H_API.Services.Implementations
 
             var geocoded = await _geocoder.GeocodeAddressAsync(cleanAddress);
 
+            // WALIDACJA ADRESU - eliminujemy przypadki, gdzie geocoder nie obługuje adresu i zwraca (0,0) lub null lub inny niepoprawny wynik.
+            // Sprawdzamy, czy geocoder w ogóle zwrócił wynik i czy ma współrzędne
+            if (geocoded == null || geocoded.Latitude == 0 || geocoded.Longitude == 0)
+            {
+                // Jeśli nie udało się namierzyć adresu, przerywamy proces i informujemy klienta
+                throw new AppException(
+                    "Nie udało się zweryfikować podanego adresu. Proszę wpisać dokładniejszy adres (np. dodać miasto lub numer domu).",
+                    ErrorCodes.AddressNotFound
+                );
+            }
+
+
             // Jeśli użytkownik jest zalogowany, ale nie znaleziono klienta, to jest błąd - nie można stworzyć ogłoszenia bez klienta
             if (!finalClientId.HasValue)
                 throw new AppException("Musisz być zalogowany, aby stworzyć ogłoszenie", ErrorCodes.ClientNotFound);
