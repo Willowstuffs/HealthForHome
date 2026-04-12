@@ -915,10 +915,47 @@ class HomeScreenState extends State<HomeScreen> {
                 style: TextStyle(color: AppColors.textSecondary),
               ),
               const SizedBox(height: 24),
-              // Dummy specialists
-              _buildMockSpecialistTile(context, 'Dr Jan Kowalski', 'Fizjoterapeuta', 150.0),
-              const SizedBox(height: 12),
-              _buildMockSpecialistTile(context, 'Anna Nowak', 'Masażystka', 120.0),
+              FutureBuilder<List<AppointmentOffer>>(
+                future: ApiService().getAppointmentOffers(request.id),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: Text(
+                          'Błąd ładowania ofert',
+                          style: TextStyle(color: AppColors.error),
+                        ),
+                      ),
+                    );
+                  }
+
+                  final offers = snapshot.data ?? [];
+                  if (offers.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: Text('Brak ofert dla tego ogłoszenia'),
+                      ),
+                    );
+                  }
+
+                  return Column(
+                    children: offers
+                        .map((offer) => _buildSpecialistTile(context, offer, request.id))
+                        .toList(),
+                  );
+                },
+              ),
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
@@ -938,66 +975,101 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildMockSpecialistTile(BuildContext context, String name, String profession, double price) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.outlineVariant),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-            child: Icon(Icons.person, color: AppColors.primary),
+  Widget _buildSpecialistTile(BuildContext context, AppointmentOffer offer, String appointmentId) {
+    bool isAccepting = false;
+
+    return StatefulBuilder(
+      builder: (context, setLocalState) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.outlineVariant),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                ),
-                Text(
-                  profession,
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          child: Row(
             children: [
-              Text(
-                '${price.toStringAsFixed(0)} zł',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
+              CircleAvatar(
+                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                child: Icon(Icons.person, color: AppColors.primary),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${offer.firstName} ${offer.lastName}',
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                    ),
+                    if (offer.bio != null && offer.bio!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          offer.bio!,
+                          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 8),
-              FilledButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Wybrano: $name')),
-                  );
-                },
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                  minimumSize: const Size(0, 32),
-                ),
-                child: const Text('Wybierz'),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '${offer.proposedPrice.toStringAsFixed(0)} zł',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  isAccepting
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : FilledButton(
+                          onPressed: () async {
+                            setLocalState(() => isAccepting = true);
+                            try {
+                              await ApiService().acceptAppointmentOffer(appointmentId, offer.specialistId);
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Wybrano specjalistę pomyślnie')),
+                                );
+                                // Refresh dashboard
+                                this.setState(() {});
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Błąd: $e')),
+                                );
+                                setLocalState(() => isAccepting = false);
+                              }
+                            }
+                          },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                            minimumSize: const Size(0, 32),
+                          ),
+                          child: const Text('Wybierz'),
+                        ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

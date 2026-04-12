@@ -141,3 +141,29 @@ class CreateServiceRequestDto {
     };
   }
 }
+
+class AppointmentOffer {
+  final String specialistId;
+  final String firstName;
+  final String lastName;
+  final double proposedPrice;
+  final String? bio;
+
+  AppointmentOffer({
+    required this.specialistId,
+    required this.firstName,
+    required this.lastName,
+    required this.proposedPrice,
+    this.bio,
+  });
+
+  factory AppointmentOffer.fromJson(Map<String, dynamic> json) {
+    return AppointmentOffer(
+      specialistId: json['specialistId'],
+      firstName: json['firstName'] ?? '',
+      lastName: json['lastName'] ?? '',
+      proposedPrice: (json['proposedPrice'] as num?)?.toDouble() ?? 0.0,
+      bio: json['bio'],
+    );
+  }
+}
