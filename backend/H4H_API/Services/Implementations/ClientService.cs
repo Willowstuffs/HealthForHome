@@ -616,5 +616,83 @@ namespace H4H_API.Services.Implementations
             }
             return client?.AddressPoint;
         }
+
+        // Pobieranie ofert od specjalistów
+        public async Task<List<AppointmentOfferDto>> GetOffersForAppointmentAsync(Guid userId, Guid appointmentId)
+        {
+            // Sprawdzamy czy to na pewno ogłoszenie tego klienta
+            var client = await _context.clients.FirstOrDefaultAsync(c => c.UserId == userId);
+
+            if (client == null)
+                throw new AppException("Nie znaleziono profilu klienta.", ErrorCodes.ClientNotFound);
+
+            var appointment = await _context.appointments
+                .FirstOrDefaultAsync(a => a.Id == appointmentId && a.ClientId == client.Id);
+
+            if (appointment == null)
+                throw new AppException("Nie znaleziono ogłoszenia.", ErrorCodes.AppointmentNotFound);
+
+            // Pobieramy zgłoszenia specjalistów z tabeli łączącej
+            var offers = await _context.Set<AppointmentSpecialist>() 
+                .Include(os => os.Specialist)
+                .Where(os => os.AppointmentId == appointmentId)
+                .Select(os => new AppointmentOfferDto
+                {
+                    SpecialistId = os.SpecialistId,
+                    FirstName = os.Specialist.FirstName,
+                    LastName = os.Specialist.LastName,
+                    ProposedPrice = os.Price, 
+                    Bio = os.Specialist.Bio
+                })
+                .ToListAsync();
+
+            return offers;
+        }
+
+
+        /// <summary>
+        /// Asynchronicznie akceptuje ofertę specjalisty dla danego ogłoszenia. Sprawdza, czy oferta należy do tego ogłoszenia i klienta, a następnie przypisuje specjalistę do wizyty, zmienia status na "confirmed" i zapisuje cenę z oferty jako finalną. Zwraca zaktualizowane dane wizyty.
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="appointmentId"></param>
+        /// <param name="specialistId"></param>
+        /// <returns></returns>
+        /// <exception cref="AppException"></exception>
+        public async Task AcceptSpecialistOfferAsync(Guid userId, Guid appointmentId, Guid specialistId)
+        {
+            // Pobieramy klienta i sprawdzamy, czy ogłoszenie należy do niego
+            var client = await _context.clients.FirstOrDefaultAsync(c => c.UserId == userId);
+
+            if (client == null)
+            {
+                throw new AppException("Nie znaleziono profilu klienta.", ErrorCodes.ClientNotFound);
+            }
+
+            var appointment = await _context.appointments
+                .Include(a => a.AppointmentSpecialists)
+                .FirstOrDefaultAsync(a => a.Id == appointmentId && a.ClientId == client.Id);
+
+            if (appointment == null)
+                throw new AppException("Ogłoszenie nie istnieje.", ErrorCodes.AppointmentNotFound);
+
+            // 1. Sprawdzamy czy ten specjalista na pewno wysłał ofertę
+            var offerExists = await _context.Set<AppointmentSpecialist>()
+                .AnyAsync(os => os.AppointmentId == appointmentId && os.SpecialistId == specialistId);
+
+            if (!offerExists)
+                throw new AppException("Ten specjalista nie złożył oferty.", ErrorCodes.ValidationError);
+
+            // 2. Przypisujemy specjalistę do głównego zlecenia
+            appointment.SpecialistId = specialistId;
+            appointment.AppointmentStatus = "confirmed"; // Zmieniamy status z 'open' na 'confirmed'
+            appointment.UpdatedAt = DateTime.Now;
+
+            // 3. (Opcjonalnie) Pobieramy cenę z oferty i ustawiamy ją jako finałową
+            var finalOffer = await _context.Set<AppointmentSpecialist>()
+                .FirstAsync(os => os.AppointmentId == appointmentId && os.SpecialistId == specialistId);
+            appointment.TotalPrice = finalOffer.Price;
+
+            await _context.SaveChangesAsync();
+        }
     }
 }
