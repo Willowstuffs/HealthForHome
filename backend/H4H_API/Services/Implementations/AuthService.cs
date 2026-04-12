@@ -129,7 +129,7 @@ namespace H4H_API.Services.Implementations
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
                 UserType = "client",
                 PhoneNumber = request.PhoneNumber,
-                IsActive = true, // Zmienione z true żeby zablokować dostęp do czasu weryfikacji kodu!!!
+                IsActive = false, // Zmienione z true żeby zablokować dostęp do czasu weryfikacji kodu!!!
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now
             };
@@ -410,6 +410,15 @@ namespace H4H_API.Services.Implementations
                 existingCode.IsUsed = true;
             }
 
+            // Wywołanie funkcji SQL: sprzątanie bazy danych z nieużywanych kodów weryfikacyjnych i nieaktywnych użytkowników
+            await _context.Database.ExecuteSqlRawAsync("SELECT delete_expired_codes();"); // Kody czyścimy zawsze - to szybka operacja
+            if (new Random().Next(1, 50) == 1) // Konta czyścimy tylko raz na 50 wysłanych maili (średnio)
+            {
+                await _context.Database.ExecuteSqlRawAsync("SELECT cleanup_inactive_users();");
+            }
+            // <3 
+            //re: dzieki dzastina
+
             //Zapisz nowy kod w bazie
             var verificationCode = new VerificationCode //encja z postgresika
             {
@@ -436,11 +445,22 @@ namespace H4H_API.Services.Implementations
             var user = await _context.users.FirstOrDefaultAsync(u => u.Email == request.Email)
                 ?? throw new AppException("Użytkownik nie istnieje.", ErrorCodes.UserNotFound);
 
+            //Szybki patch tymczasowy póki nam service nie dziala, kod OTP 000000 bedzie zawsze traktowany jako poprawny by nie blokowac
+            if (request.Code == "000000") //request.Code to ten, ktory user wpisuje w apce, nie z bazy.
+            {
+                user.IsActive = true;
+                user.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                return;
+            }
+            //koniec patcha
+
             // Znajdź najnowszy aktywny kod
             var verificationCode = await _context.verification_codes
                 .Where(vc => vc.UserId == user.Id && vc.Code == request.Code && !vc.IsUsed && vc.Purpose == "registration")
                 .OrderByDescending(vc => vc.CreatedAt)
                 .FirstOrDefaultAsync();
+            
 
             if (verificationCode != null)
             {

@@ -1,15 +1,15 @@
 ﻿using AutoMapper;
-using H4H_API.DTOs.Appointments;
-using H4H_API.DTOs.Common;
-using H4H_API.DTOs.Specialist;
 using H4H.Core.Models;
 using H4H.Data;
-using H4H_API.Services.Interfaces;
-using Microsoft.EntityFrameworkCore;
+using H4H_API.DTOs.Appointments;
 using H4H_API.DTOs.Client;
+using H4H_API.DTOs.Common;
+using H4H_API.DTOs.Geolocation;
+using H4H_API.DTOs.Specialist;
 using H4H_API.Exceptions;
 using H4H_API.Helpers;
-using H4H_API.DTOs.Geolocation;
+using H4H_API.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace H4H_API.Services.Implementations
 {
@@ -40,7 +40,7 @@ namespace H4H_API.Services.Implementations
         {
             _context = context;
             _mapper = mapper;
-            // _firebaseNotificationService = firebaseNotificationService;
+            _firebaseNotificationService = firebaseNotificationService;
             _geocoder = geocoder;
         }
 
@@ -598,6 +598,23 @@ namespace H4H_API.Services.Implementations
 
             // Automapper zamieni Encje na DTO automatycznie
             return _mapper.Map<List<ServiceRequestDto>>(requests);
+        }
+
+        /// <summary>
+        /// Pobiera punkt geograficzny (współrzędne) adresu klienta na podstawie jego ID użytkownika. Zwraca null jeśli klient nie istnieje.
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        public async Task<NetTopologySuite.Geometries.Point?> GetClientAddressPointAsync(Guid userId)
+        {
+            var client = await _context.clients.FirstOrDefaultAsync(c => c.UserId == userId);
+            // If AdressPoint is null, try to geocode it now
+            if (client != null && client.AddressPoint == null && !string.IsNullOrEmpty(client.Address))
+            {
+                await GeocodeClientAddressAsync(client);
+                await _context.SaveChangesAsync();
+            }
+            return client?.AddressPoint;
         }
     }
 }

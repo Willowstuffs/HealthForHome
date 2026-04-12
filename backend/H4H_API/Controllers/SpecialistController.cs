@@ -1,4 +1,5 @@
-﻿using H4H_API.DTOs.Common;
+using H4H_API.DTOs.Appointments;
+using H4H_API.DTOs.Common;
 using H4H_API.DTOs.Specialist;
 using H4H_API.Services.Implementations;
 using H4H_API.Services.Interfaces;
@@ -151,10 +152,10 @@ namespace H4H_API.Controllers
         /// !!! DO POPRAWIENIA GDY BEDZIE UPDATE BAZY !!!
         /// </summary>
         [HttpPatch("appointments/{id}/confirm")]
-        public async Task<ActionResult<ApiResponse<object?>>> ConfirmAppointment(Guid id, Guid serviceId, decimal price)
+        public async Task<ActionResult<ApiResponse<object?>>> ConfirmAppointment(Guid id, [FromBody] ConfirmAppointmentDto dto)
         {
             var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
-            await _specialistService.ConfirmAppointmentAsync(userId, id,serviceId,price);
+            await _specialistService.ConfirmAppointmentAsync(userId, id, dto.ServiceTypeIds, dto.Price);
             return Ok(ApiResponse<object?>.SuccessResponse(null, "Wizyta została potwierdzona."));
         }
 
@@ -198,6 +199,16 @@ namespace H4H_API.Controllers
 
             return Ok(ApiResponse<object?>
                 .SuccessResponse(null, "Profil został zaktualizowany."));
+        }
+
+        [Authorize(Roles = "Specialist")]
+        [HttpGet("available-offers")]
+        public async Task<IActionResult> GetAvailableOffers()
+        {
+            var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value!);
+
+            var offers = await _specialistService.GetOffersInRangeAsync(userId);
+            return Ok(offers);
         }
 
     }

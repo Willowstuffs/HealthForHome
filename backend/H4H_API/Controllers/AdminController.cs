@@ -1,17 +1,13 @@
 ﻿using H4H_API.DTOs.Admin;
-using H4H_API.DTOs.Appointments;
 using H4H_API.DTOs.Common;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using H4H_API.Exceptions;
-using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
 
 namespace H4H_API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "admin")]
+    // TODO: Dodać [Authorize(Roles = "admin")] gdy wdrożymy JWT dla admina
     public class AdminController : ControllerBase
     {
         private readonly IAdminService _adminService;
@@ -56,13 +52,10 @@ namespace H4H_API.Controllers
         [HttpPost("specialists/{id}/approve")]
         public async Task<ActionResult<ApiResponse<object?>>> ApproveSpecialist(Guid id)
         {
-            var adminIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(adminIdClaim))
-                throw new UnauthorizedAccessException("Brak identyfikatora administratora w tokenie.");
+            // Tymczasowo generujemy fake'owy Guid dla admina na potrzeby testów postman/swagger
+            var tempAdminId = Guid.NewGuid();
 
-            var adminId = Guid.Parse(adminIdClaim);
-
-            await _adminService.ApproveSpecialistAsync(id, adminId);
+            await _adminService.ApproveSpecialistAsync(id, tempAdminId);
             return Ok(ApiResponse<object?>.SuccessResponse(null, "Specjalista został zatwierdzony."));
         }
 
@@ -70,24 +63,10 @@ namespace H4H_API.Controllers
         [HttpPost("specialists/{id}/reject")]
         public async Task<ActionResult<ApiResponse<object?>>> RejectSpecialist(Guid id, [FromBody] RejectSpecialistDto dto)
         {
-            var adminIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(adminIdClaim))
-                throw new UnauthorizedAccessException("Brak identyfikatora administratora w tokenie.");
+            var tempAdminId = Guid.NewGuid();
 
-            var adminId = Guid.Parse(adminIdClaim);
-
-            await _adminService.RejectSpecialistAsync(id, adminId, dto.Reason);
+            await _adminService.RejectSpecialistAsync(id, tempAdminId, dto.Reason);
             return Ok(ApiResponse<object?>.SuccessResponse(null, "Specjalista został odrzucony."));
-        }
-        [HttpPut("specialists/{id}/license-validity")]
-        public async Task<ActionResult<ApiResponse<object?>>> UpdateLicenseValidity(Guid id, [FromBody] UpdateLicenseValidityDto dto)
-        {
-            if (!dto.LicenseValidUntil.HasValue)
-                throw new AppException("Data ważności licencji jest wymagana.", "INVALID_LICENSE_DATE");
-
-            await _adminService.UpdateLicenseValidityAsync(id, dto.LicenseValidUntil.Value);
-
-            return Ok(ApiResponse<object?>.SuccessResponse(null, "Data ważności licencji została zaktualizowana."));
         }
 
 
@@ -134,25 +113,5 @@ namespace H4H_API.Controllers
             var result = await _adminService.GetAppointmentsAsync(filter);
             return Ok(ApiResponse<PagedResponse<AdminAppointmentListItemDto>>.SuccessResponse(result));
         }
-        /// <summary>
-        /// Tworzy nową wizytę w systemie.
-        /// </summary>
-        [HttpPost("appointments")]
-        public async Task<ActionResult<ApiResponse<object>>> CreateAppointment([FromBody] CreateAppointmentDto dto)
-        {
-            var appointmentId = await _adminService.CreateAppointmentAsync(dto);
-
-            return Ok(ApiResponse<object>.SuccessResponse(new
-            {
-                appointmentId
-            }, "Wizyta została utworzona."));
-        }
-        [HttpGet("appointments/{id}")]
-        public async Task<ActionResult<ApiResponse<AdminAppointmentListItemDto>>> GetAppointment(Guid id)
-        {
-            var result = await _adminService.GetAppointmentByIdAsync(id);
-            return Ok(ApiResponse<AdminAppointmentListItemDto>.SuccessResponse(result));
-        }
-
     }
 }

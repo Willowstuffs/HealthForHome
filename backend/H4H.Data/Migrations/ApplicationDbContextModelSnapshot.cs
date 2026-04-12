@@ -151,12 +151,6 @@ namespace H4H.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("client_notes");
 
-                    b.Property<string>("ContactEmail")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("character varying(150)")
-                        .HasColumnName("contact_email");
-
                     b.Property<string>("ContactName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -856,10 +850,6 @@ namespace H4H.Data.Migrations
                     b.Property<string>("LicensePhotoUrl")
                         .HasColumnType("text")
                         .HasColumnName("license_photo_url");
-
-                    b.Property<DateTime?>("LicenseValidUntil")
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("license_valid_until");
 
                     b.Property<string>("Profession")
                         .IsRequired()
