@@ -223,5 +223,34 @@ namespace H4H_API.Controllers
 
             return Ok(ApiResponse<List<NearbySpecialistDto>>.SuccessResponse(specialists));
         }
+
+
+        /// <summary>
+        /// Pobiera listę specjalistów, którzy odpowiedzieli na prośbę o usługę klienta (oferty dla danej wizyty)
+        /// </summary>
+        /// <param name="appointmentId"></param>
+        /// <returns></returns>
+        [HttpGet("appointments/{appointmentId}/offers")]
+        public async Task<ActionResult<ApiResponse<List<AppointmentOfferDto>>>> GetAppointmentOffers(Guid appointmentId)
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            var offers = await _clientService.GetOffersForAppointmentAsync(userId, appointmentId);
+            return Ok(ApiResponse<List<AppointmentOfferDto>>.SuccessResponse(offers));
+        }
+
+        /// <summary>
+        /// Pozwala klientowi zaakceptować ofertę specjalisty dla danej wizyty, co powinno skutkować przypisaniem tej wizyty do wybranego specjalisty i zmianą statusu wizyty na "confirmed".
+        /// </summary>
+        /// <param name="appointmentId"></param>
+        /// <param name="specialistId"></param>
+        /// <returns></returns>
+        [HttpPost("appointments/{appointmentId}/accept-offer/{specialistId}")]
+        public async Task<ActionResult<ApiResponse<object>>> AcceptSpecialistOffer(Guid appointmentId, Guid specialistId)
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            await _clientService.AcceptSpecialistOfferAsync(userId, appointmentId, specialistId);
+
+            return Ok(ApiResponse<object?>.SuccessResponse(null, "Specjalista został wybrany pomyślnie."));
+        }
     }
 }

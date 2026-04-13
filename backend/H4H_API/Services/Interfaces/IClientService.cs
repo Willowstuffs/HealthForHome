@@ -34,5 +34,9 @@ namespace H4H_API.Services.Interfaces
 
         // Wyszukiwanie specjalistów na podstawie lokalizacji klienta
         Task<NetTopologySuite.Geometries.Point?> GetClientAddressPointAsync(Guid userId);
+
+        // Zarządzanie odpowiedziami specjalistów na prośby o usługę
+        Task<List<AppointmentOfferDto>> GetOffersForAppointmentAsync(Guid userId, Guid appointmentId);
+        Task AcceptSpecialistOfferAsync(Guid userId, Guid appointmentId, Guid specialistId);
     }
 }
