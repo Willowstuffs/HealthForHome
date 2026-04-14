@@ -8,6 +8,7 @@ using H4H_API.Helpers;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using NetTopologySuite;
+using NetTopologySuite.Algorithm;
 using ErrorCodes = H4H_API.Helpers.ErrorCodes;
 using SpecialistServiceEntity = H4H.Core.Models.SpecialistService;
 
@@ -65,7 +66,15 @@ namespace H4H_API.Services.Implementations
         {
             var specialist = await _context.specialists
                 .FirstOrDefaultAsync(s => s.UserId == userId) ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
+            var area = await _context.service_areas
+                .Where(a => a.Specialist.UserId == userId)
+                .OrderByDescending(a => a.IsPrimary)
+                .FirstOrDefaultAsync();
 
+            if (area == null || area.Location == null)
+                throw new AppException("Nie ustawiono obszaru świadczenia usług.", ErrorCodes.NoServiceAreaDefined);
+            //PostGIS uzywa metrow
+            var maxMeters = area.MaxDistanceKm * 1000;
             ///<summary>
             ///Query Builder do pobrania zapytan z zastosowaniem filtrow
             /// </summary>
@@ -104,10 +113,14 @@ namespace H4H_API.Services.Implementations
             query = query.Where(a => a.AppointmentStatus == "open");
 
 
+            query = query
+                .Where(a => a.Location != null)
+                .Where(a => a.Location!.Distance(area.Location) <= maxMeters);
+
 
             //Pobranie danych i mapowanie na DTO
             var result = await query
-                .OrderByDescending(a => a.ScheduledStart)
+                .OrderBy(a => a.Location!.Distance(area.Location))
                 .Select(a => new InquiryListItemDto
                 {
                     AppointmentId = a.Id,
@@ -118,9 +131,11 @@ namespace H4H_API.Services.Implementations
                     Status = a.AppointmentStatus,
                     PatientAddress = a.ClientAddress ?? a.Client.Address ?? "Brak adresu",
                     Price = a.TotalPrice ?? 0,
-                    Description = a.ClientNotes
+                    Description = a.ClientNotes,
+
+                    DistanceKm = Math.Round(a.Location!.Distance(area.Location) / 1000, 2)
                 })
-                .ToListAsync();
+    .ToListAsync();
             return result;
         }
         public async Task UpdateLicenseNumberAsync(Guid userId, string licenseNumber)
@@ -625,43 +640,6 @@ namespace H4H_API.Services.Implementations
                 .OrderBy(s => s.DistanceKm)
                 .ToListAsync();
         }
-        //Pobieranie ofert w zakresie dzialania specjalisty
-        public async Task<List<ServiceRequestDto>> GetOffersInRangeAsync(Guid userId)
-        {
-            var specialist = await _context.specialists
-                .Include(s => s.ServiceAreas)
-                .FirstOrDefaultAsync(s => s.UserId == userId)
-                ?? throw new AppException("Specjalista nie istnieje", ErrorCodes.SpecialistNotFound);
-
-            var area = specialist.ServiceAreas.FirstOrDefault(a => a.IsPrimary)
-                       ?? specialist.ServiceAreas.FirstOrDefault();
-
-            if (area == null || area.Location == null)
-                throw new AppException("Nie ustawiono obszaru świadczenia usług.", ErrorCodes.NoServiceAreaDefined);
-            //PostGIS uzywa metrow
-            var maxMeters = area.MaxDistanceKm * 1000;
-
-            return await _context.appointments
-                .Include(a => a.ServiceType)
-                .Where(a => a.AppointmentStatus == "open" && a.SpecialistId == null && a.Location != null)
-                // Filtrowanie po dystansie w bazie
-                .Where(a => a.Location!.Distance(area.Location) <= maxMeters)
-                .OrderBy(a => a.Location!.Distance(area.Location))
-                .Select(o => new ServiceRequestDto
-                {
-                    Id = o.Id,
-                    ServiceTypeName = o.ServiceType != null ? o.ServiceType.Name : "Nieznana usługa",
-                    Description = o.ClientNotes ?? string.Empty,
-                    DateFrom = o.ScheduledStart,
-                    DateTo = o.ScheduledEnd,
-                    Address = o.ClientAddress ?? "Adres niepodany",
-                    Status = o.AppointmentStatus,
-                    CreatedAt = o.CreatedAt,
-                    ContactName = "Ukryte do czasu akceptacji", //jakaś logika prywatnosci moze kiedys?
-                    // Obliczanie dystansu (wynik w km, zaokrąglony do 2 miejsc):
-                    DistanceKm = Math.Round(o.Location!.Distance(area.Location) / 1000, 2)
-                })
-                .ToListAsync();
-        }
+        
     }
 }
