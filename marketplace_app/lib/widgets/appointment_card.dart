@@ -65,7 +65,7 @@ class AppointmentCard extends StatelessWidget {
                         appointment.scheduledStart.day.toString(),
                         style: TextStyle(
                           fontSize: 18,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w800,
                           color: AppColors.primary,
                         ),
                       ),
@@ -73,7 +73,7 @@ class AppointmentCard extends StatelessWidget {
                         _getMonthName(appointment.scheduledStart.month),
                         style: TextStyle(
                           fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w800,
                           color: AppColors.primary,
                         ),
                       ),
