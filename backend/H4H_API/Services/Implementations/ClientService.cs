@@ -1,15 +1,15 @@
 ﻿using AutoMapper;
-using H4H_API.DTOs.Appointments;
-using H4H_API.DTOs.Common;
-using H4H_API.DTOs.Specialist;
 using H4H.Core.Models;
 using H4H.Data;
-using H4H_API.Services.Interfaces;
-using Microsoft.EntityFrameworkCore;
+using H4H_API.DTOs.Appointments;
 using H4H_API.DTOs.Client;
+using H4H_API.DTOs.Common;
+using H4H_API.DTOs.Geolocation;
+using H4H_API.DTOs.Specialist;
 using H4H_API.Exceptions;
 using H4H_API.Helpers;
-using H4H_API.DTOs.Geolocation;
+using H4H_API.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace H4H_API.Services.Implementations
 {
@@ -500,7 +500,7 @@ namespace H4H_API.Services.Implementations
         /// <param name="userId"></param>
         /// <returns></returns>
         public async Task<Guid> CreateServiceRequestAsync(CreateServiceRequestDto dto, Guid? userId = null)
-        {            
+        {
             Guid? finalClientId = null;
             if (userId.HasValue)
             {
@@ -534,7 +534,15 @@ namespace H4H_API.Services.Implementations
                 SpecialistId = null, // To jest ogłoszenie otwarte
                 ServiceTypeId = serviceType.Id,
 
-                ClientNotes = $"Kontakt: {dto.ContactName}, Tel: {dto.PhoneNumber}. Opis: {dto.Description}",
+                // --- TUTAJ ZMIANA AJAJ: ---
+                // Zapisujemy dane do dedykowanych kolumn:
+                ContactName = dto.ContactName ?? string.Empty,
+                ContactPhoneNumber = dto.PhoneNumber ?? string.Empty,
+                ContactEmail = dto.Email ?? string.Empty,
+
+                // W notatkach zostawiamy czysty opis (bez "Kontakt: ... Tel: ...")
+                ClientNotes = dto.Description,
+                // --------------------
                 ClientAddress = geocoded?.FormattedAddress ?? dto.Address,
 
                 // Zapisujemy punkt GPS (jeśli geokodowanie się udało)
@@ -590,6 +598,23 @@ namespace H4H_API.Services.Implementations
 
             // Automapper zamieni Encje na DTO automatycznie
             return _mapper.Map<List<ServiceRequestDto>>(requests);
+        }
+
+        /// <summary>
+        /// Pobiera punkt geograficzny (współrzędne) adresu klienta na podstawie jego ID użytkownika. Zwraca null jeśli klient nie istnieje.
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        public async Task<NetTopologySuite.Geometries.Point?> GetClientAddressPointAsync(Guid userId)
+        {
+            var client = await _context.clients.FirstOrDefaultAsync(c => c.UserId == userId);
+            // If AdressPoint is null, try to geocode it now
+            if (client != null && client.AddressPoint == null && !string.IsNullOrEmpty(client.Address))
+            {
+                await GeocodeClientAddressAsync(client);
+                await _context.SaveChangesAsync();
+            }
+            return client?.AddressPoint;
         }
     }
 }

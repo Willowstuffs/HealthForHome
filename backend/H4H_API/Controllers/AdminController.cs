@@ -2,6 +2,7 @@
 using H4H_API.DTOs.Common;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace H4H_API.Controllers
 {
@@ -52,21 +53,74 @@ namespace H4H_API.Controllers
         [HttpPost("specialists/{id}/approve")]
         public async Task<ActionResult<ApiResponse<object?>>> ApproveSpecialist(Guid id)
         {
-            // Tymczasowo generujemy fake'owy Guid dla admina na potrzeby testów postman/swagger
-            var tempAdminId = Guid.NewGuid();
+            var userId = Guid.Parse(
+                User.FindFirstValue(ClaimTypes.NameIdentifier)!
+            );
 
-            await _adminService.ApproveSpecialistAsync(id, tempAdminId);
-            return Ok(ApiResponse<object?>.SuccessResponse(null, "Specjalista został zatwierdzony."));
+            await _adminService.ApproveSpecialistAsync(id, userId);
+
+            return Ok(ApiResponse<object?>.SuccessResponse(
+                null,
+                "Specjalista został zatwierdzony."
+            ));
         }
 
         /// <summary>Odrzuca specjaliste zmieniajac status weryfikacji na rejected i logujac akcje wykonana przez admina z powodem odrzucenia.</summary>
         [HttpPost("specialists/{id}/reject")]
         public async Task<ActionResult<ApiResponse<object?>>> RejectSpecialist(Guid id, [FromBody] RejectSpecialistDto dto)
         {
-            var tempAdminId = Guid.NewGuid();
+            var userId = Guid.Parse(
+               User.FindFirstValue(ClaimTypes.NameIdentifier)!
+            );
 
-            await _adminService.RejectSpecialistAsync(id, tempAdminId, dto.Reason);
+
+            await _adminService.RejectSpecialistAsync(id, userId, dto.Reason);
             return Ok(ApiResponse<object?>.SuccessResponse(null, "Specjalista został odrzucony."));
+        }
+
+
+        /// <summary>
+        /// Otrzymuje liste klientow z mozliwoscia filtrowania po dacie rejestracji, sortowania po dacie rejestracji oraz paginacji.
+        /// </summary>
+        /// <param name="filter"></param>
+        /// <returns></returns>
+        [HttpGet("clients")]
+        public async Task<ActionResult<ApiResponse<PagedResponse<AdminClientListItemDto>>>> GetClients([FromQuery] AdminClientFilterDto filter)
+        {
+            var result = await _adminService.GetClientsAsync(filter);
+            return Ok(ApiResponse<PagedResponse<AdminClientListItemDto>>.SuccessResponse(result));
+        }
+
+        /// <summary>
+        /// Pobiera szczegółowe informacje o kliencie, w tym dane osobowe, informacje kontaktowe oraz historię wizyt.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [HttpGet("clients/{id}")]
+        public async Task<ActionResult<ApiResponse<AdminClientDetailsDto>>> GetClientDetails(Guid id)
+        {
+            var result = await _adminService.GetClientDetailsAsync(id);
+            return Ok(ApiResponse<AdminClientDetailsDto>.SuccessResponse(result));
+        }
+
+        /// <summary>
+        /// Pobiera ogólne statystyki systemu dla głównego ekranu panelu administratora.
+        /// </summary>
+        [HttpGet("dashboard/stats")]
+        public async Task<ActionResult<ApiResponse<AdminDashboardStatsDto>>> GetDashboardStats()
+        {
+            var result = await _adminService.GetDashboardStatsAsync();
+            return Ok(ApiResponse<AdminDashboardStatsDto>.SuccessResponse(result));
+        }
+
+        /// <summary>
+        /// Pobiera listę wszystkich wizyt w systemie z możliwością filtrowania i paginacji.
+        /// </summary>
+        [HttpGet("appointments")]
+        public async Task<ActionResult<ApiResponse<PagedResponse<AdminAppointmentListItemDto>>>> GetAppointments([FromQuery] AdminAppointmentFilterDto filter)
+        {
+            var result = await _adminService.GetAppointmentsAsync(filter);
+            return Ok(ApiResponse<PagedResponse<AdminAppointmentListItemDto>>.SuccessResponse(result));
         }
     }
 }

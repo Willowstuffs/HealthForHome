@@ -105,12 +105,13 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddHttpClient();
 
 
-// CORS dla frontendu je�li Flutter debuguje przez przegl�dark�
+// CORS dla frontendu jesli Flutter debuguje przez przegladarke
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFlutter",
         policy => policy
-            .AllowAnyOrigin()  // Ka�de �r�d�o
+        //!!!!!!!!!!!!!!!!!!!!
+            .AllowAnyOrigin()  // pozwala skadkolwiek, nie jest to bezpieczne ale dla testow konieczne
             .AllowAnyMethod()
             .AllowAnyHeader());
 
@@ -131,21 +132,33 @@ builder.Services.AddHttpClient("Nominatim", client =>
 // Rate limiting dla Nominatim (max 1 request na sekund�)
 builder.Services.AddSingleton<GeocodingRateLimiter>();
 
+builder.Services.AddScoped<IAdminService, AdminService>();
+
 
 var app = builder.Build();
-
+/* na razie zmienione do testow na produkcji, do testow serwera swagger moze byc w produkcji
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
+*/
+//swagger w produkcji od tej lini
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "H4H API v1");
+    c.RoutePrefix = "swagger"; // Swagger będzie pod adresem /swagger
+});
+// koniec swagger w produkcji, jak sie zmieni bedzie mozna to usunac
 
 // Middleware 
 app.UseMiddleware<ErrorHandlingMiddleware>();
-
+/*
 app.UseHttpsRedirection();
+RENDER MA WLASNA BRAMKE HTTPS, redirect sprawia tylko problemy.
+*/ 
 app.UseCors("AllowFlutter");
 app.UseStaticFiles();
 app.UseAuthentication();

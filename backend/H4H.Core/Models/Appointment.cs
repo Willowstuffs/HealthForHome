@@ -24,7 +24,7 @@ namespace H4H.Core.Models
         [Column("location")]
         public Point? Location { get; set; } // Kolumna do obliczeń dystansu (PostGIS/NetTopologySuite)
         [Column("appointment_status")]
-        public string AppointmentStatus { get; set; } = "pending";
+        public string AppointmentStatus { get; set; } = "open";
 
         [Column("scheduled_start", TypeName = "timestamp without time zone")]
         public DateTime ScheduledStart { get; set; }
@@ -37,9 +37,23 @@ namespace H4H.Core.Models
 
         [Column("client_address")]
         public string? ClientAddress { get; set; }
+        
+        // Poprawa formatowania - podzial client_notes:
 
+        // NOWE POLA:
+        [Column("contact_name")]
+        public string ContactName { get; set; } = string.Empty;
+
+        [Column("contact_phone_number")]
+        public string ContactPhoneNumber { get; set; } = string.Empty;
+
+        [Column("contact_email")]
+        public string ContactEmail { get; set; } = string.Empty;
+
+        // To zostaje, ale od teraz będzie tu TYLKO czysty opis od klienta
         [Column("client_notes")]
         public string? ClientNotes { get; set; }
+
 
         [Column("specialist_notes")]
         public string? SpecialistNotes { get; set; }

@@ -445,11 +445,22 @@ namespace H4H_API.Services.Implementations
             var user = await _context.users.FirstOrDefaultAsync(u => u.Email == request.Email)
                 ?? throw new AppException("Użytkownik nie istnieje.", ErrorCodes.UserNotFound);
 
+            //Szybki patch tymczasowy póki nam service nie dziala, kod OTP 000000 bedzie zawsze traktowany jako poprawny by nie blokowac
+            if (request.Code == "000000") //request.Code to ten, ktory user wpisuje w apce, nie z bazy.
+            {
+                user.IsActive = true;
+                user.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                return;
+            }
+            //koniec patcha
+
             // Znajdź najnowszy aktywny kod
             var verificationCode = await _context.verification_codes
                 .Where(vc => vc.UserId == user.Id && vc.Code == request.Code && !vc.IsUsed && vc.Purpose == "registration")
                 .OrderByDescending(vc => vc.CreatedAt)
                 .FirstOrDefaultAsync();
+            
 
             if (verificationCode != null)
             {
