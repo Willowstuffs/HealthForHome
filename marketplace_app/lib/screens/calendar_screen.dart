@@ -6,7 +6,14 @@ import '../../theme/app_theme.dart';
 import '../../widgets/appointment_card.dart';
 
 class CalendarScreen extends StatefulWidget {
-  const CalendarScreen({super.key});
+  final String? initialEventId;
+  final DateTime? initialDate;
+
+  const CalendarScreen({
+    super.key,
+    this.initialEventId,
+    this.initialDate,
+  });
 
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
@@ -19,6 +26,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   List<Appointment> _allAppointments = [];
   final Map<DateTime, List<Appointment>> _appointmentsMap = {};
   bool _isLoading = true;
+  bool _hasOpenedInitialEvent = false;
 
   final List<String> _availableStatuses = [
     'open',
@@ -38,7 +46,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedDay = _focusedDay;
+    if (widget.initialDate != null) {
+      _focusedDay = widget.initialDate!;
+      _selectedDay = _focusedDay;
+    } else {
+      _selectedDay = _focusedDay;
+    }
     _fetchAppointments();
   }
 
@@ -58,6 +71,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
         setState(() {
           _isLoading = false;
         });
+
+        if (widget.initialEventId != null && !_hasOpenedInitialEvent) {
+          _hasOpenedInitialEvent = true;
+          final apptIndex = _allAppointments.indexWhere(
+            (a) => a.id == widget.initialEventId,
+          );
+          if (apptIndex != -1) {
+            final appt = _allAppointments[apptIndex];
+            setState(() {
+              _selectedDay = DateTime(
+                appt.scheduledStart.year,
+                appt.scheduledStart.month,
+                appt.scheduledStart.day,
+              );
+              _focusedDay = _selectedDay!;
+            });
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _showAppointmentDetails(context, appt);
+            });
+          }
+        }
       }
     }
   }

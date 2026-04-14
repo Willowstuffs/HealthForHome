@@ -34,6 +34,17 @@ class HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  String? _calendarEventId;
+  DateTime? _calendarDate;
+
+  void _showCalendar(String eventId, DateTime date) {
+    setState(() {
+      _calendarEventId = eventId;
+      _calendarDate = date;
+      _currentIndex = 3;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -65,6 +76,10 @@ class HomeScreenState extends State<HomeScreen> {
   void _onBottomNavTapped(int index) {
     setState(() {
       _currentIndex = index;
+      if (index == 3) {
+        _calendarEventId = null;
+        _calendarDate = null;
+      }
     });
   }
 
@@ -168,7 +183,10 @@ class HomeScreenState extends State<HomeScreen> {
         bodyContent = MapScreen(initialLocation: _mapTarget);
         break;
       case 3:
-        bodyContent = const CalendarScreen();
+        bodyContent = CalendarScreen(
+          initialEventId: _calendarEventId,
+          initialDate: _calendarDate,
+        );
         break;
       default:
         bodyContent = _buildDashboard();
@@ -251,10 +269,10 @@ class HomeScreenState extends State<HomeScreen> {
           _buildPendingRequestsList(),
           const SizedBox(height: 24),
 
-          _buildServiceRequestsList(),
+          _buildAppointmentsList(),
           const SizedBox(height: 24),
 
-          _buildAppointmentsList(),
+          _buildServiceRequestsList(),
           const SizedBox(height: 100),
         ],
       ),
@@ -488,8 +506,12 @@ class HomeScreenState extends State<HomeScreen> {
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final req = requests[index];
-                return Container(
-                  padding: EdgeInsets.all(20),
+                return GestureDetector(
+                  onTap: () {
+                    _showCalendar(req.id, req.dateFrom);
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: AppColors.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(20),
@@ -595,7 +617,7 @@ class HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
                   ),
-                );
+                ));
               },
             ),
           ],
@@ -745,7 +767,10 @@ class HomeScreenState extends State<HomeScreen> {
                 return AppointmentCard(
                   appointment: appointments[index],
                   onTap: () {
-                    // TODO: nawigacja do szczegółów wizyty
+                    _showCalendar(
+                      appointments[index].id,
+                      appointments[index].scheduledStart,
+                    );
                   },
                 );
               },
@@ -917,6 +942,38 @@ class HomeScreenState extends State<HomeScreen> {
                 'Następujący specjaliści odpowiedzieli na Twoje ogłoszenie:\n${request.serviceTypeName}',
                 style: TextStyle(color: AppColors.textSecondary),
               ),
+              if (request.description.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.outlineVariant),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.notes_rounded,
+                        size: 20,
+                        color: AppColors.textSecondary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          request.description,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.onSurface,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
               FutureBuilder<List<AppointmentOffer>>(
                 future: ApiService().getAppointmentOffers(request.id),
@@ -1147,7 +1204,7 @@ class HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  'Wymagają Twojej decyzji',
+                  'Wymagają decyzji',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: AppColors.onSurface,
@@ -1228,7 +1285,7 @@ class HomeScreenState extends State<HomeScreen> {
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
-                                        color: AppColors.secondary,
+                                        color: AppColors.livingColor20,
                                       ),
                                     ),
                                   ),
