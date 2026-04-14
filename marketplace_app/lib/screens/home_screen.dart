@@ -457,12 +457,14 @@ class HomeScreenState extends State<HomeScreen> {
                 Container(
                   padding: EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
+                    color: AppColors.getStatusColor(
+                      'open',
+                    ).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     Icons.list_alt_rounded,
-                    color: AppColors.primary,
+                    color: AppColors.getStatusColor('open'),
                     size: 20,
                   ),
                 ),
@@ -512,112 +514,115 @@ class HomeScreenState extends State<HomeScreen> {
                   },
                   child: Container(
                     padding: EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      width: 1,
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: AppColors.secondary.withValues(alpha: 0.3),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 10,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.03),
-                        blurRadius: 10,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(16),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Icon(
+                            Icons.assignment_rounded,
+                            color: AppColors.primary,
+                            size: 28,
+                          ),
                         ),
-                        child: Icon(
-                          Icons.assignment_rounded,
-                          color: AppColors.primary,
-                          size: 28,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              req.serviceTypeName,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.onSurface,
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                req.serviceTypeName,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.onSurface,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 6),
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withValues(
-                                      alpha: 0.1,
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
                                     ),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    req.status == 'open'
-                                        ? 'Otwarte'
-                                        : req.status,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.primary,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.getStatusColor(
+                                        req.status,
+                                      ).withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      req.status == 'open'
+                                          ? 'Otwarte'
+                                          : req.status,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.getStatusColor(
+                                          req.status,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.date_range_rounded,
-                                  size: 16,
-                                  color: AppColors.textSecondary,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  '${req.dateFrom.day.toString().padLeft(2, '0')}.${req.dateFrom.month.toString().padLeft(2, '0')} - ${req.dateTo.day.toString().padLeft(2, '0')}.${req.dateTo.month.toString().padLeft(2, '0')}',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.date_range_rounded,
+                                    size: 16,
                                     color: AppColors.textSecondary,
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '${req.dateFrom.day.toString().padLeft(2, '0')}.${req.dateFrom.month.toString().padLeft(2, '0')} - ${req.dateTo.day.toString().padLeft(2, '0')}.${req.dateTo.month.toString().padLeft(2, '0')}',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(12),
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 14,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
-                        child: Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          size: 14,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ));
+                );
               },
             ),
           ],
@@ -716,12 +721,14 @@ class HomeScreenState extends State<HomeScreen> {
                 Container(
                   padding: EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.accent.withValues(alpha: 0.1),
+                    color: AppColors.getStatusColor(
+                      'confirmed',
+                    ).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     Icons.calendar_today_rounded,
-                    color: AppColors.accent,
+                    color: AppColors.getStatusColor('confirmed'),
                     size: 20,
                   ),
                 ),
@@ -1193,12 +1200,14 @@ class HomeScreenState extends State<HomeScreen> {
                 Container(
                   padding: EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.secondary.withValues(alpha: 0.1),
+                    color: AppColors.getStatusColor(
+                      'pending',
+                    ).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     Icons.how_to_reg_rounded,
-                    color: AppColors.secondary,
+                    color: AppColors.getStatusColor('pending'),
                     size: 20,
                   ),
                 ),
@@ -1249,7 +1258,7 @@ class HomeScreenState extends State<HomeScreen> {
                           ),
                           child: Icon(
                             Icons.group_add_rounded,
-                            color: AppColors.secondary,
+                            color: AppColors.primary,
                             size: 28,
                           ),
                         ),
@@ -1271,21 +1280,23 @@ class HomeScreenState extends State<HomeScreen> {
                                 children: [
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
+                                      horizontal: 10,
+                                      vertical: 6,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: AppColors.secondary.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                      borderRadius: BorderRadius.circular(8),
+                                      color: AppColors.getStatusColor(
+                                        'pending',
+                                      ).withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: Text(
-                                      'Czeka na wybór',
+                                      'Oczekujące',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.livingColor20,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.getStatusColor(
+                                          'pending',
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -1297,13 +1308,13 @@ class HomeScreenState extends State<HomeScreen> {
                         Container(
                           padding: EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: AppColors.secondary,
+                            color: AppColors.surface,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(
-                            Icons.touch_app_rounded,
-                            size: 16,
-                            color: Colors.white,
+                            Icons.arrow_forward_ios_rounded,
+                            size: 14,
+                            color: AppColors.textSecondary,
                           ),
                         ),
                       ],

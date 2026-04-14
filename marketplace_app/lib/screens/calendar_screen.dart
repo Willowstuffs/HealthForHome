@@ -227,15 +227,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
             label: Text(_formatStatusLabel(status)),
             selected: isSelected,
             onSelected: (_) => _toggleStatus(status),
-            selectedColor: AppColors.primary.withValues(alpha: 0.15),
-            checkmarkColor: AppColors.primary,
+            selectedColor: AppColors.getStatusColor(status).withValues(alpha: 0.15),
+            checkmarkColor: AppColors.getStatusColor(status),
             backgroundColor: AppColors.surfaceContainerHighest,
             side: BorderSide.none,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
             labelStyle: TextStyle(
-              color: isSelected ? AppColors.primary : AppColors.textSecondary,
+              color: isSelected ? AppColors.getStatusColor(status) : AppColors.textSecondary,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
             ),
           );
