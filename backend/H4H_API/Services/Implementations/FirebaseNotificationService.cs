@@ -17,7 +17,7 @@ namespace H4H_API.Services.Implementations
             // Sprawdzenie, czy domyślny app już istnieje
             _app = FirebaseApp.DefaultInstance ?? FirebaseApp.Create(new AppOptions()
             {
-                Credential = GoogleCredential.FromFile("Firebase/health4home-firebase-adminsdk-fbsvc-87018f7028.json"),
+                Credential = GoogleCredential.FromFile("Firebase/test-e1dc5-firebase-adminsdk-fbsvc-1ab20af410.json"),
                 ProjectId = "health4home" // dokładnie jak w pliku JSON i projekcie Firebase
             });
         }

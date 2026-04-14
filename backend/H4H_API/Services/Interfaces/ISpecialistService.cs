@@ -79,8 +79,7 @@ namespace H4H_API.Services.Interfaces
         Task<List<SpecialistOfferDto>> GetPublicServicesAsync(Guid id);
         Task<List<NearbySpecialistDto>> GetNearbySpecialistsAsync(double lat, double lng);
         
-        /// <summary>  Asynchronicznie pobiera liste ofert uslug dostepnych dla okreslonego specjalisty. </summary>
-        Task<List<ServiceRequestDto>> GetOffersInRangeAsync(Guid userId);
+
 
     }
 }

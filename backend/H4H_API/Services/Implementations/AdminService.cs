@@ -115,7 +115,7 @@ namespace H4H_API.Services.Implementations
             specialist.VerificationStatus = "approved";
             specialist.IsVerified = true;
             specialist.VerifiedAt = DateTime.UtcNow;
-
+            Console.WriteLine(adminId);
             // Logowanie akcji admina
             _context.verification_logs.Add(new VerificationLog
             {

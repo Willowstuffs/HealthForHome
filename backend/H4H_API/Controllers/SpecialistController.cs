@@ -201,15 +201,5 @@ namespace H4H_API.Controllers
                 .SuccessResponse(null, "Profil został zaktualizowany."));
         }
 
-        [Authorize(Roles = "Specialist")]
-        [HttpGet("available-offers")]
-        public async Task<IActionResult> GetAvailableOffers()
-        {
-            var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value!);
-
-            var offers = await _specialistService.GetOffersInRangeAsync(userId);
-            return Ok(offers);
-        }
-
     }
 }
