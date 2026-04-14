@@ -3,6 +3,9 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
+# firebase file
+backend/H4H_API/Firebase/*.json
+
 # dotenv files
 .env
 *.env

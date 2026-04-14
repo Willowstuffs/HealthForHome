@@ -8,6 +8,7 @@ using H4H_API.Helpers;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using NetTopologySuite;
+using NetTopologySuite.Algorithm;
 using ErrorCodes = H4H_API.Helpers.ErrorCodes;
 using SpecialistServiceEntity = H4H.Core.Models.SpecialistService;
 
@@ -640,6 +641,5 @@ namespace H4H_API.Services.Implementations
                 .ToListAsync();
         }
         
-
     }
 }
