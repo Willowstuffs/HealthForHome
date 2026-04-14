@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'dart:io';
-import 'package:dio/io.dart';
+// import 'dart:io';
+// import 'package:dio/io.dart';
 import '../models/auth_models.dart';
 import '../models/client_profile.dart';
 import '../models/client_update_dto.dart';
@@ -10,11 +10,11 @@ import '../models/specialist.dart';
 import '../models/nearby_specialist.dart';
 import '../models/specialist_profile_details.dart';
 import '../models/specialist_offer.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiService {
-  static const String _baseUrl = 'https://10.0.2.2:7026';
-  //static const String _baseUrl = 'https://h4h.makolino.com';
+  // static const String _baseUrl = 'https://10.0.2.2:7026';
+  static const String _baseUrl = 'https://h4h.makolino.com';
 
   late final Dio _dio;
   String? _accessToken;
@@ -41,15 +41,15 @@ class ApiService {
       ),
     );
 
-    // TODO: usunac w produkcji (samo podpisany certyfikat)
-    _dio.httpClientAdapter = IOHttpClientAdapter(
-      createHttpClient: () {
-        final client = HttpClient();
-        client.badCertificateCallback =
-            (X509Certificate cert, String host, int port) => true;
-        return client;
-      },
-    );
+    // // TODO: usunac w produkcji (samo podpisany certyfikat)
+    // _dio.httpClientAdapter = IOHttpClientAdapter(
+    //   createHttpClient: () {
+    //     final client = HttpClient();
+    //     client.badCertificateCallback =
+    //         (X509Certificate cert, String host, int port) => true;
+    //     return client;
+    //   },
+    // );
 
     _dio.interceptors.add(
       InterceptorsWrapper(
@@ -73,12 +73,17 @@ class ApiService {
   }
 
   Future<void> initToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    _accessToken = prefs.getString('auth_token');
-    _refreshToken = prefs.getString('refresh_token');
-    final accessTokenExpiresStr = prefs.getString('access_token_expires');
+    const storage = FlutterSecureStorage();
+    _accessToken = await storage.read(key: 'auth_token');
+    _refreshToken = await storage.read(key: 'refresh_token');
+    final accessTokenExpiresStr = await storage.read(
+      key: 'access_token_expires',
+    );
+    final refreshTokenExpiresStr = await storage.read(
+      key: 'refresh_token_expires',
+    );
 
-    final userJson = prefs.getString('user_info');
+    final userJson = await storage.read(key: 'user_info');
     if (userJson != null) {
       try {
         _currentUser = UserInfoDto.fromJson(jsonDecode(userJson));
@@ -86,20 +91,38 @@ class ApiService {
     }
 
     if (_accessToken != null && _refreshToken != null) {
-      // Sprawdźmy, czy token wciąż jest ważny
+      bool isAccessTokenValid = false;
+      bool isRefreshTokenValid = false;
+
+      final now = DateTime.now().add(
+        const Duration(minutes: 1),
+      ); // 1 min buffer
+
       if (accessTokenExpiresStr != null) {
         try {
           final expDate = DateTime.parse(accessTokenExpiresStr);
-          // Zostawmy ułamek czasowy (np. 1 minutę buforu)
-          if (expDate.isAfter(DateTime.now().add(const Duration(minutes: 1)))) {
-            // Token jest nadal ważny (initialized pomyślnie)
-            return;
+          if (expDate.isAfter(now)) {
+            isAccessTokenValid = true;
           }
         } catch (_) {}
       }
 
-      // Jeśli wygasł, próbujemy go odświeżyć
-      await refreshSession();
+      if (refreshTokenExpiresStr != null) {
+        try {
+          final refreshExpDate = DateTime.parse(refreshTokenExpiresStr);
+          if (refreshExpDate.isAfter(now)) {
+            isRefreshTokenValid = true;
+          }
+        } catch (_) {}
+      }
+
+      if (isAccessTokenValid) {
+        return;
+      } else if (isRefreshTokenValid) {
+        await refreshSession();
+      } else {
+        await clearToken();
+      }
     } else {
       await clearToken();
     }
@@ -134,14 +157,21 @@ class ApiService {
     _refreshToken = response.refreshToken;
     _currentUser = response.user;
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('auth_token', response.accessToken);
-    await prefs.setString('refresh_token', response.refreshToken);
-    await prefs.setString(
-      'access_token_expires',
-      response.accessTokenExpires.toIso8601String(),
+    const storage = FlutterSecureStorage();
+    await storage.write(key: 'auth_token', value: response.accessToken);
+    await storage.write(key: 'refresh_token', value: response.refreshToken);
+    await storage.write(
+      key: 'access_token_expires',
+      value: response.accessTokenExpires.toIso8601String(),
     );
-    await prefs.setString('user_info', jsonEncode(response.user.toJson()));
+    await storage.write(
+      key: 'refresh_token_expires',
+      value: response.refreshTokenExpires.toIso8601String(),
+    );
+    await storage.write(
+      key: 'user_info',
+      value: jsonEncode(response.user.toJson()),
+    );
   }
 
   Future<void> clearToken() async {
@@ -149,11 +179,12 @@ class ApiService {
     _refreshToken = null;
     _currentUser = null;
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('auth_token');
-    await prefs.remove('refresh_token');
-    await prefs.remove('access_token_expires');
-    await prefs.remove('user_info');
+    const storage = FlutterSecureStorage();
+    await storage.delete(key: 'auth_token');
+    await storage.delete(key: 'refresh_token');
+    await storage.delete(key: 'access_token_expires');
+    await storage.delete(key: 'refresh_token_expires');
+    await storage.delete(key: 'user_info');
   }
 
   Future<void> register({
@@ -379,9 +410,13 @@ class ApiService {
     }
   }
 
-  Future<List<AppointmentOffer>> getAppointmentOffers(String appointmentId) async {
+  Future<List<AppointmentOffer>> getAppointmentOffers(
+    String appointmentId,
+  ) async {
     try {
-      final response = await _dio.get('/api/Client/appointments/$appointmentId/offers');
+      final response = await _dio.get(
+        '/api/Client/appointments/$appointmentId/offers',
+      );
       final List<dynamic> list = response.data['data'] ?? [];
       return list.map((e) => AppointmentOffer.fromJson(e)).toList();
     } on DioException catch (e) {
@@ -391,9 +426,14 @@ class ApiService {
     }
   }
 
-  Future<void> acceptAppointmentOffer(String appointmentId, String specialistId) async {
+  Future<void> acceptAppointmentOffer(
+    String appointmentId,
+    String specialistId,
+  ) async {
     try {
-      await _dio.post('/api/Client/appointments/$appointmentId/accept-offer/$specialistId');
+      await _dio.post(
+        '/api/Client/appointments/$appointmentId/accept-offer/$specialistId',
+      );
     } on DioException catch (e) {
       throw _handleDioError(e);
     } catch (e) {

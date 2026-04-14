@@ -1,5 +1,5 @@
 name: marketplace_app
-description: "A new Flutter project."
+description: "Marketplace dla wszelakich usług, które można wykonać w domu."
 publish_to: 'none'
 version: 0.1.0
 
@@ -19,11 +19,13 @@ dependencies:
   firebase_core: ^4.5.0
   firebase_messaging: ^16.1.2
   flutter_local_notifications: ^21.0.0
+  flutter_secure_storage: ^10.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
@@ -33,3 +35,13 @@ flutter:
 linter:
   rules:
     flutter_style_todos: true
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "lib/images/logo.png"
+  web:
+    generate: true
+    image_path: "lib/images/logo.png"
+    background_color: "#ffffff"
+    theme_color: "#ffffff"

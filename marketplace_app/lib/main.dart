@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'HomeSpecialist',
+      title: 'Health4Home',
       theme: AppTheme.lightTheme,
       home: HomeScreen(),
       debugShowCheckedModeBanner: false,

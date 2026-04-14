@@ -886,7 +886,10 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showSpecialistSelectionDialog(BuildContext context, ServiceRequest request) {
+  void _showSpecialistSelectionDialog(
+    BuildContext context,
+    ServiceRequest request,
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -921,9 +924,7 @@ class HomeScreenState extends State<HomeScreen> {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Padding(
                       padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Center(
-                        child: CircularProgressIndicator(),
-                      ),
+                      child: Center(child: CircularProgressIndicator()),
                     );
                   }
 
@@ -951,7 +952,10 @@ class HomeScreenState extends State<HomeScreen> {
 
                   return Column(
                     children: offers
-                        .map((offer) => _buildSpecialistTile(context, offer, request.id))
+                        .map(
+                          (offer) =>
+                              _buildSpecialistTile(context, offer, request.id),
+                        )
                         .toList(),
                   );
                 },
@@ -975,7 +979,11 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSpecialistTile(BuildContext context, AppointmentOffer offer, String appointmentId) {
+  Widget _buildSpecialistTile(
+    BuildContext context,
+    AppointmentOffer offer,
+    String appointmentId,
+  ) {
     bool isAccepting = false;
 
     return StatefulBuilder(
@@ -1001,14 +1009,20 @@ class HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text(
                       '${offer.firstName} ${offer.lastName}',
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
                     ),
                     if (offer.bio != null && offer.bio!.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(
                           offer.bio!,
-                          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 13,
+                          ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1039,14 +1053,21 @@ class HomeScreenState extends State<HomeScreen> {
                           onPressed: () async {
                             setLocalState(() => isAccepting = true);
                             try {
-                              await ApiService().acceptAppointmentOffer(appointmentId, offer.specialistId);
+                              await ApiService().acceptAppointmentOffer(
+                                appointmentId,
+                                offer.specialistId,
+                              );
                               if (context.mounted) {
                                 Navigator.pop(context);
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Wybrano specjalistę pomyślnie')),
+                                  const SnackBar(
+                                    content: Text(
+                                      'Wybrano specjalistę pomyślnie',
+                                    ),
+                                  ),
                                 );
                                 // Refresh dashboard
-                                this.setState(() {});
+                                setState(() {});
                               }
                             } catch (e) {
                               if (context.mounted) {
@@ -1059,7 +1080,10 @@ class HomeScreenState extends State<HomeScreen> {
                           },
                           style: FilledButton.styleFrom(
                             backgroundColor: AppColors.primary,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 0,
+                            ),
                             minimumSize: const Size(0, 32),
                           ),
                           child: const Text('Wybierz'),
