@@ -30,6 +30,7 @@ class _OfferFormScreenState extends State<OfferFormScreen> {
   String startDate = '';
   String endDate = '';
   String description = '';
+  DateTime? proposedDateTime;
   List<SpecialistService> services = [];
   List<SpecialistService> selectedServices = [];
   SpecialistService? selectedServiceTYMCZASOWE;
@@ -100,6 +101,50 @@ class _OfferFormScreenState extends State<OfferFormScreen> {
       print(e);
     }
   }
+  Future<void> _pickDateTime() async {
+    if (startDate.isEmpty || endDate.isEmpty) return;
+
+    final start = DateFormat('dd-MM-yyyy HH:mm').parse(startDate);
+    final end = DateFormat('dd-MM-yyyy HH:mm').parse(endDate);
+
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: start,
+      firstDate: start,
+      lastDate: end,
+    );
+
+    if (pickedDate == null) return;
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+
+    if (pickedTime == null) return;
+
+    final result = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
+    /// dodatkowa walidacja
+    if (result.isBefore(start) || result.isAfter(end)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Termin musi mieścić się w ramach ogłoszenia"),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      proposedDateTime = result;
+    });
+  }
   Future<void> _fetchService() async {
     try {
       final result = await _apiService.getServices();
@@ -118,7 +163,12 @@ class _OfferFormScreenState extends State<OfferFormScreen> {
       );
       return;
     }
-
+    if (proposedDateTime == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Wybierz termin realizacji')),
+      );
+      return;
+    }
     final price = double.tryParse(finalPriceController.text);
     if (price == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -171,6 +221,8 @@ class _OfferFormScreenState extends State<OfferFormScreen> {
                         const SizedBox(height: 20),
                         _buildServiceMultiSelect(),
                         const SizedBox(height: 20),
+                        _buildDateSelector(),
+                        const SizedBox(height: 20),
                         _buildPriceField(),
                         const SizedBox(height: 28),
 
@@ -191,7 +243,58 @@ class _OfferFormScreenState extends State<OfferFormScreen> {
             ),
     );
   }
+Widget _buildDateSelector() {
+  final formatter = DateFormat('dd MMM yyyy • HH:mm');
 
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: AppColors.surfaceContainer,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: AppColors.outlineVariant),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Proponowany termin",
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+
+        const SizedBox(height: 16),
+
+        InkWell(
+          onTap: _pickDateTime,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.outlineVariant),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.calendar_month_outlined),
+                const SizedBox(width: 12),
+
+                Expanded(
+                  child: Text(
+                    proposedDateTime == null
+                        ? "Wybierz datę i godzinę"
+                        : formatter.format(proposedDateTime!),
+                  ),
+                ),
+
+                const Icon(Icons.chevron_right),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
  Widget _buildDetailsCard() {
   return Container(
     width: double.infinity,

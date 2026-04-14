@@ -89,7 +89,8 @@ class _StartScreenState extends State<StartScreen> {
       List<Map<String, dynamic>> processed = [];
 
       for (var i in fetchedInquiries) {
-        final id = i['appointmentId'] ?? i['AppointmentId'];
+        final id = i['appointmentId']?.toString() ?? i['AppointmentId']?.toString();
+
 
         DateTime? start = i['scheduledStart'] != null
             ? DateTime.tryParse(i['scheduledStart'])
@@ -131,6 +132,7 @@ class _StartScreenState extends State<StartScreen> {
           'service': i['serviceName'] ?? i['ServiceName'] ?? '',
           'address': streetAndCity,
           'description': i['description'] ?? i['Description'] ?? '',
+          'distanceKm':i['distanceKm'],
           'isNew': isNew,
         });
       }

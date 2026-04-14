@@ -216,31 +216,57 @@ Widget _buildAddServiceCard() {
       border: Border.all(color: AppColors.outlineVariant),
     ),
     child: Column(
-      children: [
+  children: [
 
-        DropdownButtonFormField<ServiceType>(
-          isExpanded: true,
-          initialValue: selectedServiceType,
-          hint: const Text('Wybierz usługę'),
-          items: servicesFromDb.map((type) {
-            return DropdownMenuItem(
-              value: type,
-              child: Text(
-                type.name,
-                overflow: TextOverflow.ellipsis,
-              ),
-            );
-          }).toList(),
-          onChanged: (value) {
-            setState(() {
-              selectedServiceType = value;
-              if (value != null) {
-                durationController.text =
-                    value.defaultDuration.toString();
-              }
-            });
-          },
+    /// SWITCH CUSTOM SERVICE
+    SwitchListTile(
+      value: customService,
+      title: const Text("Usługa niestandardowa"),
+      onChanged: (value) {
+        setState(() {
+          customService = value;
+          selectedServiceType = null;
+          customServiceController.clear();
+        });
+      },
+    ),
+
+    const SizedBox(height: 12),
+
+    /// JEŚLI CUSTOM → TEXTFIELD
+    if (customService)
+      TextField(
+        controller: customServiceController,
+        decoration: const InputDecoration(
+          labelText: 'Nazwa usługi',
         ),
+      ),
+
+    /// JEŚLI NIE CUSTOM → DROPDOWN
+    if (!customService)
+      DropdownButtonFormField<ServiceType>(
+        isExpanded: true,
+        initialValue: selectedServiceType,
+        hint: const Text('Wybierz usługę'),
+        items: servicesFromDb.map((type) {
+          return DropdownMenuItem(
+            value: type,
+            child: Text(
+              type.name,
+              overflow: TextOverflow.ellipsis,
+            ),
+          );
+        }).toList(),
+        onChanged: (value) {
+          setState(() {
+            selectedServiceType = value;
+            if (value != null) {
+              durationController.text =
+                  value.defaultDuration.toString();
+            }
+          });
+        },
+      ),
 
         const SizedBox(height: 16),
 
@@ -292,25 +318,39 @@ Widget _buildAddServiceCard() {
   );
 }
 Future<void> _addService() async {
-  if (selectedServiceType == null) {
+  if (!customService && selectedServiceType == null) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Wybierz typ usługi')),
     );
     return;
   }
 
+  if (customService && customServiceController.text.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Podaj nazwę usługi')),
+    );
+    return;
+  }
+
   try {
     await _apiService.addService(
-      serviceTypeId: selectedServiceType!.id,
+      serviceTypeId:
+          customService ? null : selectedServiceType!.id,
+      customName:
+          customService ? customServiceController.text : null,
       price: double.parse(priceController.text),
       durationMinutes: int.parse(durationController.text),
     );
 
     priceController.clear();
     durationController.clear();
+    customServiceController.clear();
     selectedServiceType = null;
 
-    setState(() => isLoading = true);
+    setState(() {
+      isLoading = true;
+      customService = false;
+    });
 
     await _fetchData();
 

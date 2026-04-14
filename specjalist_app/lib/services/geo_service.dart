@@ -16,6 +16,37 @@ class GeoService {
       return null;
     }
   }
+  static Future<Map<String, dynamic>> getServiceAreaPayload({
+    required String city,
+    String? postalCode,
+    int maxDistanceKm = 50,
+  }) async {
+    LatLng? point;
+
+    try {
+      final query = postalCode != null && postalCode.isNotEmpty
+          ? '$city, $postalCode'
+          : city;
+
+      final locations = await locationFromAddress(query);
+
+      if (locations.isNotEmpty) {
+        final loc = locations.first;
+        point = LatLng(loc.latitude, loc.longitude);
+      }
+    } catch (e) {
+      print("Geocoding error: $e");
+      point = null;
+    }
+
+    return {
+      "city": city,
+      "postalCode": postalCode ?? "",
+      "maxDistanceKm": maxDistanceKm,
+      "latitude": point?.latitude,
+      "longitude": point?.longitude,
+    };
+  }
 
   /// 🔥 Reverse geocoding – coordinates → approximate address
   static Future<String?> getAddressFromLatLng(LatLng point) async {

@@ -6,6 +6,7 @@ import '../services/api_service.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../services/app_refresh_service.dart';
+import '../services/geo_service.dart';
 
 class EditProfilScreen extends StatefulWidget {
   const EditProfilScreen({super.key});
@@ -66,19 +67,19 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
   }
   Future<void> _saveProfile() async {
     final cityValue = cityController.text.trim();
-    final postalValue = postalCodeController.text.trim();
     final distanceValue = int.tryParse(areaController.text.trim()) ?? 0;
 
     if (cityValue.isEmpty || distanceValue <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Wprowadź poprawne dane: miasto, kod pocztowy i zasięg pracy')),
+            content: Text('Wprowadź poprawne dane: miasto i zasięg pracy')),
       );
       return;
     }
 
     try {
       setState(() => isLoading = true);
+
       final api = ApiService();
       print("Zapisuję profil...");
       // Aktualizacja profilu (dane i avatar)
@@ -91,11 +92,13 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
       );
       print("Profil zapisany!");
       // Aktualizacja obszaru
-      await api.updateArea({
-        "city": cityValue,
-        "postalCode": postalValue,
-        "maxDistanceKm": distanceValue,
-      });
+       final payload = await GeoService.getServiceAreaPayload(
+          city: cityController.text.trim(),
+          postalCode: postalCodeController.text.trim(),
+          maxDistanceKm: int.tryParse(areaController.text.trim()) ?? 50,
+        );
+
+        await api.updateArea(payload);
 
       // Pobranie zaktualizowanego profilu i zapis do UserSession
       final updatedProfile = await api.getProfile();

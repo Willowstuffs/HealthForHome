@@ -1,49 +1,49 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:dio/io.dart';
+//import 'package:dio/io.dart';
 import '../services/login_response.dart';
 import '../services/token_storage.dart';
 import '../services/specjalist_service.dart';
 import 'package:http_parser/http_parser.dart'; 
 
-// class ApiService {
-//   static const String _baseUrl = 'https://healthforhome.onrender.com';
-//   late final Dio _dio;
-
-//   ApiService() {
-//     _dio = Dio(
-//       BaseOptions(
-//         baseUrl: _baseUrl,
-//         connectTimeout: const Duration(seconds: 600), // 10 minut
-//         receiveTimeout: const Duration(seconds: 600),
-//         headers: {'Content-Type': 'application/json'},
-//       ),
-//     );
 class ApiService {
-  static const bool isEmulator = true;
-  static const String _baseUrl = isEmulator
-    ? 'https://192.168.100.24:7026'
-    : 'https://10.0.2.2:7026';
+  static const String _baseUrl = 'https://h4h.makolino.com';
   late final Dio _dio;
+
   ApiService() {
     _dio = Dio(
       BaseOptions(
         baseUrl: _baseUrl,
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
+        connectTimeout: const Duration(seconds: 600), // 10 minut
+        receiveTimeout: const Duration(seconds: 600),
         headers: {'Content-Type': 'application/json'},
       ),
     );
+// class ApiService {
+//   static const bool isEmulator = true;
+//   static const String _baseUrl = isEmulator
+//     ? 'https://192.168.100.24:7026'
+//     : 'https://10.0.2.2:7026';
+//   late final Dio _dio;
+//   ApiService() {
+//     _dio = Dio(
+//       BaseOptions(
+//         baseUrl: _baseUrl,
+//         connectTimeout: const Duration(seconds: 10),
+//         receiveTimeout: const Duration(seconds: 10),
+//         headers: {'Content-Type': 'application/json'},
+//       ),
+//     );
 
-    // TODO: usunac w produkcji (samo podpisany certyfikat)
-    _dio.httpClientAdapter = IOHttpClientAdapter(
-      createHttpClient: () {
-        final client = HttpClient();
-        client.badCertificateCallback =
-            (X509Certificate cert, String host, int port) => true;
-        return client;
-      },
-    );
+//     // TODO: usunac w produkcji (samo podpisany certyfikat)
+//     _dio.httpClientAdapter = IOHttpClientAdapter(
+//       createHttpClient: () {
+//         final client = HttpClient();
+//         client.badCertificateCallback =
+//             (X509Certificate cert, String host, int port) => true;
+//         return client;
+//       },
+//     );
 
     _dio.interceptors.add(
       InterceptorsWrapper(
@@ -135,6 +135,26 @@ Future<Map<String, dynamic>> getProfile() async {
     print("📦 Backend zwrócił profile: ${response.data}");
     return Map<String, dynamic>.from(data);
   }
+Future<List<Map<String, dynamic>>> getAvailableOffers() async {
+  try {
+    print("➡️ CALLING /available-offers");
+
+    final response = await _dio.get('/api/specialist/available-offers');
+
+    print("✅ RESPONSE STATUS: ${response.statusCode}");
+    print("✅ RESPONSE DATA: ${response.data}");
+
+    final data = response.data as List<dynamic>;
+
+    return data
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  } on DioException catch (e) {
+    print("❌ DIO ERROR: ${e.response?.statusCode}");
+    print(e.response?.data);
+    throw _handleDioError(e);
+  }
+}
 
 Future<List<ServiceType>> getServiceTypes() async {
   try {
@@ -179,29 +199,45 @@ Future<List<SpecialistService>> getServices() async {
 }
 //POST: zapisz nową usługę
 Future<void> addService({
-    required String serviceTypeId,
-    required double price,
-    required int durationMinutes,
-    String? description,
-  }) async {
-    try {
-      final payload = {
-        "serviceTypeId": serviceTypeId,
-        "price": price,
-        "durationMinutes": durationMinutes,
-        "description": description,
-      };
-      await _dio.post('/api/specialist/services', data: payload);
-    } on DioException catch (e) {
-      // Obsługa błędów
-      if (e.response != null) {
-        throw Exception(
-            'Błąd dodawania usługi: ${e.response?.data['title'] ?? e.message}');
-      } else {
-        throw Exception('Brak połączenia z serwerem');
-      }
+  String? serviceTypeId,
+  String? customName,
+  required double price,
+  required int durationMinutes,
+  String? description,
+}) async {
+  try {
+
+    /// walidacja lokalna
+    if (serviceTypeId == null && customName == null) {
+      throw Exception('Musisz podać typ usługi lub własną nazwę');
+    }
+
+    final payload = {
+      "serviceTypeId": serviceTypeId,
+      "customName": customName,
+      "price": price,
+      "durationMinutes": durationMinutes,
+      "description": description,
+    };
+
+    /// usuń null-e (BARDZO WAŻNE)
+    payload.removeWhere((key, value) => value == null);
+
+    await _dio.post(
+      '/api/specialist/services',
+      data: payload,
+    );
+  } on DioException catch (e) {
+    if (e.response != null) {
+      throw Exception(
+        'Błąd dodawania usługi: '
+        '${e.response?.data['title'] ?? e.message}',
+      );
+    } else {
+      throw Exception('Brak połączenia z serwerem');
     }
   }
+}
 Future<List<Map<String, dynamic>>> getInquiries({
   String? appointmentId,
   String? patientName,
@@ -277,7 +313,6 @@ Future<List<Map<String, dynamic>>> getArchiveInquiries({
       '/api/specialist/inquiries/archive',
       queryParameters: queryParams,
     );
-     print("📦 Backend  zwrócił zapytania: ${response.data}");
     final data = response.data['data'] as List<dynamic>;
     return data.map((item) => Map<String, dynamic>.from(item)).toList();
   } on DioException catch (e) {
@@ -305,8 +340,6 @@ Future<void> updateService({
   };
 
   try {
-    // Jeśli Twoje API wymaga 'dto', odkomentuj linię poniżej, a zakomentuj tę powyżej:
-    // final wrappedPayload = { "dto": payload };
     
     await _dio.put('/api/specialist/services/$id', data: payload);
   } on DioException catch (e) {
@@ -323,7 +356,6 @@ Future<void> updateArea(Map<String, dynamic> dto) async {
   }
 }
 // PATCH: potwierdzenie wizyty przez specjalistę
-//TO DO: DO POPRAWIENIA PO UPDACIE BAZY I BACKENDU
 Future<void> confirmAppointment(
   String appointmentId,
   List<String> serviceTypeIds,
