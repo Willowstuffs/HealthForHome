@@ -56,14 +56,11 @@ namespace H4H_API.Services.Implementations
             return Convert.ToBase64String(randomNumber);
         }
 
-        public Guid? ValidateToken(string token)
+        public Guid? ValidateToken(string token, bool validateLifetime = true) // Dodany parametr validateLifetime, aby umożliwić weryfikację tokena bez sprawdzania jego ważności (przydatne np. przy odświeżaniu tokena)
         {
-            if (string.IsNullOrEmpty(token))
-                return null;
-
+            if (string.IsNullOrEmpty(token)) return null;
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!);
-
             try
             {
                 tokenHandler.ValidateToken(token, new TokenValidationParameters
@@ -74,16 +71,21 @@ namespace H4H_API.Services.Implementations
                     ValidateAudience = true,
                     ValidIssuer = _configuration["Jwt:Issuer"],
                     ValidAudience = _configuration["Jwt:Audience"],
-                    ValidateLifetime = true,
+                    ValidateLifetime = validateLifetime, // Używamy przekazanego parametru do decydowania o weryfikacji ważności tokena
                     ClockSkew = TimeSpan.Zero
                 }, out SecurityToken validatedToken);
 
                 var jwtToken = (JwtSecurityToken)validatedToken;
-                var userId = jwtToken.Claims.First(x => x.Type == ClaimTypes.NameIdentifier).Value;
-                return Guid.Parse(userId);
+
+                // Bezpieczniejsze pobieranie claima
+                var userIdClaim = jwtToken.Claims.FirstOrDefault(x =>
+                    x.Type == ClaimTypes.NameIdentifier || x.Type == "nameid");
+
+                return userIdClaim != null ? Guid.Parse(userIdClaim.Value) : null;
             }
-            catch
+            catch (Exception ex)
             {
+                Console.WriteLine($"[JWT Validation Error]: {ex.Message}");
                 return null;
             }
         }

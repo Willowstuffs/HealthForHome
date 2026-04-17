@@ -32,6 +32,7 @@ namespace H4H.Data
         public DbSet<AddressGeocache> address_geocache { get; set; }
         public DbSet<AppointmentSpecialist> appointments_specialists { get; set; }
         public DbSet<DeviceToken> device_tokens { get; set; }
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
 
         // dla PostGIS i NetTopologySuite
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
