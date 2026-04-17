@@ -355,12 +355,6 @@ namespace H4H_API.Services.Implementations
             return _mapper.Map<AppointmentDto>(appointment);
         }
 
-        public async Task<AppointmentDto> CreateAppointmentAsync(Guid userId, CreateAppointmentDto dto)
-        {
-            await Task.CompletedTask; //usuwam warning o braku await
-            // TODO: Zaimplementować z walidacją odległości
-            throw new NotImplementedException("CreateAppointmentAsync not implemented yet");
-        }
         /// <summary>
         /// Anuluj wizytę (termin) klienta, jeśli wizyta należy do niego i nie jest już zakończona lub anulowana. Zwraca true jeśli anulowano, false jeśli nie można anulować z powodu statusu wizyty.
         /// </summary>
@@ -653,7 +647,8 @@ namespace H4H_API.Services.Implementations
                     SpecialistId = os.SpecialistId,
                     FirstName = os.Specialist.FirstName,
                     LastName = os.Specialist.LastName,
-                    ProposedPrice = os.Price, 
+                    ProposedPrice = os.Price,
+                    ProposedDate = os.ProposedDate,
                     Bio = os.Specialist.Bio
                 })
                 .ToListAsync();
@@ -687,22 +682,21 @@ namespace H4H_API.Services.Implementations
             if (appointment == null)
                 throw new AppException("Ogłoszenie nie istnieje.", ErrorCodes.AppointmentNotFound);
 
-            // 1. Sprawdzamy czy ten specjalista na pewno wysłał ofertę
-            var offerExists = await _context.Set<AppointmentSpecialist>()
-                .AnyAsync(os => os.AppointmentId == appointmentId && os.SpecialistId == specialistId);
+            // 1. Pobieramy ofertę (od razu całość, żeby nie robić AnyAsync i potem FirstAsync osobno - tylko jedno zapytanie do bazy wiec będzie szybciej) 
+            var finalOffer = await _context.Set<AppointmentSpecialist>()
+                .FirstOrDefaultAsync(os => os.AppointmentId == appointmentId && os.SpecialistId == specialistId);
 
-            if (!offerExists)
+            if (finalOffer == null)
                 throw new AppException("Ten specjalista nie złożył oferty.", ErrorCodes.ValidationError);
 
-            // 2. Przypisujemy specjalistę do głównego zlecenia
+            // 2. Przypisujemy dane ze złożonej oferty do wizyty
             appointment.SpecialistId = specialistId;
-            appointment.AppointmentStatus = "confirmed"; // Zmieniamy status z 'open' na 'confirmed'
-            appointment.UpdatedAt = DateTime.Now;
+            appointment.AppointmentStatus = "confirmed";
+            appointment.TotalPrice = finalOffer.Price;      // Cena proponowana przez specjalistę w ofercie staje się ceną finalną wizyty
+            appointment.FinalDate = finalOffer.ProposedDate; // Data propozycji specjalisty staje się datą finalną wizyty (można to później zmienić, jeśli chcemy dać klientowi możliwość negocjacji terminu)
 
-            // 3. (Opcjonalnie) Pobieramy cenę z oferty i ustawiamy ją jako finałową
-            var finalOffer = await _context.Set<AppointmentSpecialist>()
-                .FirstAsync(os => os.AppointmentId == appointmentId && os.SpecialistId == specialistId);
-            appointment.TotalPrice = finalOffer.Price;
+            // 3. Zapisujemy zmiany w bazie danych wraz z aktualizacją daty modyfikacji wizyty
+            appointment.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
 
             await _context.SaveChangesAsync();
         }

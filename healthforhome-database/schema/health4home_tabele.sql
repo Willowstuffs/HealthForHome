@@ -586,3 +586,14 @@ ALTER TABLE appointments ADD CONSTRAINT appointments_appointment_status_check
         'no_show'        -- dodane
     ));
 
+
+-- Aktualizacja 17.04.2026 - uzupelnienie wizyt o propozycje daty z godzinami
+
+-- 1. Dodajemy proponowaną datę do ofert
+ALTER TABLE appointments_specialists 
+ADD COLUMN IF NOT EXISTS proposed_date TIMESTAMP;
+
+-- 2. Dodajemy pole na ostatecznie wybraną datę do wizyty
+ALTER TABLE appointments 
+ADD COLUMN IF NOT EXISTS final_date TIMESTAMP;
+

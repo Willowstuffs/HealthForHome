@@ -22,7 +22,6 @@ namespace H4H_API.Services.Interfaces
         // Zarządzanie wizytami
         Task<PagedResponse<AppointmentDto>> GetAppointmentsAsync(Guid userId, PagedRequest request, string? status = null);
         Task<AppointmentDto> GetAppointmentDetailsAsync(Guid userId, Guid appointmentId);
-        Task<AppointmentDto> CreateAppointmentAsync(Guid userId, CreateAppointmentDto dto);
         Task<bool> CancelAppointmentAsync(Guid userId, Guid appointmentId);
 
         // Wyszukiwanie specjalistów

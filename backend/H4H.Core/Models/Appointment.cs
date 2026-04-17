@@ -70,6 +70,9 @@ namespace H4H.Core.Models
         [Column("selected_specialist_id")]
         public Guid? SelectedSpecialistId { get; set; }
 
+        [Column("final_date")] // dodanie pola na ostateczną datę (z godziną) po wyborze specjalisty
+        public DateTime? FinalDate { get; set; }
+
 
         public virtual Client Client { get; set; } = null!;
         public virtual Specialist? Specialist { get; set; } 

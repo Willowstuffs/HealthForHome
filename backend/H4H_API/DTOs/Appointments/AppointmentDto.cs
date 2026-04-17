@@ -26,52 +26,11 @@ namespace H4H_API.DTOs.Appointments
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public DateTime? CancelledAt { get; set; }                      // Data anulowania (jeśli anulowane)
-
+        public DateTime? FinalDate { get; set; }
 
         // Właściwości nawigacyjne (opcjonalne - do wypełnienia jeśli potrzebne)
         public string? SpecialistName { get; set; }
         public string? ClientName { get; set; }
         public string? ServiceName { get; set; }
-    }
-
-    /// <summary>
-    /// Represents the data required to create a new appointment.
-    /// </summary>
-    /// <remarks>This data transfer object is typically used when submitting appointment creation requests
-    /// from a client application. All required fields must be provided for the appointment to be created
-    /// successfully.</remarks>
-    public class CreateAppointmentDto
-    {
-        [Required]
-        public Guid SpecialistId { get; set; }
-
-        [Required]
-        public Guid? SpecialistServiceId { get; set; }
-
-
-        [Required]
-        public DateTime ScheduledStart { get; set; }
-
-        [Required]
-        public DateTime ScheduledEnd { get; set; }
-
-        [MaxLength(500)]
-        public string? ClientAddress { get; set; } // Adres dla wizyty domowej
-
-        [MaxLength(1000)]
-        public string? ClientNotes { get; set; }  // Dodatkowe uwagi klienta
-    }
-
-    /// <summary>
-    /// Represents the data required to update an existing appointment, including optional client notes and address
-    /// information.
-    /// </summary>
-    public class UpdateAppointmentDto
-    {
-        [MaxLength(1000)]
-        public string? ClientNotes { get; set; }
-
-        [MaxLength(1000)]
-        public string? ClientAddress { get; set; }
     }
 }
