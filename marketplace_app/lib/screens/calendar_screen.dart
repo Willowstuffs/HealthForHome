@@ -490,6 +490,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   Icons.note,
                   'Twoje notatki:',
                   appt.clientNotes!,
+                  isLongText: true,
                 ),
               SizedBox(height: 32),
               SizedBox(
@@ -516,7 +517,34 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildDetailRow(IconData icon, String title, String value) {
+  Widget _buildDetailRow(IconData icon, String title, String value, {bool isLongText = false}) {
+    Widget textWidget = Text(
+      value,
+      style: TextStyle(
+        color: AppColors.onSurface,
+        fontSize: 15,
+        fontWeight: FontWeight.w500,
+      ),
+    );
+
+    if (isLongText) {
+      textWidget = Container(
+        constraints: BoxConstraints(maxHeight: 100),
+        child: RawScrollbar(
+          thumbVisibility: true,
+          thumbColor: AppColors.primary.withValues(alpha: 0.5),
+          radius: Radius.circular(4),
+          thickness: 4,
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.only(right: 8.0),
+              child: textWidget,
+            ),
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: EdgeInsets.only(bottom: 16.0),
       child: Row(
@@ -537,14 +565,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   ),
                 ),
                 SizedBox(height: 4),
-                Text(
-                  value,
-                  style: TextStyle(
-                    color: AppColors.onSurface,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                textWidget,
               ],
             ),
           ),
