@@ -62,7 +62,9 @@ class AppointmentCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        appointment.scheduledStart.day.toString(),
+                        (appointment.finalDate ?? appointment.scheduledStart)
+                            .day
+                            .toString(),
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
@@ -70,7 +72,10 @@ class AppointmentCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        _getMonthName(appointment.scheduledStart.month),
+                        _getMonthName(
+                          (appointment.finalDate ?? appointment.scheduledStart)
+                              .month,
+                        ),
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
@@ -140,7 +145,9 @@ class AppointmentCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            '${_formatTime(appointment.scheduledStart)} - ${_formatTime(appointment.scheduledEnd)}',
+                            appointment.finalDate != null
+                                ? _formatTime(appointment.finalDate!)
+                                : '${_formatTime(appointment.scheduledStart)} - ${_formatTime(appointment.scheduledEnd)}',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,

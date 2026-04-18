@@ -13,6 +13,7 @@ class Appointment {
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? cancelledAt;
+  final DateTime? finalDate;
 
   final String? specialistName;
   final String? clientName;
@@ -36,6 +37,7 @@ class Appointment {
     this.specialistName,
     this.clientName,
     this.serviceName,
+    this.finalDate,
   });
 
   factory Appointment.fromJson(Map<String, dynamic> json) {
@@ -59,6 +61,7 @@ class Appointment {
       specialistName: json['specialistName'],
       clientName: json['clientName'],
       serviceName: json['serviceName'],
+      finalDate: json['finalDate'] != null ? DateTime.parse(json['finalDate']) : null,
     );
   }
 }

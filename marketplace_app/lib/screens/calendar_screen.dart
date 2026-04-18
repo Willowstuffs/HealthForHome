@@ -460,7 +460,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
               _buildDetailRow(
                 Icons.calendar_today,
                 'Termin:',
-                appt.scheduledStart.year == appt.scheduledEnd.year &&
+                appt.finalDate != null
+                    ? '${appt.finalDate!.day.toString().padLeft(2, '0')}.${appt.finalDate!.month.toString().padLeft(2, '0')}.${appt.finalDate!.year}  ${appt.finalDate!.hour.toString().padLeft(2, '0')}:${appt.finalDate!.minute.toString().padLeft(2, '0')}'
+                    : (appt.scheduledStart.year == appt.scheduledEnd.year &&
                         appt.scheduledStart.month == appt.scheduledEnd.month &&
                         appt.scheduledStart.day == appt.scheduledEnd.day
                     ? '${appt.scheduledStart.day.toString().padLeft(2, '0')}.${appt.scheduledStart.month.toString().padLeft(2, '0')}.${appt.scheduledStart.year}  '
@@ -469,7 +471,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     : 'Początek: ${appt.scheduledStart.day.toString().padLeft(2, '0')}.${appt.scheduledStart.month.toString().padLeft(2, '0')}.${appt.scheduledStart.year} '
                           '${appt.scheduledStart.hour.toString().padLeft(2, '0')}:${appt.scheduledStart.minute.toString().padLeft(2, '0')}\n'
                           'Koniec: ${appt.scheduledEnd.day.toString().padLeft(2, '0')}.${appt.scheduledEnd.month.toString().padLeft(2, '0')}.${appt.scheduledEnd.year} '
-                          '${appt.scheduledEnd.hour.toString().padLeft(2, '0')}:${appt.scheduledEnd.minute.toString().padLeft(2, '0')}',
+                          '${appt.scheduledEnd.hour.toString().padLeft(2, '0')}:${appt.scheduledEnd.minute.toString().padLeft(2, '0')}'),
               ),
               if (appt.clientAddress != null && appt.clientAddress!.isNotEmpty)
                 _buildDetailRow(
