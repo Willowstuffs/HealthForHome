@@ -230,11 +230,19 @@ class ApiService {
       );
 
       final loginResponse = LoginResponse.fromJson(response.data['data']);
+      
+      if (loginResponse.user.userType.toLowerCase() != 'client') {
+        throw Exception('Tylko klienci mogą się zalogować do tej aplikacji.');
+      }
+      
       await saveSession(loginResponse);
       return loginResponse;
     } on DioException catch (e) {
       throw _handleDioError(e);
-    } catch (_) {
+    } catch (e) {
+      if (e.toString().contains('Tylko klienci')) {
+        rethrow;
+      }
       throw Exception('Nieznany błąd logowania');
     }
   }
