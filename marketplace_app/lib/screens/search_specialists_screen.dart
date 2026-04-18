@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:marketplace_app/widgets/screen_status_bar.dart';
 import '../../services/api_service.dart';
 import '../../models/nearby_specialist.dart';
 import '../../models/specialist_profile_details.dart';
@@ -84,99 +85,107 @@ class _SearchSpecialistsScreenState extends State<SearchSpecialistsScreen> {
     showDialog(
       context: context,
       builder: (context) {
-        return SpecialistDetailsPopup(
-          specialistId: specialist.id,
-        );
+        return SpecialistDetailsPopup(specialistId: specialist.id);
       },
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _searchByMyAddress,
-        icon: const Icon(Icons.my_location_rounded),
-        label: const Text('Blisko mnie'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return ScreenStatusBar(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _searchByMyAddress,
+          icon: const Icon(Icons.my_location_rounded),
+          label: const Text('Blisko mnie'),
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: TextField(
-                  controller: _addressController,
-                  decoration: InputDecoration(
-                    hintText: 'Wpisz miasto lub adres...',
-                    prefixIcon: const Icon(Icons.location_city_rounded),
-                    filled: true,
-                    fillColor: AppColors.surfaceContainerHighest,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _addressController,
+                      decoration: InputDecoration(
+                        hintText: 'Wpisz miasto lub adres...',
+                        prefixIcon: const Icon(Icons.location_city_rounded),
+                        filled: true,
+                        fillColor: AppColors.surfaceContainerHighest,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
+                      ),
+                      onSubmitted: (_) => _searchByAddress(),
                     ),
                   ),
-                  onSubmitted: (_) => _searchByAddress(),
-                ),
+                  const SizedBox(width: 12),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.search_rounded,
+                        color: Colors.white,
+                      ),
+                      onPressed: _searchByAddress,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(16),
+              const SizedBox(height: 24),
+              if (_isLoading)
+                const Expanded(
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (_error != null)
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      _error!,
+                      style: TextStyle(color: AppColors.error),
+                    ),
+                  ),
+                )
+              else if (_specialists.isEmpty)
+                const Expanded(
+                  child: Center(
+                    child: Text(
+                      'Brak wyników lub nie wyszukano specjalistów.',
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
+                  ),
+                )
+              else
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: _specialists.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final sp = _specialists[index];
+                      return SpecialistCard(
+                        specialist: sp,
+                        onTap: () => _showSpecialistDetails(sp),
+                      );
+                    },
+                  ),
                 ),
-                child: IconButton(
-                  icon: const Icon(Icons.search_rounded, color: Colors.white),
-                  onPressed: _searchByAddress,
-                ),
-              ),
             ],
           ),
-          const SizedBox(height: 24),
-          if (_isLoading)
-            const Expanded(child: Center(child: CircularProgressIndicator()))
-          else if (_error != null)
-            Expanded(
-              child: Center(
-                child: Text(_error!, style: TextStyle(color: AppColors.error)),
-              ),
-            )
-          else if (_specialists.isEmpty)
-            const Expanded(
-              child: Center(
-                child: Text(
-                  'Brak wyników lub nie wyszukano specjalistów.',
-                  style: TextStyle(color: AppColors.textSecondary),
-                ),
-              ),
-            )
-          else
-            Expanded(
-              child: ListView.separated(
-                itemCount: _specialists.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final sp = _specialists[index];
-                  return SpecialistCard(
-                    specialist: sp,
-                    onTap: () => _showSpecialistDetails(sp),
-                  );
-                },
-              ),
-            ),
-        ],
-      ),
+        ),
       ),
     );
   }
@@ -214,7 +223,9 @@ class SpecialistCard extends StatelessWidget {
                 color: AppColors.primary.withValues(alpha: 0.1),
               ),
               child: ClipOval(
-                child: specialist.avatarUrl != null && specialist.avatarUrl!.isNotEmpty
+                child:
+                    specialist.avatarUrl != null &&
+                        specialist.avatarUrl!.isNotEmpty
                     ? Image.network(
                         specialist.avatarUrl!,
                         fit: BoxFit.cover,
@@ -259,10 +270,7 @@ class SpecialistCard extends StatelessWidget {
 class SpecialistDetailsPopup extends StatefulWidget {
   final String specialistId;
 
-  const SpecialistDetailsPopup({
-    super.key,
-    required this.specialistId,
-  });
+  const SpecialistDetailsPopup({super.key, required this.specialistId});
 
   @override
   State<SpecialistDetailsPopup> createState() => _SpecialistDetailsPopupState();
@@ -356,14 +364,25 @@ class _SpecialistDetailsPopupState extends State<SpecialistDetailsPopup> {
                             color: AppColors.primary.withValues(alpha: 0.1),
                           ),
                           child: ClipOval(
-                            child: _profile!.avatarUrl != null && _profile!.avatarUrl!.isNotEmpty
+                            child:
+                                _profile!.avatarUrl != null &&
+                                    _profile!.avatarUrl!.isNotEmpty
                                 ? Image.network(
                                     _profile!.avatarUrl!,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) =>
-                                        const Icon(Icons.person, color: AppColors.primary, size: 36),
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            const Icon(
+                                              Icons.person,
+                                              color: AppColors.primary,
+                                              size: 36,
+                                            ),
                                   )
-                                : const Icon(Icons.person, color: AppColors.primary, size: 36),
+                                : const Icon(
+                                    Icons.person,
+                                    color: AppColors.primary,
+                                    size: 36,
+                                  ),
                           ),
                         ),
                         const SizedBox(width: 16),

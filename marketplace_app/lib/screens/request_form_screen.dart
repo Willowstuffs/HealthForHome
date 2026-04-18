@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:marketplace_app/screens/login_register_screen.dart';
 import 'package:marketplace_app/services/api_service.dart';
+import 'package:marketplace_app/widgets/screen_status_bar.dart';
 import '../../screens/request_success_screen.dart';
 import '../../theme/app_theme.dart';
 import '../../data/mock_data.dart';
@@ -84,140 +85,143 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Utwórz ogłoszenie"),
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        actions: [
-          if (!ApiService().isLoggedIn)
-            IconButton(
-              icon: const Icon(
-                Icons.person_outline,
-                color: AppColors.onSurface,
+    return ScreenStatusBar(
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text("Utwórz ogłoszenie"),
+          backgroundColor: AppColors.surface,
+          elevation: 0,
+          actions: [
+            if (!ApiService().isLoggedIn)
+              IconButton(
+                icon: const Icon(
+                  Icons.person_outline,
+                  color: AppColors.onSurface,
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const LoginRegisterScreen(),
+                    ),
+                  );
+                },
               ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const LoginRegisterScreen(),
-                  ),
-                );
-              },
-            ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Wypełnij formularz, a specjaliści sami zgłoszą się do Ciebie.",
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 16),
-
-                    _buildSectionTitle(theme, "Dane kontaktowe"),
-                    const SizedBox(height: 8),
-
-                    _buildTextField(
-                      controller: nameController,
-                      label: 'Imię i nazwisko osoby kontaktowej',
-                      validator: (v) {
-                        if (!ApiService().isLoggedIn &&
-                            (v == null || v.isEmpty)) {
-                          return 'Podaj imię i nazwisko';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-
-                    _buildTextField(
-                      controller: phoneController,
-                      label: 'Numer telefonu',
-                      keyboardType: TextInputType.phone,
-                      validator: (v) {
-                        if (!ApiService().isLoggedIn &&
-                            (v == null || v.isEmpty)) {
-                          return 'Podaj numer telefonu';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-
-                    _buildTextField(
-                      controller: emailController,
-                      label: 'Email',
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (v) {
-                        if (!ApiService().isLoggedIn &&
-                            (v == null || v.isEmpty)) {
-                          return 'Podaj email';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    const Divider(),
-
-                    _buildSectionTitle(theme, "Szczegóły zgłoszenia"),
-                    const SizedBox(height: 12),
-
-                    _buildCategoryDropdown(),
-                    const SizedBox(height: 12),
-
-                    Text(
-                      "Termin realizacji",
-                      style: theme.textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
-
-                    _buildDateField(
-                      label: 'Zakres dat',
-                      value: selectedDateFrom != null && selectedDateTo != null
-                          ? '${selectedDateFrom!.day}.${selectedDateFrom!.month} - ${selectedDateTo!.day}.${selectedDateTo!.month}.${selectedDateTo!.year}'
-                          : 'Wybierz daty',
-                      onTap: _pickDateRange,
-                    ),
-                    const SizedBox(height: 12),
-
-                    _buildTextField(
-                      controller: addressController,
-                      label: 'Adres (miasto/dzielnica)',
-                      validator: (v) =>
-                          v == null || v.isEmpty ? 'Podaj adres' : null,
-                    ),
-                    const SizedBox(height: 12),
-
-                    _buildTextField(
-                      controller: notesController,
-                      label: 'Opis problemu / wymagania',
-                      maxLines: 4,
-                      validator: (v) => v == null || v.isEmpty
-                          ? 'Opisz swoje potrzeby'
-                          : null,
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _submitForm,
-                        child: const Text('Dodaj ogłoszenie'),
+          ],
+        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Wypełnij formularz, a specjaliści sami zgłoszą się do Ciebie.",
+                        style: theme.textTheme.bodyMedium,
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+
+                      _buildSectionTitle(theme, "Dane kontaktowe"),
+                      const SizedBox(height: 8),
+
+                      _buildTextField(
+                        controller: nameController,
+                        label: 'Imię i nazwisko osoby kontaktowej',
+                        validator: (v) {
+                          if (!ApiService().isLoggedIn &&
+                              (v == null || v.isEmpty)) {
+                            return 'Podaj imię i nazwisko';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      _buildTextField(
+                        controller: phoneController,
+                        label: 'Numer telefonu',
+                        keyboardType: TextInputType.phone,
+                        validator: (v) {
+                          if (!ApiService().isLoggedIn &&
+                              (v == null || v.isEmpty)) {
+                            return 'Podaj numer telefonu';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      _buildTextField(
+                        controller: emailController,
+                        label: 'Email',
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (v) {
+                          if (!ApiService().isLoggedIn &&
+                              (v == null || v.isEmpty)) {
+                            return 'Podaj email';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      const Divider(),
+
+                      _buildSectionTitle(theme, "Szczegóły zgłoszenia"),
+                      const SizedBox(height: 12),
+
+                      _buildCategoryDropdown(),
+                      const SizedBox(height: 12),
+
+                      Text(
+                        "Termin realizacji",
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+
+                      _buildDateField(
+                        label: 'Zakres dat',
+                        value:
+                            selectedDateFrom != null && selectedDateTo != null
+                            ? '${selectedDateFrom!.day}.${selectedDateFrom!.month} - ${selectedDateTo!.day}.${selectedDateTo!.month}.${selectedDateTo!.year}'
+                            : 'Wybierz daty',
+                        onTap: _pickDateRange,
+                      ),
+                      const SizedBox(height: 12),
+
+                      _buildTextField(
+                        controller: addressController,
+                        label: 'Adres (miasto/dzielnica)',
+                        validator: (v) =>
+                            v == null || v.isEmpty ? 'Podaj adres' : null,
+                      ),
+                      const SizedBox(height: 12),
+
+                      _buildTextField(
+                        controller: notesController,
+                        label: 'Opis problemu / wymagania',
+                        maxLines: 4,
+                        validator: (v) => v == null || v.isEmpty
+                            ? 'Opisz swoje potrzeby'
+                            : null,
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _submitForm,
+                          child: const Text('Dodaj ogłoszenie'),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
+      ),
     );
   }
 

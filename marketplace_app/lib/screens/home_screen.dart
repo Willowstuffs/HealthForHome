@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:marketplace_app/widgets/screen_status_bar.dart';
 import '../../screens/login_register_screen.dart';
 import '../../screens/request_form_screen.dart';
 import '../../screens/account_screen.dart';
@@ -87,72 +88,74 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildGuestScaffold() {
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'HealthForHome',
-                          style: Theme.of(context).textTheme.headlineMedium
-                              ?.copyWith(
-                                color: AppColors.onSurface,
-                                fontWeight: FontWeight.w700,
-                              ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Twoje zdrowie w domu',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: AppColors.textSecondary),
-                        ),
-                      ],
-                    ),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 8,
-                            offset: Offset(0, 2),
+    return ScreenStatusBar(
+      child: Scaffold(
+        backgroundColor: AppColors.surface,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'HealthForHome',
+                            style: Theme.of(context).textTheme.headlineMedium
+                                ?.copyWith(
+                                  color: AppColors.onSurface,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Twoje zdrowie w domu',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: AppColors.textSecondary),
                           ),
                         ],
                       ),
-                      child: IconButton(
-                        icon: Icon(
-                          Icons.person_outline_rounded,
-                          color: AppColors.primary,
-                        ),
-                        onPressed: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const LoginRegisterScreen(),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
                             ),
-                          );
-                          _checkLoginAndLoadProfile();
-                        },
+                          ],
+                        ),
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.person_outline_rounded,
+                            color: AppColors.primary,
+                          ),
+                          onPressed: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const LoginRegisterScreen(),
+                              ),
+                            );
+                            _checkLoginAndLoadProfile();
+                          },
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 32),
-                _buildWelcomeSection(),
-                const SizedBox(height: 32),
-                _buildCategoriesSection(),
-              ],
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  _buildWelcomeSection(),
+                  const SizedBox(height: 32),
+                  _buildCategoriesSection(),
+                ],
+              ),
             ),
           ),
         ),
@@ -179,64 +182,66 @@ class HomeScreenState extends State<HomeScreen> {
         bodyContent = _buildDashboard();
     }
 
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      body: SafeArea(child: bodyContent),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainer,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 20,
-              offset: Offset(0, -4),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          showUnselectedLabels: true,
-          onTap: _onBottomNavTapped,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded),
-              label: 'Start',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.search_rounded),
-              label: 'Szukaj',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_today_rounded),
-              label: 'Kalendarz',
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: _currentIndex == 0
-          ? FloatingActionButton.extended(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        const RequestFormScreen(categoryName: 'Fizjoterapia'),
-                  ),
-                );
-              },
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              label: const Text(
-                "Nowe ogłoszenie",
-                style: TextStyle(fontWeight: FontWeight.w600),
+    return ScreenStatusBar(
+      child: Scaffold(
+        backgroundColor: AppColors.surface,
+        body: SafeArea(child: bodyContent),
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            color: AppColors.surfaceContainer,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 20,
+                offset: Offset(0, -4),
               ),
-              icon: const Icon(Icons.add_rounded),
-            )
-          : null,
+            ],
+          ),
+          child: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            showUnselectedLabels: true,
+            onTap: _onBottomNavTapped,
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home_rounded),
+                label: 'Start',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.search_rounded),
+                label: 'Szukaj',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.calendar_today_rounded),
+                label: 'Kalendarz',
+              ),
+            ],
+          ),
+        ),
+        floatingActionButton: _currentIndex == 0
+            ? FloatingActionButton.extended(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          const RequestFormScreen(categoryName: 'Fizjoterapia'),
+                    ),
+                  );
+                },
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                label: const Text(
+                  "Nowe ogłoszenie",
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                icon: const Icon(Icons.add_rounded),
+              )
+            : null,
+      ),
     );
   }
 
@@ -1066,7 +1071,11 @@ class HomeScreenState extends State<HomeScreen> {
                         padding: const EdgeInsets.only(top: 4),
                         child: Row(
                           children: [
-                            Icon(Icons.calendar_today_rounded, size: 14, color: AppColors.primary),
+                            Icon(
+                              Icons.calendar_today_rounded,
+                              size: 14,
+                              color: AppColors.primary,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               '${offer.proposedDate!.day.toString().padLeft(2, '0')}.${offer.proposedDate!.month.toString().padLeft(2, '0')}.${offer.proposedDate!.year} ${offer.proposedDate!.hour.toString().padLeft(2, '0')}:${offer.proposedDate!.minute.toString().padLeft(2, '0')}',

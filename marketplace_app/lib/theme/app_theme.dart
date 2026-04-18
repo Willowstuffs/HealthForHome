@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class AppColors {
   static const Color livingColor10 = Color(0xFF2E4438);
@@ -58,6 +59,11 @@ class AppTheme {
       backgroundColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
+      systemOverlayStyle: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
       iconTheme: IconThemeData(color: AppColors.onSurface),
       titleTextStyle: TextStyle(
         color: AppColors.onSurface,

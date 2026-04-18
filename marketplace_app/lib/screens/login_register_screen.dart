@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:marketplace_app/screens/login_screen.dart';
 import 'package:marketplace_app/screens/register_account_screen.dart';
+import 'package:marketplace_app/widgets/screen_status_bar.dart';
 import '../../theme/app_theme.dart';
 
 class LoginRegisterScreen extends StatelessWidget {
@@ -10,74 +11,76 @@ class LoginRegisterScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        iconTheme: IconThemeData(color: AppColors.onSurface),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Column(
-            children: [
-              SizedBox(height: 32),
+    return ScreenStatusBar(
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: AppColors.surface,
+          elevation: 0,
+          iconTheme: IconThemeData(color: AppColors.onSurface),
+        ),
+        body: SafeArea(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              children: [
+                SizedBox(height: 32),
 
-              _buildWelcomeSection(context),
+                _buildWelcomeSection(context),
 
-              // CTA
-              Column(
-                children: [
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => RegisterScreen()),
-                        );
-                      },
-                      child: Text('Zarejestruj się'),
+                // CTA
+                Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => RegisterScreen()),
+                          );
+                        },
+                        child: Text('Zarejestruj się'),
+                      ),
                     ),
-                  ),
 
-                  SizedBox(height: 16),
+                    SizedBox(height: 16),
 
-                  Row(
-                    children: [
-                      Expanded(child: Divider(color: AppColors.outline)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'lub',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: AppColors.secondary,
+                    Row(
+                      children: [
+                        Expanded(child: Divider(color: AppColors.outline)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            'lub',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: AppColors.secondary,
+                            ),
                           ),
                         ),
-                      ),
-                      Expanded(child: Divider(color: AppColors.outline)),
-                    ],
-                  ),
-
-                  SizedBox(height: 16),
-
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => LoginScreen()),
-                        );
-                      },
-                      child: Text('Zaloguj się'),
+                        Expanded(child: Divider(color: AppColors.outline)),
+                      ],
                     ),
-                  ),
-                ],
-              ),
 
-              const SizedBox(height: 32),
-            ],
+                    SizedBox(height: 16),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => LoginScreen()),
+                          );
+                        },
+                        child: Text('Zaloguj się'),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 32),
+              ],
+            ),
           ),
         ),
       ),

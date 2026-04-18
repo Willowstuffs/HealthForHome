@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:marketplace_app/widgets/screen_status_bar.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../models/appointment.dart';
 import '../../services/api_service.dart';
@@ -9,11 +10,7 @@ class CalendarScreen extends StatefulWidget {
   final String? initialEventId;
   final DateTime? initialDate;
 
-  const CalendarScreen({
-    super.key,
-    this.initialEventId,
-    this.initialDate,
-  });
+  const CalendarScreen({super.key, this.initialEventId, this.initialDate});
 
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
@@ -167,47 +164,50 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      body: _isLoading
-          ? Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation(AppColors.primary),
+    return ScreenStatusBar(
+      child: Scaffold(
+        backgroundColor: AppColors.surface,
+        body: _isLoading
+            ? Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                ),
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(
+                      left: 24.0,
+                      top: 16.0,
+                      right: 24.0,
+                      bottom: 8.0,
+                    ),
+                    child: Text(
+                      'Kalendarz',
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.onSurface,
+                          ),
+                    ),
+                  ),
+                  _buildStatusFilters(),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          _buildCalendar(),
+                          SizedBox(height: 16),
+                          _buildAppointmentList(),
+                          SizedBox(height: 100), // spacing for bottom nav
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: EdgeInsets.only(
-                    left: 24.0,
-                    top: 16.0,
-                    right: 24.0,
-                    bottom: 8.0,
-                  ),
-                  child: Text(
-                    'Kalendarz',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.onSurface,
-                    ),
-                  ),
-                ),
-                _buildStatusFilters(),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        _buildCalendar(),
-                        SizedBox(height: 16),
-                        _buildAppointmentList(),
-                        SizedBox(height: 100), // spacing for bottom nav
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+      ),
     );
   }
 
@@ -227,7 +227,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
             label: Text(_formatStatusLabel(status)),
             selected: isSelected,
             onSelected: (_) => _toggleStatus(status),
-            selectedColor: AppColors.getStatusColor(status).withValues(alpha: 0.15),
+            selectedColor: AppColors.getStatusColor(
+              status,
+            ).withValues(alpha: 0.15),
             checkmarkColor: AppColors.getStatusColor(status),
             backgroundColor: AppColors.surfaceContainerHighest,
             side: BorderSide.none,
@@ -235,7 +237,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
               borderRadius: BorderRadius.circular(20),
             ),
             labelStyle: TextStyle(
-              color: isSelected ? AppColors.getStatusColor(status) : AppColors.textSecondary,
+              color: isSelected
+                  ? AppColors.getStatusColor(status)
+                  : AppColors.textSecondary,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
             ),
           );
@@ -463,15 +467,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 appt.finalDate != null
                     ? '${appt.finalDate!.day.toString().padLeft(2, '0')}.${appt.finalDate!.month.toString().padLeft(2, '0')}.${appt.finalDate!.year}  ${appt.finalDate!.hour.toString().padLeft(2, '0')}:${appt.finalDate!.minute.toString().padLeft(2, '0')}'
                     : (appt.scheduledStart.year == appt.scheduledEnd.year &&
-                        appt.scheduledStart.month == appt.scheduledEnd.month &&
-                        appt.scheduledStart.day == appt.scheduledEnd.day
-                    ? '${appt.scheduledStart.day.toString().padLeft(2, '0')}.${appt.scheduledStart.month.toString().padLeft(2, '0')}.${appt.scheduledStart.year}  '
-                          '${appt.scheduledStart.hour.toString().padLeft(2, '0')}:${appt.scheduledStart.minute.toString().padLeft(2, '0')} - '
-                          '${appt.scheduledEnd.hour.toString().padLeft(2, '0')}:${appt.scheduledEnd.minute.toString().padLeft(2, '0')}'
-                    : 'Początek: ${appt.scheduledStart.day.toString().padLeft(2, '0')}.${appt.scheduledStart.month.toString().padLeft(2, '0')}.${appt.scheduledStart.year} '
-                          '${appt.scheduledStart.hour.toString().padLeft(2, '0')}:${appt.scheduledStart.minute.toString().padLeft(2, '0')}\n'
-                          'Koniec: ${appt.scheduledEnd.day.toString().padLeft(2, '0')}.${appt.scheduledEnd.month.toString().padLeft(2, '0')}.${appt.scheduledEnd.year} '
-                          '${appt.scheduledEnd.hour.toString().padLeft(2, '0')}:${appt.scheduledEnd.minute.toString().padLeft(2, '0')}'),
+                              appt.scheduledStart.month ==
+                                  appt.scheduledEnd.month &&
+                              appt.scheduledStart.day == appt.scheduledEnd.day
+                          ? '${appt.scheduledStart.day.toString().padLeft(2, '0')}.${appt.scheduledStart.month.toString().padLeft(2, '0')}.${appt.scheduledStart.year}  '
+                                '${appt.scheduledStart.hour.toString().padLeft(2, '0')}:${appt.scheduledStart.minute.toString().padLeft(2, '0')} - '
+                                '${appt.scheduledEnd.hour.toString().padLeft(2, '0')}:${appt.scheduledEnd.minute.toString().padLeft(2, '0')}'
+                          : 'Początek: ${appt.scheduledStart.day.toString().padLeft(2, '0')}.${appt.scheduledStart.month.toString().padLeft(2, '0')}.${appt.scheduledStart.year} '
+                                '${appt.scheduledStart.hour.toString().padLeft(2, '0')}:${appt.scheduledStart.minute.toString().padLeft(2, '0')}\n'
+                                'Koniec: ${appt.scheduledEnd.day.toString().padLeft(2, '0')}.${appt.scheduledEnd.month.toString().padLeft(2, '0')}.${appt.scheduledEnd.year} '
+                                '${appt.scheduledEnd.hour.toString().padLeft(2, '0')}:${appt.scheduledEnd.minute.toString().padLeft(2, '0')}'),
               ),
               if (appt.clientAddress != null && appt.clientAddress!.isNotEmpty)
                 _buildDetailRow(
@@ -517,7 +522,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildDetailRow(IconData icon, String title, String value, {bool isLongText = false}) {
+  Widget _buildDetailRow(
+    IconData icon,
+    String title,
+    String value, {
+    bool isLongText = false,
+  }) {
     Widget textWidget = Text(
       value,
       style: TextStyle(

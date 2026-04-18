@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:marketplace_app/screens/home_screen.dart';
+import 'package:marketplace_app/widgets/screen_status_bar.dart';
 import '../services/api_service.dart';
 import '../models/client_profile.dart';
 import '../models/client_update_dto.dart';
@@ -133,147 +134,151 @@ class _AccountScreenState extends State<AccountScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const ScreenStatusBar(
+        child: Scaffold(body: Center(child: CircularProgressIndicator())),
+      );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profil'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
-            tooltip: 'Wyloguj',
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Avatar section (placeholder)
-              Center(
-                child: CircleAvatar(
-                  radius: 50,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+    return ScreenStatusBar(
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Profil'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: _logout,
+              tooltip: 'Wyloguj',
+            ),
+          ],
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Avatar section (placeholder)
+                Center(
+                  child: CircleAvatar(
+                    radius: 50,
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                    child: Text(
+                      _profile?.firstName.isNotEmpty == true
+                          ? _profile!.firstName[0].toUpperCase()
+                          : '?',
+                      style: TextStyle(
+                        fontSize: 40,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Center(
                   child: Text(
-                    _profile?.firstName.isNotEmpty == true
-                        ? _profile!.firstName[0].toUpperCase()
-                        : '?',
-                    style: TextStyle(
-                      fontSize: 40,
+                    _profile?.email ?? '',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: AppColors.textSecondary,
-                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Center(
-                child: Text(
-                  _profile?.email ?? '',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+                const SizedBox(height: 24),
+
+                Text(
+                  'Dane osobowe',
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 16),
 
-              Text(
-                'Dane osobowe',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildTextField(
+                        controller: _firstNameController,
+                        label: 'Imię',
+                        validator: (v) => v!.isEmpty ? 'Wymagane' : null,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildTextField(
+                        controller: _lastNameController,
+                        label: 'Nazwisko',
+                        validator: (v) => v!.isEmpty ? 'Wymagane' : null,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildTextField(
-                      controller: _firstNameController,
-                      label: 'Imię',
-                      validator: (v) => v!.isEmpty ? 'Wymagane' : null,
+                _buildTextField(
+                  controller: _phoneController,
+                  label: 'Telefon',
+                  keyboardType: TextInputType.phone,
+                  validator: (v) {
+                    if (v != null && v.isNotEmpty && v.length > 20) {
+                      return 'Zbyt długi numer';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+
+                InkWell(
+                  onTap: _selectDate,
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: 'Data urodzenia',
+                      suffixIcon: const Icon(Icons.calendar_today),
+                    ),
+                    child: Text(
+                      _dateOfBirth != null
+                          ? "${_dateOfBirth!.day.toString().padLeft(2, '0')}.${_dateOfBirth!.month.toString().padLeft(2, '0')}.${_dateOfBirth!.year}"
+                          : 'Wybierz datę',
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildTextField(
-                      controller: _lastNameController,
-                      label: 'Nazwisko',
-                      validator: (v) => v!.isEmpty ? 'Wymagane' : null,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
+                ),
+                const SizedBox(height: 24),
 
-              _buildTextField(
-                controller: _phoneController,
-                label: 'Telefon',
-                keyboardType: TextInputType.phone,
-                validator: (v) {
-                  if (v != null && v.isNotEmpty && v.length > 20) {
-                    return 'Zbyt długi numer';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
+                Text(
+                  'Adres i Kontakt',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 16),
 
-              InkWell(
-                onTap: _selectDate,
-                child: InputDecorator(
-                  decoration: InputDecoration(
-                    labelText: 'Data urodzenia',
-                    suffixIcon: const Icon(Icons.calendar_today),
-                  ),
-                  child: Text(
-                    _dateOfBirth != null
-                        ? "${_dateOfBirth!.day.toString().padLeft(2, '0')}.${_dateOfBirth!.month.toString().padLeft(2, '0')}.${_dateOfBirth!.year}"
-                        : 'Wybierz datę',
+                _buildTextField(
+                  controller: _addressController,
+                  label: 'Adres zamieszkania',
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 12),
+
+                _buildTextField(
+                  controller: _emergencyContactController,
+                  label: 'Kontakt awaryjny (Imie, Telefon)',
+                  maxLines: 2,
+                ),
+
+                const SizedBox(height: 32),
+
+                ElevatedButton.icon(
+                  onPressed: _isSaving ? null : _saveProfile,
+                  icon: _isSaving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.save),
+                  label: const Text('Zapisz zmiany'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
-
-              Text(
-                'Adres i Kontakt',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 16),
-
-              _buildTextField(
-                controller: _addressController,
-                label: 'Adres zamieszkania',
-                maxLines: 2,
-              ),
-              const SizedBox(height: 12),
-
-              _buildTextField(
-                controller: _emergencyContactController,
-                label: 'Kontakt awaryjny (Imie, Telefon)',
-                maxLines: 2,
-              ),
-
-              const SizedBox(height: 32),
-
-              ElevatedButton.icon(
-                onPressed: _isSaving ? null : _saveProfile,
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.save),
-                label: const Text('Zapisz zmiany'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
