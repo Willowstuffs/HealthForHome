@@ -8,5 +8,7 @@
         public decimal? ProposedPrice { get; set; }
         public DateTime ProposedDate { get; set; } // dodanie pola na propozycję pełnej daty (z godziną)
         public string? Bio { get; set; }
+        public List<Guid> SelectedServiceIds { get; set; } = new();
+        public List<string> SelectedServiceNames { get; set; } = new();
     }
 }

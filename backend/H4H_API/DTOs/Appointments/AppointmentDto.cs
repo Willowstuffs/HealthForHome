@@ -15,7 +15,7 @@ namespace H4H_API.DTOs.Appointments
         public Guid Id { get; set; }
         public Guid ClientId { get; set; }                              // ID klienta
         public Guid SpecialistId { get; set; }                          // ID specjalisty
-        public Guid? SpecialistServiceId { get; set; }                  // ID usługi specjalisty (opcjonalne)
+        public List<Guid> SpecialistServiceIds { get; set; } = new();   // Lista ID usług specjalisty (może być pusta dla ogłoszeń "open")
         public string AppointmentStatus { get; set; } = string.Empty;   // Status wizyty
         public DateTime ScheduledStart { get; set; }                    // Planowany czas rozpoczęcia
         public DateTime ScheduledEnd { get; set; }                      // Planowany czas zakończenia
@@ -31,6 +31,6 @@ namespace H4H_API.DTOs.Appointments
         // Właściwości nawigacyjne (opcjonalne - do wypełnienia jeśli potrzebne)
         public string? SpecialistName { get; set; }
         public string? ClientName { get; set; }
-        public string? ServiceName { get; set; }
+        public List<string> ServiceNames { get; set; } = new();
     }
 }

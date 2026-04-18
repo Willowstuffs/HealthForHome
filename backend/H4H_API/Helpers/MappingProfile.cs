@@ -40,18 +40,19 @@ namespace H4H_API.Helpers
                     src.Client != null ? $"{src.Client.FirstName} {src.Client.LastName}" : "Brak danych"))
                 .ForMember(dest => dest.SpecialistName, opt => opt.MapFrom(src =>
                     src.Specialist != null ? $"{src.Specialist.FirstName} {src.Specialist.LastName}" : "Nieprzypisany"))
-                .ForMember(dest => dest.ServiceName, opt => opt.MapFrom(src =>
-                    src.SpecialistService != null && src.SpecialistService.ServiceType != null
-                    ? src.SpecialistService.ServiceType.Name : "Usługa nieznana"));
+                // Mapujemy tablicę ID z bazy na listę w DTO
+                .ForMember(dest => dest.SpecialistServiceIds, opt => opt.MapFrom(src => src.SpecialistServiceIds.ToList()))
+                // Tutaj ustawiamy domyślną wartość dla listy nazw
+                .ForMember(dest => dest.ServiceNames, opt => opt.MapFrom(src => new List<string> { "Usługa nieznana" }));
 
             // Mapowanie z modelu ServiceRequest na ServiceRequestDto, uwzględniające nazwę typu usługi
             CreateMap<Appointment, ServiceRequestDto>()
-    .ForMember(dest => dest.ServiceTypeName, opt => opt.MapFrom(src => src.ServiceType != null ? src.ServiceType.Name : "Nieznana usługa"))
-    .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.ClientNotes))
-    .ForMember(dest => dest.DateFrom, opt => opt.MapFrom(src => src.ScheduledStart))
-    .ForMember(dest => dest.DateTo, opt => opt.MapFrom(src => src.ScheduledEnd))
-    .ForMember(dest => dest.Address, opt => opt.MapFrom(src => src.ClientAddress))
-    .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.AppointmentStatus));
+                .ForMember(dest => dest.ServiceTypeName, opt => opt.MapFrom(src => src.ServiceType != null ? src.ServiceType.Name : "Nieznana usługa"))
+                .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.ClientNotes))
+                .ForMember(dest => dest.DateFrom, opt => opt.MapFrom(src => src.ScheduledStart))
+                .ForMember(dest => dest.DateTo, opt => opt.MapFrom(src => src.ScheduledEnd))
+                .ForMember(dest => dest.Address, opt => opt.MapFrom(src => src.ClientAddress))
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.AppointmentStatus));
         }
     }
 }

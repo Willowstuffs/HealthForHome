@@ -445,3 +445,28 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
     expires_at TIMESTAMP NOT NULL,
     revoked_at TIMESTAMP
 );
+
+
+-- Aktualizacja 18.04.2026 - Poprawki w tabeli appointments umozliwiajace prawidlowe dodawanie uslug do oferty
+
+-- Usuwamy stary klucz obcy
+ALTER TABLE appointments DROP CONSTRAINT IF EXISTS "FK_appointments_specialist_services_specialist_service_id";
+
+-- Zmiana nazwy specialist_service_id -> specialist_service_ids
+DO $$ 
+BEGIN 
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='appointments' AND column_name='specialist_service_id') THEN
+        ALTER TABLE appointments RENAME COLUMN specialist_service_id TO specialist_service_ids;
+    END IF;
+END $$;
+
+-- Zmiana typu na tablicę UUID[]
+ALTER TABLE appointments 
+    ALTER COLUMN specialist_service_ids TYPE UUID[] 
+    USING CASE 
+        WHEN specialist_service_ids IS NULL THEN '{}'::UUID[] 
+        ELSE ARRAY[specialist_service_ids] 
+    END;
+
+ALTER TABLE appointments ALTER COLUMN specialist_service_ids SET DEFAULT '{}';
+ALTER TABLE appointments DROP COLUMN IF EXISTS "SpecialistServiceId";
