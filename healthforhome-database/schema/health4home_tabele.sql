@@ -597,3 +597,13 @@ ADD COLUMN IF NOT EXISTS proposed_date TIMESTAMP;
 ALTER TABLE appointments 
 ADD COLUMN IF NOT EXISTS final_date TIMESTAMP;
 
+-- 3. Dodajemy tabele do tokenow 
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    token TEXT NOT NULL,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL,
+    revoked_at TIMESTAMP
+);
+
