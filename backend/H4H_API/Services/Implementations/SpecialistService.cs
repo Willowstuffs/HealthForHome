@@ -219,28 +219,65 @@ namespace H4H_API.Services.Implementations
 
             return types;
         }
+
         public async Task AddServiceAsync(Guid userId, SpecialistServiceManageDto dto)
         {
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
-                 ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound); // ErrorCode: SPEC_001
+                 ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
 
-            // Duplikaty
+            Guid serviceTypeId;
+
+            //Logika ustalania ServiceTypeId (Istniejące vs Nowe)
+            if (dto.ServiceTypeId.HasValue && dto.ServiceTypeId != Guid.Empty)
+            {
+                serviceTypeId = dto.ServiceTypeId.Value;
+            }
+            else if (!string.IsNullOrWhiteSpace(dto.ServiceName))
+            {
+                //Szukamy czy taka nazwa już istnieje w bazie (case-insensitive)
+                var existingType = await _context.service_types
+                    .FirstOrDefaultAsync(st => st.Name.ToLower() == dto.ServiceName.ToLower());
+
+                if (existingType != null)
+                {
+                    serviceTypeId = existingType.Id;
+                }
+                else
+                {
+                    //Tworzymy nowy typ usługi, jeśli nie znaleziono
+                    var newType = new ServiceType
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = dto.ServiceName,
+                        Category = dto.Category ?? "Inne", // domyślna kategoria jeśli nie podano
+                        DefaultDuration = dto.DurationMinutes
+                    };
+                    _context.service_types.Add(newType);
+                    await _context.SaveChangesAsync(); // zapisujemy od razu by miec ID
+                    serviceTypeId = newType.Id;
+                }
+            }
+            else
+            {
+                throw new AppException("Musisz podać ID usługi lub jej nazwę.", ErrorCodes.ValidationError); 
+            }
+
+            //Sprawdzenie duplikatu u tego konkretnego specjalisty
             var exists = await _context.specialist_services
-                .AnyAsync(ss => ss.SpecialistId == specialist.Id && ss.ServiceTypeId == dto.ServiceTypeId);
-            // Wlasny wyjatek z kodem bledu dla duplikatu
-            if (exists) throw new AppException("Masz już tę usługę.", ErrorCodes.ServiceAlreadyExists);
+                .AnyAsync(ss => ss.SpecialistId == specialist.Id && ss.ServiceTypeId == serviceTypeId);
 
-            // Nowa encja z bazy danych
+            if (exists) throw new AppException("Masz już tę usługę w swoim profilu.", ErrorCodes.ServiceAlreadyExists);
+
+            //Dodanie usługi do profilu specjalisty
             var newService = new SpecialistServiceEntity
             {
                 Id = Guid.NewGuid(),
                 SpecialistId = specialist.Id,
-                ServiceTypeId = dto.ServiceTypeId,
+                ServiceTypeId = serviceTypeId,
                 Price = dto.Price,
                 DurationMinutes = dto.DurationMinutes,
                 Description = dto.Description,
                 IsActive = true,
-                //CreatedAt = DateTime.UtcNow
                 CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
             };
 
@@ -252,21 +289,18 @@ namespace H4H_API.Services.Implementations
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
                 ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
 
-            // Pobieranie konkretnej uslugi
             var service = await _context.specialist_services
-                .FirstOrDefaultAsync(ss => ss.Id == serviceId && ss.SpecialistId == specialist.Id);
+                .FirstOrDefaultAsync(ss => ss.Id == serviceId && ss.SpecialistId == specialist.Id)
+                ?? throw new AppException("Usługa nie znaleziona.", ErrorCodes.ServiceNotFound);
 
-            if (service != null)
-            {
-                // Aktualizacja pól
-                service.Price = dto.Price;
-                service.DurationMinutes = dto.DurationMinutes;
-                service.Description = dto.Description;
-                service.ServiceTypeId = dto.ServiceTypeId;
+            service.Price = dto.Price;
+            service.DurationMinutes = dto.DurationMinutes;
+            service.Description = dto.Description;
 
-                await _context.SaveChangesAsync();
-            }
-            throw new AppException("Usługa nie znaleziona.", ErrorCodes.ServiceNotFound); //SERV_002
+            // Jeśli DTO przesyła nowe ServiceTypeId, też je aktualizujemy
+            if (dto.ServiceTypeId.HasValue) service.ServiceTypeId = dto.ServiceTypeId.Value;
+
+            await _context.SaveChangesAsync();
         }
 
         public async Task DeleteServiceAsync(Guid userId, Guid serviceId)
