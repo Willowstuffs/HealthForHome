@@ -1078,6 +1078,24 @@ class HomeScreenState extends State<HomeScreen> {
                         fontSize: 16,
                       ),
                     ),
+                    if (offer.proposedDate != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_today_rounded, size: 14, color: AppColors.primary),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${offer.proposedDate!.day.toString().padLeft(2, '0')}.${offer.proposedDate!.month.toString().padLeft(2, '0')}.${offer.proposedDate!.year} ${offer.proposedDate!.hour.toString().padLeft(2, '0')}:${offer.proposedDate!.minute.toString().padLeft(2, '0')}',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     if (offer.bio != null && offer.bio!.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),

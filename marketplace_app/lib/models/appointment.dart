@@ -147,6 +147,7 @@ class AppointmentOffer {
   final String firstName;
   final String lastName;
   final double proposedPrice;
+  final DateTime? proposedDate;
   final String? bio;
 
   AppointmentOffer({
@@ -154,6 +155,7 @@ class AppointmentOffer {
     required this.firstName,
     required this.lastName,
     required this.proposedPrice,
+    this.proposedDate,
     this.bio,
   });
 
@@ -163,6 +165,7 @@ class AppointmentOffer {
       firstName: json['firstName'] ?? '',
       lastName: json['lastName'] ?? '',
       proposedPrice: (json['proposedPrice'] as num?)?.toDouble() ?? 0.0,
+      proposedDate: json['proposedDate'] != null ? DateTime.parse(json['proposedDate']) : null,
       bio: json['bio'],
     );
   }
