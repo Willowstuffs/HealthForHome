@@ -3,6 +3,8 @@ import '../../theme/app_theme.dart';
 import '../../services/specjalist_service.dart';
 import '../../services/api_service.dart';
 import "../editservices_screen.dart";
+import '../../services/specialization_mapper.dart';
+import '../../services/user_profile.dart';
 class WorkScreen extends StatefulWidget {
   const WorkScreen({super.key});
 
@@ -333,11 +335,15 @@ Future<void> _addService() async {
   }
 
   try {
+    final category = SpecializationMapper.mapToCategory(
+      UserSession.specializations,
+    );
     await _apiService.addService(
       serviceTypeId:
           customService ? null : selectedServiceType!.id,
       customName:
           customService ? customServiceController.text : null,
+      category: category,   // ⭐ NOWE
       price: double.parse(priceController.text),
       durationMinutes: int.parse(durationController.text),
     );

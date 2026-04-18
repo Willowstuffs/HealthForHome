@@ -1,49 +1,49 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
-//import 'package:dio/io.dart';
+import 'package:dio/io.dart';
 import '../services/login_response.dart';
 import '../services/token_storage.dart';
 import '../services/specjalist_service.dart';
 import 'package:http_parser/http_parser.dart'; 
 
-class ApiService {
-  static const String _baseUrl = 'https://h4h.makolino.com';
-  late final Dio _dio;
-
-  ApiService() {
-    _dio = Dio(
-      BaseOptions(
-        baseUrl: _baseUrl,
-        connectTimeout: const Duration(seconds: 600), // 10 minut
-        receiveTimeout: const Duration(seconds: 600),
-        headers: {'Content-Type': 'application/json'},
-      ),
-    );
 // class ApiService {
-//   static const bool isEmulator = true;
-//   static const String _baseUrl = isEmulator
-//     ? 'https://192.168.100.24:7026'
-//     : 'https://10.0.2.2:7026';
+//   static const String _baseUrl = 'https://h4h.makolino.com';
 //   late final Dio _dio;
+
 //   ApiService() {
 //     _dio = Dio(
 //       BaseOptions(
 //         baseUrl: _baseUrl,
-//         connectTimeout: const Duration(seconds: 10),
-//         receiveTimeout: const Duration(seconds: 10),
+//         connectTimeout: const Duration(seconds: 600), // 10 minut
+//         receiveTimeout: const Duration(seconds: 600),
 //         headers: {'Content-Type': 'application/json'},
 //       ),
 //     );
+class ApiService {
+  static const bool isEmulator = true;
+  static const String _baseUrl = isEmulator
+    ? 'https://192.168.5.234:7026'
+    : 'https://10.0.2.2:7026';
+  late final Dio _dio;
+  ApiService() {
+    _dio = Dio(
+      BaseOptions(
+        baseUrl: _baseUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        headers: {'Content-Type': 'application/json'},
+      ),
+    );
 
-//     // TODO: usunac w produkcji (samo podpisany certyfikat)
-//     _dio.httpClientAdapter = IOHttpClientAdapter(
-//       createHttpClient: () {
-//         final client = HttpClient();
-//         client.badCertificateCallback =
-//             (X509Certificate cert, String host, int port) => true;
-//         return client;
-//       },
-//     );
+    // TODO: usunac w produkcji (samo podpisany certyfikat)
+    _dio.httpClientAdapter = IOHttpClientAdapter(
+      createHttpClient: () {
+        final client = HttpClient();
+        client.badCertificateCallback =
+            (X509Certificate cert, String host, int port) => true;
+        return client;
+      },
+    );
 
     _dio.interceptors.add(
       InterceptorsWrapper(
@@ -201,6 +201,7 @@ Future<List<SpecialistService>> getServices() async {
 Future<void> addService({
   String? serviceTypeId,
   String? customName,
+  required String category,
   required double price,
   required int durationMinutes,
   String? description,
@@ -214,7 +215,8 @@ Future<void> addService({
 
     final payload = {
       "serviceTypeId": serviceTypeId,
-      "customName": customName,
+      "serviceName": customName,
+      "category": category,
       "price": price,
       "durationMinutes": durationMinutes,
       "description": description,

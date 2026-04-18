@@ -49,7 +49,13 @@ class _LoginScreenState extends State<LoginScreen> {
       final profile = await apiService.getProfile();
       UserSession.setProfileFromApi(profile,UserSession.token ?? '');
       print("📦📦 w profile zostało zapisane $profile");
-      final String specialization = (profile['professionalTitle'] ?? profile['ProfessionalTitle'] ?? '').toString().toLowerCase();
+      final String specializationRaw =
+        (profile['professionalTitle'] ?? '').toString().toLowerCase();
+
+      final String specialization =
+          specializationRaw.contains('nurse')
+              ? 'nurse'
+              : specializationRaw;
 
       final bool isVerified = profile['isVerified'] == true || profile['IsVerified'] == true;
       
