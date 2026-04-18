@@ -12,20 +12,20 @@ System wspiera obsługę wizyt domowych pielęgniarek i fizjoterapeutów, w tym 
 * **Autoryzacja i powiadomienia:**
     * `users` - główna tabela użytkowników systemu.
     * `refresh_tokens` - przechowywanie tokenów sesji (bezpieczne odświeżanie Access Tokenów).
-    * `device_tokens` - tokeny FCM dla powiadomień push (iOS/Android).
+    * `device_tokens` - tokeny FCM dla powiadomień push (Android).
     * `verification_codes` - 6-cyfrowe kody weryfikacyjne (OTP) do rejestracji i resetu haseł.
 * **Profile:**
     * `clients` - dane pacjentów wraz z adresem domowym.
-    * `specialists` - dane medyków (biografia, stawki, status weryfikacji).
+    * `specialists` - dane medyków (bio, stawki, status weryfikacji).
     * `specialist_qualifications` - certyfikaty i weryfikacja uprawnień zawodowych.
 * **Usługi i Dostępność:**
     * `service_types` - ogólny katalog usług medycznych.
     * `specialist_services` - indywidualne cenniki i czasy trwania usług u specjalistów.
     * `service_areas` - obszary dojazdu (geografia PostGIS).
-    * `specialist_availability` - harmonogram tygodniowy specjalisty.
+    * `specialist_availability` - harmonogram specjalisty.
     * `booked_slots` - konkretne terminy zajęte w kalendarzu.
 * **Wizyty i Marketplace:**
-    * `appointments` - centralna tabela wizyt (obsługuje `final_date` po negocjacjach).
+    * `appointments` - centralna tabela wizyt.
     * `appointments_specialists` - system ofertowania; pozwala specjalistom licytować wizyty 'open' i proponować własne terminy (`proposed_date`).
 * **Komunikacja i Oceny:**
     * `messages` - historia chatu między użytkownikami.
