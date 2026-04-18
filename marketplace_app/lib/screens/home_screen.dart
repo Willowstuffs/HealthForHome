@@ -8,9 +8,7 @@ import '../../widgets/appointment_card.dart';
 import '../../data/mock_data.dart';
 import '../../models/client_profile.dart';
 import '../../models/appointment.dart';
-import 'package:latlong2/latlong.dart';
 import '../../theme/app_theme.dart';
-import '../../screens/map_screen.dart';
 import '../../screens/calendar_screen.dart';
 import '../../screens/search_specialists_screen.dart';
 
@@ -25,14 +23,6 @@ class HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   ClientProfile? _clientProfile;
   bool _isLoadingProfile = false;
-  LatLng? _mapTarget;
-
-  void _showOnMap(double lat, double lng) {
-    setState(() {
-      _mapTarget = LatLng(lat, lng);
-      _currentIndex = 2;
-    });
-  }
 
   String? _calendarEventId;
   DateTime? _calendarDate;
@@ -41,7 +31,7 @@ class HomeScreenState extends State<HomeScreen> {
     setState(() {
       _calendarEventId = eventId;
       _calendarDate = date;
-      _currentIndex = 3;
+      _currentIndex = 2;
     });
   }
 
@@ -76,7 +66,7 @@ class HomeScreenState extends State<HomeScreen> {
   void _onBottomNavTapped(int index) {
     setState(() {
       _currentIndex = index;
-      if (index == 3) {
+      if (index == 2) {
         _calendarEventId = null;
         _calendarDate = null;
       }
@@ -177,12 +167,9 @@ class HomeScreenState extends State<HomeScreen> {
         bodyContent = _buildDashboard();
         break;
       case 1:
-        bodyContent = SearchSpecialistsScreen(onShowMap: _showOnMap);
+        bodyContent = const SearchSpecialistsScreen();
         break;
       case 2:
-        bodyContent = MapScreen(initialLocation: _mapTarget);
-        break;
-      case 3:
         bodyContent = CalendarScreen(
           initialEventId: _calendarEventId,
           initialDate: _calendarDate,
@@ -221,10 +208,6 @@ class HomeScreenState extends State<HomeScreen> {
             BottomNavigationBarItem(
               icon: Icon(Icons.search_rounded),
               label: 'Szukaj',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.map_outlined),
-              label: 'Mapa',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.calendar_today_rounded),

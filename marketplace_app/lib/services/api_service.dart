@@ -83,7 +83,7 @@ class ApiService {
       key: 'refresh_token_expires',
     );
 
-    final userJson = await storage.read(key: 'user_info');
+    final userJson = await storage.read(key: 'user');
     if (userJson != null) {
       try {
         _currentUser = UserInfoDto.fromJson(jsonDecode(userJson));
@@ -168,10 +168,7 @@ class ApiService {
       key: 'refresh_token_expires',
       value: response.refreshTokenExpires.toIso8601String(),
     );
-    await storage.write(
-      key: 'user_info',
-      value: jsonEncode(response.user.toJson()),
-    );
+    await storage.write(key: 'user', value: jsonEncode(response.user.toJson()));
   }
 
   Future<void> clearToken() async {
@@ -184,7 +181,7 @@ class ApiService {
     await storage.delete(key: 'refresh_token');
     await storage.delete(key: 'access_token_expires');
     await storage.delete(key: 'refresh_token_expires');
-    await storage.delete(key: 'user_info');
+    await storage.delete(key: 'user');
   }
 
   Future<void> register({
@@ -230,11 +227,11 @@ class ApiService {
       );
 
       final loginResponse = LoginResponse.fromJson(response.data['data']);
-      
+
       if (loginResponse.user.userType.toLowerCase() != 'client') {
         throw Exception('Tylko klienci mogą się zalogować do tej aplikacji.');
       }
-      
+
       await saveSession(loginResponse);
       return loginResponse;
     } on DioException catch (e) {

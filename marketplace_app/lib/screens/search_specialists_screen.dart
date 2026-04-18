@@ -6,9 +6,7 @@ import '../../models/specialist_offer.dart';
 import '../../theme/app_theme.dart';
 
 class SearchSpecialistsScreen extends StatefulWidget {
-  final Function(double lat, double lng) onShowMap;
-
-  const SearchSpecialistsScreen({super.key, required this.onShowMap});
+  const SearchSpecialistsScreen({super.key});
 
   @override
   State<SearchSpecialistsScreen> createState() =>
@@ -88,10 +86,6 @@ class _SearchSpecialistsScreenState extends State<SearchSpecialistsScreen> {
       builder: (context) {
         return SpecialistDetailsPopup(
           specialistId: specialist.id,
-          onShowMap: (lat, lng) {
-            Navigator.of(context).pop(); // Close popup
-            widget.onShowMap(lat, lng);
-          },
         );
       },
     );
@@ -99,12 +93,21 @@ class _SearchSpecialistsScreenState extends State<SearchSpecialistsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _searchByMyAddress,
+        icon: const Icon(Icons.my_location_rounded),
+        label: const Text('Blisko mnie'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
             children: [
               Expanded(
                 child: TextField(
@@ -138,20 +141,6 @@ class _SearchSpecialistsScreenState extends State<SearchSpecialistsScreen> {
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: _searchByMyAddress,
-            icon: const Icon(Icons.my_location_rounded),
-            label: const Text('Szukaj blisko mojego adresu'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.accent.withValues(alpha: 0.1),
-              foregroundColor: AppColors.accent,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
           ),
           const SizedBox(height: 24),
           if (_isLoading)
@@ -188,6 +177,7 @@ class _SearchSpecialistsScreenState extends State<SearchSpecialistsScreen> {
             ),
         ],
       ),
+      ),
     );
   }
 }
@@ -216,15 +206,23 @@ class SpecialistCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 30,
-              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-              backgroundImage: specialist.avatarUrl != null
-                  ? NetworkImage(specialist.avatarUrl!)
-                  : null,
-              child: specialist.avatarUrl == null
-                  ? const Icon(Icons.person, color: AppColors.primary)
-                  : null,
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.primary.withValues(alpha: 0.1),
+              ),
+              child: ClipOval(
+                child: specialist.avatarUrl != null && specialist.avatarUrl!.isNotEmpty
+                    ? Image.network(
+                        specialist.avatarUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(Icons.person, color: AppColors.primary),
+                      )
+                    : const Icon(Icons.person, color: AppColors.primary),
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -248,59 +246,6 @@ class SpecialistCard extends StatelessWidget {
                       ),
                     ),
                   ],
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      if (specialist.distanceKm != null)
-                        Chip(
-                          avatar: const Icon(
-                            Icons.location_on,
-                            size: 14,
-                            color: AppColors.primary,
-                          ),
-                          label: Text(
-                            '${specialist.distanceKm!.toStringAsFixed(1)} km',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                          backgroundColor: AppColors.primary.withValues(
-                            alpha: 0.1,
-                          ),
-                          side: BorderSide.none,
-                          padding: EdgeInsets.zero,
-                          labelPadding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                          ),
-                        ),
-                      if (specialist.hourlyRate != null) ...[
-                        const SizedBox(width: 8),
-                        Chip(
-                          avatar: const Icon(
-                            Icons.attach_money,
-                            size: 14,
-                            color: AppColors.accent,
-                          ),
-                          label: Text(
-                            '${specialist.hourlyRate} zł/h',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.accent,
-                            ),
-                          ),
-                          backgroundColor: AppColors.accent.withValues(
-                            alpha: 0.1,
-                          ),
-                          side: BorderSide.none,
-                          padding: EdgeInsets.zero,
-                          labelPadding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
                 ],
               ),
             ),
@@ -313,12 +258,10 @@ class SpecialistCard extends StatelessWidget {
 
 class SpecialistDetailsPopup extends StatefulWidget {
   final String specialistId;
-  final Function(double lat, double lng) onShowMap;
 
   const SpecialistDetailsPopup({
     super.key,
     required this.specialistId,
-    required this.onShowMap,
   });
 
   @override
@@ -405,21 +348,23 @@ class _SpecialistDetailsPopupState extends State<SpecialistDetailsPopup> {
                   children: [
                     Row(
                       children: [
-                        CircleAvatar(
-                          radius: 36,
-                          backgroundColor: AppColors.primary.withValues(
-                            alpha: 0.1,
+                        Container(
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.primary.withValues(alpha: 0.1),
                           ),
-                          backgroundImage: _profile!.avatarUrl != null
-                              ? NetworkImage(_profile!.avatarUrl!)
-                              : null,
-                          child: _profile!.avatarUrl == null
-                              ? const Icon(
-                                  Icons.person,
-                                  color: AppColors.primary,
-                                  size: 36,
-                                )
-                              : null,
+                          child: ClipOval(
+                            child: _profile!.avatarUrl != null && _profile!.avatarUrl!.isNotEmpty
+                                ? Image.network(
+                                    _profile!.avatarUrl!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) =>
+                                        const Icon(Icons.person, color: AppColors.primary, size: 36),
+                                  )
+                                : const Icon(Icons.person, color: AppColors.primary, size: 36),
+                          ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
@@ -537,21 +482,6 @@ class _SpecialistDetailsPopupState extends State<SpecialistDetailsPopup> {
                             style: TextStyle(color: AppColors.textSecondary),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        if (_profile!.areas.isNotEmpty)
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              // Wykorzystaj pierwszą dostępną pozycję dla mapy
-                              final area = _profile!.areas.first;
-                              widget.onShowMap(area.latitude, area.longitude);
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                            ),
-                            icon: const Icon(Icons.map, size: 16),
-                            label: const Text('Pokaż na mapie'),
-                          ),
                       ],
                     ),
                   ],
