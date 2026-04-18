@@ -25,7 +25,6 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
 
   final TextEditingController addressController = TextEditingController();
   final TextEditingController notesController = TextEditingController();
-  final TextEditingController maxPriceController = TextEditingController();
 
   DateTime? selectedDateFrom;
   DateTime? selectedDateTo;
@@ -198,13 +197,6 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                     const SizedBox(height: 12),
 
                     _buildTextField(
-                      controller: maxPriceController,
-                      label: 'Maksymalna cena (PLN) - opcjonalne',
-                      keyboardType: TextInputType.number,
-                    ),
-                    const SizedBox(height: 12),
-
-                    _buildTextField(
                       controller: notesController,
                       label: 'Opis problemu / wymagania',
                       maxLines: 4,
@@ -283,7 +275,6 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
         dateFrom: selectedDateFrom!,
         dateTo: selectedDateTo!,
         address: addressController.text,
-        maxPrice: double.tryParse(maxPriceController.text),
         contactName: nameController.text,
         phoneNumber: phoneController.text,
         email: emailController.text,
