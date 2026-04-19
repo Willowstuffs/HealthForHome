@@ -1,14 +1,11 @@
-using Google.Apis.Requests;
 using H4H.Core.Models;
 using H4H.Data;
 using H4H_API.DTOs.Client;
 using H4H_API.DTOs.Specialist;
 using H4H_API.Exceptions;
-using H4H_API.Helpers;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using NetTopologySuite;
-using NetTopologySuite.Algorithm;
 using ErrorCodes = H4H_API.Helpers.ErrorCodes;
 using SpecialistServiceEntity = H4H.Core.Models.SpecialistService;
 
@@ -258,7 +255,7 @@ namespace H4H_API.Services.Implementations
             }
             else
             {
-                throw new AppException("Musisz podać ID usługi lub jej nazwę.", ErrorCodes.ValidationError); 
+                throw new AppException("Musisz podać ID usługi lub jej nazwę.", ErrorCodes.ValidationError);
             }
 
             //Sprawdzenie duplikatu u tego konkretnego specjalisty
@@ -359,7 +356,7 @@ namespace H4H_API.Services.Implementations
             await _context.SaveChangesAsync();
         }
 
-        public async Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId, List<Guid> serviceTypeIds, decimal price)
+        public async Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId, List<Guid> serviceTypeIds, decimal price, DateTime proposedDate)
         {
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
                 ?? throw new AppException("Profil nie istnieje.", ErrorCodes.SpecialistNotFound);
@@ -382,7 +379,8 @@ namespace H4H_API.Services.Implementations
                 SpecialistId = specialist.Id,
                 Price = price,
                 ServiceTypeIds = serviceTypeIds,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                ProposedDate = proposedDate
             };
             _context.appointments_specialists.Add(appointmentSpecialist);
 
@@ -694,6 +692,6 @@ namespace H4H_API.Services.Implementations
                 .OrderBy(s => s.DistanceKm)
                 .ToListAsync();
         }
-        
+
     }
 }

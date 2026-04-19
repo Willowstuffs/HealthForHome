@@ -1,5 +1,5 @@
-using H4H_API.DTOs.Specialist;
 using H4H_API.DTOs.Client;
+using H4H_API.DTOs.Specialist;
 
 
 namespace H4H_API.Services.Interfaces
@@ -51,7 +51,7 @@ namespace H4H_API.Services.Interfaces
         Task<List<ServiceTypeDto>> GetServiceTypesAsync();
 
         /// <summary>Zmienia status wizyty u specjalisty na potwierdzony (confirmed)</summary>
-        Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId, List<Guid> serviceTypeIds, decimal price);
+        Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId, List<Guid> serviceTypeIds, decimal price, DateTime proposedDate);
         /// <summary>
         /// Pobiera listę nadchodzących usług (inquiries) dla specjalisty z opcjonalnymi filtrami
         /// </summary>
@@ -78,7 +78,7 @@ namespace H4H_API.Services.Interfaces
         Task<SpecialistProfileDto?> GetPublicProfileAsync(Guid id);
         Task<List<SpecialistOfferDto>> GetPublicServicesAsync(Guid id);
         Task<List<NearbySpecialistDto>> GetNearbySpecialistsAsync(double lat, double lng);
-        
+
 
     }
 }

@@ -1,11 +1,9 @@
 using H4H_API.DTOs.Appointments;
 using H4H_API.DTOs.Common;
 using H4H_API.DTOs.Specialist;
-using H4H_API.Services.Implementations;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace H4H_API.Controllers
@@ -149,13 +147,12 @@ namespace H4H_API.Controllers
         }
 
         /// <summary>Potwierdza oczekującą wizytę przez specjalistę. 
-        /// !!! DO POPRAWIENIA GDY BEDZIE UPDATE BAZY !!!
         /// </summary>
         [HttpPatch("appointments/{id}/confirm")]
         public async Task<ActionResult<ApiResponse<object?>>> ConfirmAppointment(Guid id, [FromBody] ConfirmAppointmentDto dto)
         {
             var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
-            await _specialistService.ConfirmAppointmentAsync(userId, id, dto.ServiceTypeIds, dto.Price);
+            await _specialistService.ConfirmAppointmentAsync(userId, id, dto.ServiceTypeIds, dto.Price, dto.ProposedDate);
             return Ok(ApiResponse<object?>.SuccessResponse(null, "Wizyta została potwierdzona."));
         }
 
@@ -185,8 +182,8 @@ namespace H4H_API.Controllers
 
             return Ok(ApiResponse<List<InquiryListItemDto>>.SuccessResponse(inquiries, "Pobrano listę zapytań."));
         }
-        
-      
+
+
         /// <summary>
         /// Aktualizuje wszystkie dane profilu specjalisty
         /// </summary>
@@ -201,7 +198,7 @@ namespace H4H_API.Controllers
                 .SuccessResponse(null, "Profil został zaktualizowany."));
         }
 
-      
+
 
     }
 }
