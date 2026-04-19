@@ -2,7 +2,7 @@ class Appointment {
   final String id;
   final String clientId;
   final String specialistId;
-  final String? specialistServiceId;
+  final List<String>? specialistServiceIds;
   final String appointmentStatus;
   final DateTime scheduledStart;
   final DateTime scheduledEnd;
@@ -17,13 +17,13 @@ class Appointment {
 
   final String? specialistName;
   final String? clientName;
-  final String? serviceName;
+  final List<String>? serviceNames;
 
   Appointment({
     required this.id,
     required this.clientId,
     required this.specialistId,
-    this.specialistServiceId,
+    this.specialistServiceIds,
     required this.appointmentStatus,
     required this.scheduledStart,
     required this.scheduledEnd,
@@ -36,7 +36,7 @@ class Appointment {
     this.cancelledAt,
     this.specialistName,
     this.clientName,
-    this.serviceName,
+    this.serviceNames,
     this.finalDate,
   });
 
@@ -45,7 +45,9 @@ class Appointment {
       id: json['id'],
       clientId: json['clientId'],
       specialistId: json['specialistId'],
-      specialistServiceId: json['specialistServiceId'],
+      specialistServiceIds: json['specialistServiceIds'] != null
+          ? List<String>.from(json['specialistServiceIds'])
+          : null,
       appointmentStatus: json['appointmentStatus'] ?? 'pending',
       scheduledStart: DateTime.parse(json['scheduledStart']),
       scheduledEnd: DateTime.parse(json['scheduledEnd']),
@@ -60,8 +62,12 @@ class Appointment {
           : null,
       specialistName: json['specialistName'],
       clientName: json['clientName'],
-      serviceName: json['serviceName'],
-      finalDate: json['finalDate'] != null ? DateTime.parse(json['finalDate']) : null,
+      serviceNames: json['serviceNames'] != null
+          ? List<String>.from(json['serviceNames'])
+          : null,
+      finalDate: json['finalDate'] != null
+          ? DateTime.parse(json['finalDate'])
+          : null,
     );
   }
 }
@@ -168,7 +174,9 @@ class AppointmentOffer {
       firstName: json['firstName'] ?? '',
       lastName: json['lastName'] ?? '',
       proposedPrice: (json['proposedPrice'] as num?)?.toDouble() ?? 0.0,
-      proposedDate: json['proposedDate'] != null ? DateTime.parse(json['proposedDate']) : null,
+      proposedDate: json['proposedDate'] != null
+          ? DateTime.parse(json['proposedDate'])
+          : null,
       bio: json['bio'],
     );
   }

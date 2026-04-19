@@ -101,7 +101,9 @@ class AppointmentCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        appointment.serviceName ?? 'Wizyta domowa',
+                        appointment.serviceNames?.isEmpty ?? true
+                            ? 'Wizyta domowa'
+                            : appointment.serviceNames![0],
                         style: TextStyle(
                           fontSize: 14,
                           color: AppColors.textSecondary,
