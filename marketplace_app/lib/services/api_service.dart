@@ -13,8 +13,10 @@ import '../models/specialist_offer.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiService {
-  static const String _baseUrl = 'https://10.0.2.2:7026';
-  // static const String _baseUrl = 'https://h4h.makolino.com';
+  static const bool isDev = true;
+  static const String _baseUrl = isDev
+      ? 'https://10.0.2.2:7026'
+      : 'https://h4h.makolino.com';
 
   late final Dio _dio;
   String? _accessToken;
@@ -251,6 +253,16 @@ class ApiService {
       // Ignore errors on logout
     } finally {
       await clearToken();
+    }
+  }
+
+  Future<void> updateDeviceToken(String token) async {
+    try {
+      await _dio.post('/api/Auth/device-token', data: {"token": token});
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (_) {
+      throw Exception('Nie udało się zaktualizować tokenu urządzenia.');
     }
   }
 

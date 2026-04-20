@@ -1,8 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'firebase_options.dart';
 import 'screens/home_screen.dart';
 import 'theme/app_theme.dart';
 import 'services/api_service.dart';
+
+@pragma(
+  'vm:entry-point',
+) // required for background message handler so that it can be called from native code
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  print("Handling a background message: ${message.messageId}");
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,7 +23,40 @@ void main() async {
       statusBarBrightness: Brightness.light,
     ),
   );
-  await ApiService().initToken();
+
+  // initialize Firebase using the newly generated firebase_options.dart
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // set up background messaging handler
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  // request permission for iOS/Web (required) and Android 13+
+  FirebaseMessaging messaging = FirebaseMessaging.instance;
+  NotificationSettings settings = await messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+  print('User granted permission: ${settings.authorizationStatus}');
+
+  // print the FCM token
+  try {
+    String? fcmToken = await messaging.getToken();
+    print('FCM Token: $fcmToken');
+    
+    await ApiService().initToken();
+    if (fcmToken != null && ApiService().isLoggedIn) {
+      try {
+        await ApiService().updateDeviceToken(fcmToken);
+      } catch (e) {
+        print('Nie udało się zaktualizować tokenu na serwerze: $e');
+      }
+    }
+  } catch (e) {
+    print('Failed to get FCM Token: $e');
+    await ApiService().initToken();
+  }
+
   runApp(MyApp());
 }
 

@@ -18,29 +18,17 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for ios - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -53,11 +41,49 @@ class DefaultFirebaseOptions {
     }
   }
 
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyDDFq98r2Kv9aRB1pavHImJucOUpyirjFc',
+    appId: '1:206485582485:web:c517155281ed5c60ed219c',
+    messagingSenderId: '206485582485',
+    projectId: 'h4h-client',
+    authDomain: 'h4h-client.firebaseapp.com',
+    storageBucket: 'h4h-client.firebasestorage.app',
+    measurementId: 'G-VYRFQ3MW8N',
+  );
+
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCevfrstZViaC4fHPRFrVncrlMmBd3K6I8',
-    appId: '1:751226858715:android:5839cabd387c6ab392f0fe',
-    messagingSenderId: '751226858715',
-    projectId: 'health4home',
-    storageBucket: 'health4home.firebasestorage.app',
+    apiKey: 'AIzaSyD3_ZjKrJEqklEt9gfyvYl4Uu3hnO4M644',
+    appId: '1:206485582485:android:9e54a23b293ed852ed219c',
+    messagingSenderId: '206485582485',
+    projectId: 'h4h-client',
+    storageBucket: 'h4h-client.firebasestorage.app',
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyBw5IxM7BFGm4UdxH0mZBmrao-Ll0J5dzw',
+    appId: '1:206485582485:ios:6e0a2669ffa538c6ed219c',
+    messagingSenderId: '206485582485',
+    projectId: 'h4h-client',
+    storageBucket: 'h4h-client.firebasestorage.app',
+    iosBundleId: 'com.example.marketplaceApp',
+  );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyBw5IxM7BFGm4UdxH0mZBmrao-Ll0J5dzw',
+    appId: '1:206485582485:ios:6e0a2669ffa538c6ed219c',
+    messagingSenderId: '206485582485',
+    projectId: 'h4h-client',
+    storageBucket: 'h4h-client.firebasestorage.app',
+    iosBundleId: 'com.example.marketplaceApp',
+  );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyDDFq98r2Kv9aRB1pavHImJucOUpyirjFc',
+    appId: '1:206485582485:web:deccbfaadb52099aed219c',
+    messagingSenderId: '206485582485',
+    projectId: 'h4h-client',
+    authDomain: 'h4h-client.firebaseapp.com',
+    storageBucket: 'h4h-client.firebasestorage.app',
+    measurementId: 'G-VSXTBEK2HX',
   );
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:marketplace_app/widgets/screen_status_bar.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
@@ -32,13 +33,21 @@ class _LoginScreenState extends State<LoginScreen> {
         password: passwordController.text,
       );
 
+      try {
+        String? fcmToken = await FirebaseMessaging.instance.getToken();
+        if (fcmToken != null) {
+          await apiService.updateDeviceToken(fcmToken);
+        }
+      } catch (e) {
+        print("Błąd pobierania FCM tokena po zalogowaniu: $e");
+      }
+
       if (!mounted) return;
 
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Zalogowano pomyślnie')));
 
-      // wracamy do glownego ekranu usuwajac ekrany logowania/rejestracji
       Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e) {
       if (!mounted) return;

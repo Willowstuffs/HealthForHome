@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "751226858715",
-    "project_id": "health4home",
-    "storage_bucket": "health4home.firebasestorage.app"
+    "project_number": "206485582485",
+    "project_id": "h4h-client",
+    "storage_bucket": "h4h-client.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:751226858715:android:5839cabd387c6ab392f0fe",
+        "mobilesdk_app_id": "1:206485582485:android:9e54a23b293ed852ed219c",
         "android_client_info": {
           "package_name": "com.example.marketplace_app"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCevfrstZViaC4fHPRFrVncrlMmBd3K6I8"
+          "current_key": "AIzaSyD3_ZjKrJEqklEt9gfyvYl4Uu3hnO4M644"
         }
       ],
       "services": {
