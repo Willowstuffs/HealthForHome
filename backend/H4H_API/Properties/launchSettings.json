@@ -8,7 +8,7 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
       "dotnetRunMessages": true,
-      "applicationUrl": "http://localhost:5016"
+      "applicationUrl": "https://h4h.makolino.com"
     },
     "https": {
       "commandName": "Project",

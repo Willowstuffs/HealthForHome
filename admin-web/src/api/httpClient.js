@@ -1,5 +1,5 @@
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5016";
+  import.meta.env.VITE_API_BASE_URL || "https://h4h.makolino.com";
 
 function getToken() {
   return localStorage.getItem("admin_token");

@@ -1,4 +1,4 @@
-@H4H_API_HostAddress = http://localhost:5016
+@H4H_API_HostAddress = https://h4h.makolino.com
 
 GET {{H4H_API_HostAddress}}/weatherforecast/
 Accept: application/json
