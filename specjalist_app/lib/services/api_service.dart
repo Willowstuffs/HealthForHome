@@ -388,7 +388,7 @@ class ApiService {
   Future<void> sendDeviceToken(String token) async {
     await _dio.post('/api/auth/device-token', data: {"token": token});
   }
-
+  
   Future<void> updateProfile({
     required String firstName,
     required String lastName,
@@ -450,6 +450,25 @@ class ApiService {
       throw _handleDioError(e);
     }
   }
+
+  Future<dynamic> getConfirmedInquiryById(String id) async {
+  final list = await getCommingInquiries(
+    patientName: "",
+    dateFrom: DateTime.now().subtract(const Duration(days: 365)),
+    dateTo: DateTime.now().add(const Duration(days: 365)),
+  );
+
+  for (final e in list) {
+    final appointmentId =
+        (e['appointmentId'] ?? e['AppointmentId']).toString();
+
+    if (appointmentId == id) {
+      return e;
+    }
+  }
+
+  return null;
+}
 
   // POST: weryfikacja kodu
   Future<void> verifyCode({required String email, required String code}) async {

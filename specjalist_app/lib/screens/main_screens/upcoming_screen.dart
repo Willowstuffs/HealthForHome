@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:specjalist_app/screens/main_screens/maintoolbar_screen.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 class UpcomingScreen extends StatefulWidget {
-  const UpcomingScreen({super.key});
+  final Function(String inquiryId)? onOpenMap;
+ const UpcomingScreen({
+    super.key,
+    this.onOpenMap,
+  });
 
   @override
   State<UpcomingScreen> createState() => _UpcomingScreenState();
@@ -19,7 +24,17 @@ class _UpcomingScreenState extends State<UpcomingScreen> {
   final now = DateTime.now();
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  final List<String> _availableStatuses = [
+  'confirmed',
+  'cancelled',
+  'completed'
+];
 
+final Set<String> _selectedStatuses = {
+  'confirmed',
+  'cancelled',
+  'completed'
+};
   Map<DateTime, List<Map<String, dynamic>>> _upcomingMap = {};
   @override
   void initState() {
@@ -61,27 +76,42 @@ class _UpcomingScreenState extends State<UpcomingScreen> {
       return {
         'id': id?.toString() ?? '',
         'name': i['patientName'] ?? i['PatientName'] ?? 'Nieznany pacjent',
-        'startDate': start != null ? displayFormatter.format(start) : '--',
-        'endDate': end != null ? displayFormatter.format(end) : '--',
+
+        // 🔥 TRZYMAMY PRAWDZIWE DATY
+        'start': start,
+        'end': end,
+
         'service': i['serviceName'] ?? i['ServiceName'] ?? 'Brak usługi',
         'distance': i['patientAddress'] ?? i['PatientAddress'] ?? '',
         'price': i['price'] ?? i['Price'] ?? '0.00',
+        'status': i['status'] ?? i['Status'] ?? 'confirmed',
       };
     }).toList();
   }
+  String _formatStatusLabel(String status) {
+  switch (status) {
+    case 'open': return 'Otwarte';
+    case 'confirmed': return 'Potwierdzone';
+    case 'cancelled': return 'Anulowane';
+    case 'completed': return 'Zakończone';
+    case 'pending': return 'Oczekujące';
+    default: return status;
+  }
+}
   void _updateUpcomingMap() {
     _upcomingMap.clear();
 
     for (var item in upcoming) {
-      final startString = item['startDate'];
-      final start = displayFormatter.parse(startString);
+      final status = item['status'];
+      final start = item['start'] as DateTime?;
+if (start == null) continue;
 
       final day = DateTime(start.year, start.month, start.day);
-
+      if (!_selectedStatuses.contains(status)) continue;
       if (_upcomingMap[day] == null) {
         _upcomingMap[day] = [];
       }
-
+      _upcomingMap.putIfAbsent(day, () => []);
       _upcomingMap[day]!.add(item);
     }
   }
@@ -111,6 +141,8 @@ class _UpcomingScreenState extends State<UpcomingScreen> {
                     ),
                     const SizedBox(height: 24),
                     _buildSectionHeader('Nadchodzące', Icons.calendar_today_rounded),
+                    const SizedBox(height: 16),
+                    _buildStatusFilters(),
                     const SizedBox(height: 16),
                     _buildCalendar(),
                     const SizedBox(height: 16),
@@ -242,7 +274,7 @@ class _UpcomingScreenState extends State<UpcomingScreen> {
               ],
             ),
             const Divider(height: 24),
-            _buildInfoRow(Icons.access_time_rounded, '${item['startDate']} - ${item['endDate']}'),
+            _buildInfoRow(Icons.access_time_rounded, '${item['start']} - ${item['end']}'),
             const SizedBox(height: 8),
             _buildInfoRow(Icons.medical_services_outlined, item['service']),
             if (isUpcoming && item['distance'].isNotEmpty) ...[
@@ -250,42 +282,80 @@ class _UpcomingScreenState extends State<UpcomingScreen> {
               _buildInfoRow(Icons.location_on_outlined, item['distance']),
             ],
             if (isUpcoming) ...[
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {},
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        minimumSize: Size.zero,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: const Text('Wiadomość', style: TextStyle(fontSize: 14)),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.livingColor10,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        minimumSize: Size.zero,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: const Text('Zrezygnuj', style: TextStyle(fontSize: 14)),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
+            const SizedBox(height: 20),
 
+            Row(
+              children: [
+                // ❌ ZREZYGNUJ
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      // TODO: API cancel
+                    },
+                    child: const Text('Zrezygnuj'),
+                  ),
+                ),
+
+                const SizedBox(width: 12),
+
+                // 🗺 MAPA
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => MainScreen(
+                            startIndex: 2,
+                            highlightAppointmentId: item['id'],
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.location_on_outlined),
+                    label: const Text('Mapa'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    ),
+  );
+}
+  Widget _buildStatusFilters() {
+  return SizedBox(
+    height: 50,
+    child: ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      scrollDirection: Axis.horizontal,
+      itemCount: _availableStatuses.length,
+      separatorBuilder: (_, __) => const SizedBox(width: 8),
+      itemBuilder: (context, index) {
+        final status = _availableStatuses[index];
+        final isSelected = _selectedStatuses.contains(status);
+
+        return FilterChip(
+          label: Text(_formatStatusLabel(status)),
+          selected: isSelected,
+          onSelected: (_) {
+            setState(() {
+              if (isSelected) {
+                _selectedStatuses.remove(status);
+              } else {
+                _selectedStatuses.add(status);
+              }
+              _updateUpcomingMap();
+            });
+          },
+          selectedColor: AppColors.primary.withValues(alpha: 0.15),
+          backgroundColor: AppColors.surfaceContainerHighest,
+        );
+      },
+    ),
+  );
+}
   Widget _buildInfoRow(IconData icon, String text) {
     return Row(
       children: [

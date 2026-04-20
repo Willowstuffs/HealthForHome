@@ -31,12 +31,14 @@ class _MapScreenState extends State<MapScreen> {
   double zoom = 12;
   LatLng? mapCenter;
   final now = DateTime.now();
+  String? highlightedId;
   bool loading = true;
   List<Map<String, dynamic>> inquiriesList = [];
   final Map<String, LatLng> _addressCache = {};
   @override
   void initState() {
     super.initState();
+    highlightedId = widget.highlightId;
     _fetchAndLoad();
   }
 
@@ -89,14 +91,18 @@ class _MapScreenState extends State<MapScreen> {
   
       await _buildMarkersAndCircles();
 
-      if (widget.highlightId != null && selectedInquiry != null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          Future.delayed(const Duration(milliseconds: 300), () {
-            mapController.move(selectedInquiry!['latLng'], 14);
-            _showInquiryDetails(selectedInquiry!);
-          });
-        });
-      }
+      if (highlightedId != null && selectedInquiry != null) {
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    Future.delayed(const Duration(milliseconds: 250), () {
+      mapController.move(
+        selectedInquiry!['latLng'],
+        15, // zoom
+      );
+
+      _showInquiryDetails(selectedInquiry!);
+    });
+  });
+}
     } catch (e) {
       debugPrint("MAP ERROR: $e");
     }
@@ -123,49 +129,79 @@ class _MapScreenState extends State<MapScreen> {
     double lngOffset = (random.nextDouble() - 0.5) * 0.006;
     return LatLng(original.latitude + latOffset, original.longitude + lngOffset);
   }
+Future<void> _buildMarkersAndCircles() async {
+  final List<Marker> tempMarkers = [];
 
-  Future<void> _buildMarkersAndCircles() async {
-    final List<Marker> tempMarkers = [];
+  selectedInquiry = null;
 
-    for (var inquiry in inquiriesList) {
-      final address = inquiry['address'];
-      if (address == null || address.toString().isEmpty) continue;
+  // 🔥 najpierw sprawdzamy highlighted
+  if (highlightedId != null &&
+      !inquiriesList.any((e) => e['id'] == highlightedId)) {
 
-      // --- użycie cache ---
-      final LatLng? exactLatLng = await getCachedLatLng(address);
-      if (exactLatLng == null) continue;
+    final confirmed =
+        await ApiService().getConfirmedInquiryById(highlightedId!);
 
-      final LatLng blurredLatLng = _getBlurredLocation(exactLatLng, inquiry['id']);
-      
-      // uproszczenie adresu
-      final String? fullAddress = await GeoService.getAddressFromLatLng(blurredLatLng);
-      String simpleAddress = address;
-      if (fullAddress != null && fullAddress.isNotEmpty) {
-        final parts = fullAddress.split(',');
-        if (parts.length >= 2) simpleAddress = '${parts[0].trim()}, ${parts[1].trim()}';
-      }
-      inquiry['address'] = simpleAddress;
-      inquiry['latLng'] = blurredLatLng;
+    if (confirmed != null) {
+      inquiriesList.add(_mapConfirmedToInquiry(confirmed));
+    }
+  }
 
-      if (inquiry['id'] == widget.highlightId) selectedInquiry = inquiry;
+  // 🔥 dopiero TERAZ loop
+  for (var inquiry in inquiriesList) {
+    final address = inquiry['address'];
+    if (address == null || address.toString().isEmpty) continue;
 
-      tempMarkers.add(
-        Marker(
-          point: blurredLatLng,
-          width: 45,
-          height: 45,
-          child: GestureDetector(
-            onTap: () => _showInquiryDetails(inquiry),
-            child: _buildCustomMarker(),
-          ),
-        ),
-      );
+    final LatLng? exactLatLng = await getCachedLatLng(address);
+    if (exactLatLng == null) continue;
+
+    final LatLng blurredLatLng =
+        _getBlurredLocation(exactLatLng, inquiry['id']);
+
+    inquiry['latLng'] = blurredLatLng;
+
+    final bool isHighlighted = inquiry['id'] == highlightedId;
+
+    if (isHighlighted) {
+      selectedInquiry = inquiry;
     }
 
+    tempMarkers.add(
+      Marker(
+        point: blurredLatLng,
+        width: isHighlighted ? 60 : 45,
+        height: isHighlighted ? 60 : 45,
+        child: GestureDetector(
+          onTap: () => _showInquiryDetails(inquiry),
+          child: _buildCustomMarker(isHighlighted: isHighlighted),
+        ),
+      ),
+    );
+  }
+
+  setState(() {
     markers
       ..clear()
       ..addAll(tempMarkers);
-  }
+  });
+}
+  Map<String, dynamic> _mapConfirmedToInquiry(dynamic i) {
+  final displayFormatter = DateFormat('dd-MM-yyyy HH:mm');
+
+  DateTime? start =
+      DateTime.tryParse(i['scheduledStart'] ?? i['ScheduledStart']);
+
+  DateTime? end =
+      DateTime.tryParse(i['scheduledEnd'] ?? i['ScheduledEnd']);
+
+  return {
+    'id': (i['appointmentId'] ?? i['AppointmentId']).toString(),
+    'name': i['patientName'] ?? i['PatientName'] ?? '',
+    'startDate': start != null ? displayFormatter.format(start) : '',
+    'endDate': end != null ? displayFormatter.format(end) : '',
+    'description': i['description'] ?? i['Description'] ?? '',
+    'address': i['patientAddress'] ?? i['PatientAddress'] ?? '',
+  };
+}
   void _showInquiryDetails(Map<String, dynamic> inquiry) {
   showModalBottomSheet(
     context: context,
@@ -182,28 +218,27 @@ Widget _buildBottomSheetSafe(Map<String, dynamic> item) {
     child: _buildBottomSheet(item),
   );
 }
-  Widget _buildCustomMarker() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.error.withValues(alpha:0.2),
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: Container(
-          width: 14,
-          height: 14,
-          decoration: BoxDecoration(
-            color: AppColors.error,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 2),
-            boxShadow: [
-              BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))
-            ],
-          ),
+  Widget _buildCustomMarker({required bool isHighlighted}) {
+  return Container(
+    decoration: BoxDecoration(
+      color: isHighlighted
+          ? Colors.green.withValues(alpha: 0.25)
+          : AppColors.error.withValues(alpha: 0.2),
+      shape: BoxShape.circle,
+    ),
+    child: Center(
+      child: Container(
+        width: isHighlighted ? 18 : 14,
+        height: isHighlighted ? 18 : 14,
+        decoration: BoxDecoration(
+          color: isHighlighted ? Colors.green : AppColors.error,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 2),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
     
   double getCircleRadius() {
     double radius = zoom * 6; 
