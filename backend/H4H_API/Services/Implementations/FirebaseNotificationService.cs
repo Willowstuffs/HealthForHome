@@ -42,7 +42,7 @@ namespace H4H_API.Services.Implementations
                 return FirebaseMessaging.DefaultInstance;
         }
 
-        public async Task<string> SendNotificationAsync(string fcmToken, string title, string body, bool isClientApp = false)
+        public async Task<string> SendNotificationAsync(string fcmToken, string title, string body, string appointmentId, bool isClientApp = false)
         {
             var message = new Message()
             {
@@ -51,6 +51,11 @@ namespace H4H_API.Services.Implementations
                 {
                     Title = title,
                     Body = body
+                },
+                Data = new Dictionary<string, string>
+                {
+                    { "appointmentId", appointmentId },
+                    { "screen", "offer" }
                 },
                 Android = new AndroidConfig() { Priority = Priority.High },
                 Apns = new ApnsConfig() { Aps = new Aps() { ContentAvailable = true } }

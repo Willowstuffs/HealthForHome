@@ -11,7 +11,7 @@
         /// <param name="isClientApp">true to send the notification to a client application; otherwise, false.</param>
         /// <returns>A task that represents the asynchronous operation. The task result contains the message ID of the sent
         /// notification.</returns>
-        public Task<string> SendNotificationAsync(string fcmToken, string title, string body, bool isClientApp = false);
+        public Task<string> SendNotificationAsync(string fcmToken, string title, string body, string appointmentId, bool isClientApp = false);
 
         /// <summary>
         /// Sends a push notification with the specified title and body to multiple devices identified by their FCM

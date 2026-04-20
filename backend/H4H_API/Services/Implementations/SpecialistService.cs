@@ -388,10 +388,15 @@ namespace H4H_API.Services.Implementations
 
             appointment.AppointmentStatus = "pending";
 
-            var clientTokens = await _context.device_tokens
-                .Where(t => t.User.UserType == "client")
-                .Select(t => t.FcmToken)
-                .ToListAsync();
+            var clientUserId = await _context.clients
+                .Where(c => c.Id == appointment.ClientId)
+                .Select(c => c.UserId)
+                .FirstOrDefaultAsync();
+
+            var clientToken = await _context.device_tokens
+                .Where(dt => dt.UserId == clientUserId)
+                .Select(dt => dt.FcmToken)
+                .FirstOrDefaultAsync();
 
             var body = "";
 
@@ -410,10 +415,10 @@ namespace H4H_API.Services.Implementations
                 body = serviceTypeName != null ? $"Twoje ogłoszenie z kategorii {serviceTypeName} otrzymało nową ofertę!" :
                     $"Twoje ogłoszenie otrzymało nową ofertę!";
 
-            if (clientTokens.Count != 0)
+            if (clientToken != null)
             {
-                await _firebaseNotificationService.SendNotificationToManyAsync(
-                    clientTokens,
+                await _firebaseNotificationService.SendNotificationAsync(
+                    clientToken,
                     "Nowa oferta!",
                     body,
                     appointment.Id.ToString(),
