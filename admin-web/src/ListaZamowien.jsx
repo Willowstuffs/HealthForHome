@@ -173,9 +173,7 @@ function ListaZamowien() {
                       </td>
 
                       <td className="cell-right">
-                        <Link to={`/orders/${o.appointmentId}`} className="table-link">
-                          Szczegóły
-                        </Link>
+                        <Link to={`/orders/${o.appointmentId || o.id}`}>Szczegóły</Link>
                       </td>
                     </tr>
                   ))

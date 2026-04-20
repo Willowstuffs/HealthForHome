@@ -163,7 +163,16 @@ export async function listOrders(query) {
   const payload = res?.data?.data ?? res?.data ?? res;
 
   return {
-    items: payload?.items ?? [],
+    items: (payload?.items ?? []).map((item) => ({
+      ...item,
+      id: item?.id ?? item?.appointmentId,
+      appointmentId: item?.appointmentId ?? item?.id,
+      createdAt: item?.createdAt ?? null,
+      status: item?.status ?? "",
+      totalPrice: item?.totalPrice ?? item?.price ?? 0,
+      contactName: item?.contactName ?? "",
+      specialistName: item?.specialistName ?? "",
+    })),
     total: payload?.totalCount ?? 0,
     page: payload?.page ?? 1,
     pageSize: payload?.pageSize ?? 20,
