@@ -6,7 +6,7 @@ import '../../screens/account_screen.dart';
 import '../../services/api_service.dart';
 import '../../widgets/category_chip.dart';
 import '../../widgets/appointment_card.dart';
-import '../../data/mock_data.dart';
+import '../../data/data.dart';
 import '../../models/client_profile.dart';
 import '../../models/appointment.dart';
 import '../../theme/app_theme.dart';
@@ -105,18 +105,12 @@ class HomeScreenState extends State<HomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'HealthForHome',
-                            style: Theme.of(context).textTheme.headlineMedium
-                                ?.copyWith(
-                                  color: AppColors.onSurface,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Twoje zdrowie w domu',
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(color: AppColors.textSecondary),
+                            'Health for Home',
+                            style: TextStyle(
+                              fontSize: 24,
+                              color: AppColors.onSurface,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ],
                       ),
@@ -126,7 +120,7 @@ class HomeScreenState extends State<HomeScreen> {
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
+                              color: AppColors.onSurface.withValues(alpha: 0.1),
                               blurRadius: 8,
                               offset: Offset(0, 2),
                             ),
@@ -498,7 +492,7 @@ class HomeScreenState extends State<HomeScreen> {
                 final req = requests[index];
                 return GestureDetector(
                   onTap: () {
-                    _showCalendar(req.id, req.dateFrom);
+                    _showOpenRequestDialog(context, req);
                   },
                   child: Container(
                     padding: EdgeInsets.all(20),
@@ -813,7 +807,7 @@ class HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 24),
           Text(
-            'Health for Home',
+            'Twoje zdrowie w domu',
             style: Theme.of(context).textTheme.headlineLarge?.copyWith(
               fontSize: 28,
               fontWeight: FontWeight.w800,
@@ -837,7 +831,7 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCategoriesSection() {
-    final categories = MockData.getCategories();
+    final categories = Data.getCategories();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -906,6 +900,175 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _showOpenRequestDialog(BuildContext context, ServiceRequest request) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        bool isCancelling = false;
+        return StatefulBuilder(
+          builder: (context, setLocalState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              backgroundColor: AppColors.surface,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 600),
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.assignment_rounded,
+                              color: AppColors.primary,
+                              size: 28,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  request.serviceTypeName,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 20,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.date_range_rounded,
+                                      size: 14,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        '${request.dateFrom.day.toString().padLeft(2, '0')}.${request.dateFrom.month.toString().padLeft(2, '0')} - ${request.dateTo.day.toString().padLeft(2, '0')}.${request.dateTo.month.toString().padLeft(2, '0')}',
+                                        style: TextStyle(
+                                          color: AppColors.textSecondary,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      if (request.description.isNotEmpty) ...[
+                        const Text(
+                          'Opis:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          request.description,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      const Text(
+                        'Adres:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        request.address,
+                        style: const TextStyle(color: AppColors.textSecondary),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text(
+                              'Zamknij',
+                              style: TextStyle(color: AppColors.textSecondary),
+                            ),
+                          ),
+                          isCancelling
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : FilledButton(
+                                  onPressed: () async {
+                                    setLocalState(() => isCancelling = true);
+                                    try {
+                                      await ApiService().cancelAppointment(
+                                        request.id,
+                                      );
+                                      if (context.mounted) {
+                                        Navigator.pop(context);
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Ogłoszenie zostało anulowane',
+                                            ),
+                                          ),
+                                        );
+                                        setState(() {});
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(content: Text('Błąd: $e')),
+                                        );
+                                        setLocalState(
+                                          () => isCancelling = false,
+                                        );
+                                      }
+                                    }
+                                  },
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: AppColors.error,
+                                  ),
+                                  child: const Text(
+                                    'Anuluj ogłoszenie',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _showSpecialistSelectionDialog(
     BuildContext context,
     ServiceRequest request,
@@ -934,11 +1097,16 @@ class HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Następujący specjaliści odpowiedzieli na Twoje ogłoszenie:\n${request.serviceTypeName}',
-                style: TextStyle(color: AppColors.textSecondary),
+                'Następujący specjaliści odpowiedzieli na Twoje ogłoszenie:',
+                style: TextStyle(color: AppColors.onSurface, fontSize: 16),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                request.serviceTypeName,
+                style: TextStyle(color: AppColors.onSurface, fontSize: 14),
               ),
               if (request.description.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -1021,9 +1189,10 @@ class HomeScreenState extends State<HomeScreen> {
                     backgroundColor: AppColors.surfaceContainerHighest,
                     foregroundColor: AppColors.onSurface,
                   ),
-                  child: const Text('Anuluj'),
+                  child: const Text('Anuluj', style: TextStyle(fontSize: 14)),
                 ),
               ),
+              const SizedBox(height: 12),
             ],
           ),
         );
@@ -1064,6 +1233,7 @@ class HomeScreenState extends State<HomeScreen> {
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
+                        color: AppColors.onSurface,
                       ),
                     ),
                     if (offer.proposedDate != null)
@@ -1074,13 +1244,13 @@ class HomeScreenState extends State<HomeScreen> {
                             Icon(
                               Icons.calendar_today_rounded,
                               size: 14,
-                              color: AppColors.primary,
+                              color: AppColors.textSecondary,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               '${offer.proposedDate!.day.toString().padLeft(2, '0')}.${offer.proposedDate!.month.toString().padLeft(2, '0')}.${offer.proposedDate!.year} ${offer.proposedDate!.hour.toString().padLeft(2, '0')}:${offer.proposedDate!.minute.toString().padLeft(2, '0')}',
                               style: TextStyle(
-                                color: AppColors.primary,
+                                color: AppColors.textSecondary,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -1283,6 +1453,16 @@ class HomeScreenState extends State<HomeScreen> {
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                req.description.length > 30
+                                    ? '${req.description.substring(0, 30)}...'
+                                    : req.description,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: AppColors.textSecondary,
                                 ),
                               ),
                               const SizedBox(height: 6),

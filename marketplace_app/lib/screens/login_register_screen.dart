@@ -39,7 +39,15 @@ class LoginRegisterScreen extends StatelessWidget {
                             MaterialPageRoute(builder: (_) => RegisterScreen()),
                           );
                         },
-                        child: Text('Zarejestruj się'),
+                        child: Text(
+                          'Zarejestruj się',
+                          style: TextStyle(
+                            color: AppColors.surface,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
                       ),
                     ),
 
@@ -47,17 +55,21 @@ class LoginRegisterScreen extends StatelessWidget {
 
                     Row(
                       children: [
-                        Expanded(child: Divider(color: AppColors.outline)),
+                        Expanded(
+                          child: Divider(color: AppColors.textSecondary),
+                        ),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Text(
                             'lub',
                             style: theme.textTheme.bodyMedium?.copyWith(
-                              color: AppColors.secondary,
+                              color: AppColors.textSecondary,
                             ),
                           ),
                         ),
-                        Expanded(child: Divider(color: AppColors.outline)),
+                        Expanded(
+                          child: Divider(color: AppColors.textSecondary),
+                        ),
                       ],
                     ),
 
@@ -72,7 +84,15 @@ class LoginRegisterScreen extends StatelessWidget {
                             MaterialPageRoute(builder: (_) => LoginScreen()),
                           );
                         },
-                        child: Text('Zaloguj się'),
+                        child: Text(
+                          'Zaloguj się',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -101,19 +121,22 @@ class LoginRegisterScreen extends StatelessWidget {
             'Health for Home',
             style: Theme.of(context).textTheme.headlineLarge!.copyWith(
               fontSize: 36,
+              color: AppColors.onSurface,
               fontWeight: FontWeight.bold,
             ),
             textAlign: TextAlign.center,
           ),
-          SizedBox(height: 96),
+          SizedBox(height: 16),
           Text(
             'Konto użytkownika',
             style: Theme.of(context).textTheme.headlineLarge!.copyWith(
               fontSize: 24,
+              color: AppColors.onSurface,
               fontWeight: FontWeight.bold,
             ),
             textAlign: TextAlign.center,
           ),
+          const SizedBox(height: 64),
         ],
       ),
     );

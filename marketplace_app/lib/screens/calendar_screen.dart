@@ -104,6 +104,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
         continue;
       }
 
+      if (appt.appointmentStatus == 'cancelled' ||
+          appt.appointmentStatus == 'completed') {
+        continue;
+      }
+
       final start = DateTime(
         appt.scheduledStart.year,
         appt.scheduledStart.month,
@@ -114,17 +119,32 @@ class _CalendarScreenState extends State<CalendarScreen> {
         appt.scheduledEnd.month,
         appt.scheduledEnd.day,
       );
+      final finalDay = appt.finalDate != null
+          ? DateTime(
+              appt.finalDate!.year,
+              appt.finalDate!.month,
+              appt.finalDate!.day,
+            )
+          : null;
 
       // add appointment for every day between start and end inclusive
-      for (
-        var d = start;
-        d.isBefore(end.add(const Duration(days: 1)));
-        d = d.add(const Duration(days: 1))
-      ) {
-        if (_appointmentsMap[d] == null) {
-          _appointmentsMap[d] = [];
+      // if appointment is confirmed, add it only for the final day
+      if (appt.appointmentStatus == 'confirmed') {
+        if (finalDay != null && _appointmentsMap[finalDay] == null) {
+          _appointmentsMap[finalDay] = [];
         }
-        _appointmentsMap[d]!.add(appt);
+        _appointmentsMap[finalDay]!.add(appt);
+      } else {
+        for (
+          var d = start;
+          d.isBefore(end.add(const Duration(days: 1)));
+          d = d.add(const Duration(days: 1))
+        ) {
+          if (_appointmentsMap[d] == null) {
+            _appointmentsMap[d] = [];
+          }
+          _appointmentsMap[d]!.add(appt);
+        }
       }
     }
   }

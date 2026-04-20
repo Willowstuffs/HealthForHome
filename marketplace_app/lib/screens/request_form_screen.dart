@@ -4,7 +4,7 @@ import 'package:marketplace_app/services/api_service.dart';
 import 'package:marketplace_app/widgets/screen_status_bar.dart';
 import '../../screens/request_success_screen.dart';
 import '../../theme/app_theme.dart';
-import '../../data/mock_data.dart';
+import '../data/data.dart';
 import '../../models/appointment.dart';
 
 class RequestFormScreen extends StatefulWidget {
@@ -36,7 +36,7 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
   @override
   void initState() {
     super.initState();
-    categories = MockData.getCategories();
+    categories = Data.getCategories();
     selectedCategory = widget.categoryName;
     selectedDateFrom = DateTime.now().add(const Duration(days: 1));
     selectedDateTo = DateTime.now().add(const Duration(days: 1, hours: 2));
@@ -64,27 +64,60 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
   }
 
   Future<void> _pickDateRange() async {
-    final picked = await showDateRangePicker(
+    final startDate = await showDatePicker(
       context: context,
+      initialDate: selectedDateFrom ?? DateTime.now(),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 90)),
-      initialDateRange: selectedDateFrom != null && selectedDateTo != null
-          ? DateTimeRange(start: selectedDateFrom!, end: selectedDateTo!)
-          : null,
+      helpText: 'Wybierz datę rozpoczęcia',
     );
+    if (startDate == null || !mounted) return;
 
-    if (picked != null && mounted) {
-      setState(() {
-        selectedDateFrom = picked.start;
-        selectedDateTo = picked.end.add(const Duration(hours: 23, minutes: 59));
-      });
-    }
+    final startTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(selectedDateFrom ?? DateTime.now()),
+      helpText: 'Wybierz godzinę rozpoczęcia',
+    );
+    if (startTime == null || !mounted) return;
+
+    final endDate = await showDatePicker(
+      context: context,
+      initialDate: selectedDateTo ?? startDate,
+      firstDate: startDate,
+      lastDate: DateTime.now().add(const Duration(days: 90)),
+      helpText: 'Wybierz datę zakończenia',
+    );
+    if (endDate == null || !mounted) return;
+
+    final endTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(
+        selectedDateTo ?? DateTime.now().add(const Duration(hours: 1)),
+      ),
+      helpText: 'Wybierz godzinę zakończenia',
+    );
+    if (endTime == null || !mounted) return;
+
+    setState(() {
+      selectedDateFrom = DateTime(
+        startDate.year,
+        startDate.month,
+        startDate.day,
+        startTime.hour,
+        startTime.minute,
+      );
+      selectedDateTo = DateTime(
+        endDate.year,
+        endDate.month,
+        endDate.day,
+        endTime.hour,
+        endTime.minute,
+      );
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return ScreenStatusBar(
       child: Scaffold(
         appBar: AppBar(
@@ -120,11 +153,15 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                     children: [
                       Text(
                         "Wypełnij formularz, a specjaliści sami zgłoszą się do Ciebie.",
-                        style: theme.textTheme.bodyMedium,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.normal,
+                          color: AppColors.onSurface,
+                        ),
                       ),
                       const SizedBox(height: 16),
 
-                      _buildSectionTitle(theme, "Dane kontaktowe"),
+                      _buildSectionTitle("Dane kontaktowe"),
                       const SizedBox(height: 8),
 
                       _buildTextField(
@@ -169,7 +206,7 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                       const SizedBox(height: 24),
                       const Divider(),
 
-                      _buildSectionTitle(theme, "Szczegóły zgłoszenia"),
+                      _buildSectionTitle("Szczegóły ogłoszenia"),
                       const SizedBox(height: 12),
 
                       _buildCategoryDropdown(),
@@ -177,16 +214,21 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
 
                       Text(
                         "Termin realizacji",
-                        style: theme.textTheme.titleMedium,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.onSurface,
+                        ),
                       ),
                       const SizedBox(height: 8),
 
                       _buildDateField(
-                        label: 'Zakres dat',
+                        label: 'Przedział czasowy',
                         value:
                             selectedDateFrom != null && selectedDateTo != null
-                            ? '${selectedDateFrom!.day}.${selectedDateFrom!.month} - ${selectedDateTo!.day}.${selectedDateTo!.month}.${selectedDateTo!.year}'
-                            : 'Wybierz daty',
+                            ? '${selectedDateFrom!.day.toString().padLeft(2, '0')}.${selectedDateFrom!.month.toString().padLeft(2, '0')}.${selectedDateFrom!.year} ${selectedDateFrom!.hour.toString().padLeft(2, '0')}:${selectedDateFrom!.minute.toString().padLeft(2, '0')} - '
+                                  '${selectedDateTo!.day.toString().padLeft(2, '0')}.${selectedDateTo!.month.toString().padLeft(2, '0')}.${selectedDateTo!.year} ${selectedDateTo!.hour.toString().padLeft(2, '0')}:${selectedDateTo!.minute.toString().padLeft(2, '0')}'
+                            : 'Wybierz daty i czas',
                         onTap: _pickDateRange,
                       ),
                       const SizedBox(height: 12),
@@ -207,7 +249,6 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                             ? 'Opisz swoje potrzeby'
                             : null,
                       ),
-
                       const SizedBox(height: 24),
 
                       SizedBox(
@@ -217,6 +258,7 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                           child: const Text('Dodaj ogłoszenie'),
                         ),
                       ),
+                      const SizedBox(height: 24),
                     ],
                   ),
                 ),
@@ -225,12 +267,13 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
     );
   }
 
-  Widget _buildSectionTitle(ThemeData theme, String title) {
+  Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: theme.textTheme.titleMedium?.copyWith(
+      style: TextStyle(
+        fontSize: 16,
         fontWeight: FontWeight.bold,
-        color: AppColors.primary,
+        color: AppColors.onSurface,
       ),
     );
   }
@@ -260,7 +303,7 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
       return;
     }
 
-    final categoryKey = MockData.categoryMapping[selectedCategory];
+    final categoryKey = Data.categoryMapping[selectedCategory];
     if (categoryKey == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

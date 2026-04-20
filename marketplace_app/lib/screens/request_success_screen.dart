@@ -7,17 +7,14 @@ class RequestSuccessScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return ScreenStatusBar(
       child: Scaffold(
         body: SafeArea(
           child: Padding(
             padding: EdgeInsets.all(24),
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                SizedBox(height: 32),
-
                 // LOGO / IKONA
                 Image.asset('lib/images/logo.png', width: 120, height: 120),
 
@@ -27,9 +24,10 @@ class RequestSuccessScreen extends StatelessWidget {
                 Text(
                   'Twoja prośba została wysłana',
                   textAlign: TextAlign.center,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.onSurface,
                   ),
                 ),
 
@@ -38,12 +36,14 @@ class RequestSuccessScreen extends StatelessWidget {
                 Text(
                   'Specjalista będzie się z Tobą kontaktował',
                   textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AppColors.primary,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.normal,
+                    color: AppColors.onSurface,
                   ),
                 ),
 
-                SizedBox(height: 96),
+                SizedBox(height: 64),
 
                 SizedBox(
                   width: double.infinity,
@@ -54,8 +54,6 @@ class RequestSuccessScreen extends StatelessWidget {
                     child: const Text('Wróć do strony głównej'),
                   ),
                 ),
-
-                SizedBox(height: 32),
               ],
             ),
           ),
