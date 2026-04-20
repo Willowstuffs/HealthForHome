@@ -979,10 +979,26 @@ class HomeScreenState extends State<HomeScreen> {
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          request.description,
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
+                        Container(
+                          constraints: const BoxConstraints(maxHeight: 160),
+                          child: RawScrollbar(
+                            thumbVisibility: true,
+                            thumbColor: AppColors.primary.withValues(
+                              alpha: 0.5,
+                            ),
+                            radius: const Radius.circular(4),
+                            thickness: 4,
+                            child: SingleChildScrollView(
+                              child: Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: Text(
+                                  request.description,
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -1124,12 +1140,28 @@ class HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Text(
-                          request.description,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.onSurface,
-                            fontStyle: FontStyle.italic,
+                        child: Container(
+                          constraints: const BoxConstraints(maxHeight: 100),
+                          child: RawScrollbar(
+                            thumbVisibility: true,
+                            thumbColor: AppColors.primary.withValues(
+                              alpha: 0.5,
+                            ),
+                            radius: const Radius.circular(4),
+                            thickness: 4,
+                            child: SingleChildScrollView(
+                              child: Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: Text(
+                                  request.description,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.onSurface,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
