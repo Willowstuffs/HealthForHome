@@ -103,7 +103,7 @@ class AppointmentCard extends StatelessWidget {
                       Text(
                         appointment.serviceNames?.isEmpty ?? true
                             ? 'Wizyta domowa'
-                            : appointment.serviceNames![0],
+                            : appointment.serviceNames!.join(', '),
                         style: TextStyle(
                           fontSize: 14,
                           color: AppColors.textSecondary,

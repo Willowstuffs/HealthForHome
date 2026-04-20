@@ -456,7 +456,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 'Usługa:',
                 appt.serviceNames?.isEmpty ?? true
                     ? 'Brak danych'
-                    : appt.serviceNames![0],
+                    : appt.serviceNames!.join(', '),
               ),
               _buildDetailRow(
                 Icons.info_outline,
