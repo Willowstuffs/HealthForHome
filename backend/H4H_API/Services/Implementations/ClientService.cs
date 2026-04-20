@@ -299,8 +299,8 @@ namespace H4H_API.Services.Implementations
             var query = _context.appointments
                 .Include(a => a.Client) // Ważne dla ClientName
                 .Include(a => a.Specialist) // Ważne dla SpecialistName
-                .Include(a => a.SpecialistService) // Ważne dla ServiceName
-                    .ThenInclude(ss => ss!.ServiceType)
+                //.Include(a => a.SpecialistService) // Ważne dla ServiceName, usuwam bo teraz mam listę usług, a nie pojedynczą
+                //    .ThenInclude(ss => ss!.ServiceType) //usuwam bo teraz mam listę usług, a nie pojedynczą
                 .Where(a => a.ClientId == client.Id)
                 .AsQueryable();
 
@@ -317,6 +317,28 @@ namespace H4H_API.Services.Implementations
 
             // Mapujemy listę modeli na listę DTO za pomocą AutoMappera
             var items = _mapper.Map<List<AppointmentDto>>(appointments);
+
+            // Pobieramy wszystkie unikalne ID usług specjalisty z pobranych wizyt
+            var allServiceIds = appointments.SelectMany(a => a.SpecialistServiceIds).Distinct().ToList();
+
+            if (allServiceIds.Any())
+            {
+                // Pobieramy nazwy usług z bazy (jedno zapytanie)
+                var serviceNamesMap = await _context.specialist_services
+                    .Include(ss => ss.ServiceType)
+                    .Where(ss => allServiceIds.Contains(ss.Id))
+                    .ToDictionaryAsync(ss => ss.Id, ss => ss.ServiceType.Name);
+
+                // Przypisujemy listy nazw do każdego DTO
+                foreach (var item in items)
+                {
+                    var original = appointments.First(a => a.Id == item.Id);
+                    item.ServiceNames = original.SpecialistServiceIds
+                        .Where(id => serviceNamesMap.ContainsKey(id))
+                        .Select(id => serviceNamesMap[id])
+                        .ToList();
+                }
+            }
 
             return new PagedResponse<AppointmentDto>
             {
@@ -344,23 +366,26 @@ namespace H4H_API.Services.Implementations
             var appointment = await _context.appointments
                 .Include(a => a.Client)
                 .Include(a => a.Specialist)
-                .Include(a => a.SpecialistService)
-                    .ThenInclude(ss => ss!.ServiceType)
                 .FirstOrDefaultAsync(a => a.Id == appointmentId && a.ClientId == client.Id);
 
             if (appointment == null)
                 throw new AppException($"Nie znaleziono wizyty o ID {appointmentId} dla tego klienta", ErrorCodes.AppointmentNotFound);
 
-            // Mapuj model wizyty na DTO, w tym nazwy klienta, specjalisty i usługi
-            return _mapper.Map<AppointmentDto>(appointment);
+            var dto = _mapper.Map<AppointmentDto>(appointment);
+
+            // Pobierz nazwy usług specjalisty, jeśli są przypisane do wizyty
+            if (appointment.SpecialistServiceIds != null && appointment.SpecialistServiceIds.Any())
+            {
+                dto.ServiceNames = await _context.specialist_services
+                    .Include(ss => ss.ServiceType)
+                    .Where(ss => appointment.SpecialistServiceIds.Contains(ss.Id))
+                    .Select(ss => ss.ServiceType.Name)
+                    .ToListAsync();
+            }
+
+            return dto;
         }
 
-        public async Task<AppointmentDto> CreateAppointmentAsync(Guid userId, CreateAppointmentDto dto)
-        {
-            await Task.CompletedTask; //usuwam warning o braku await
-            // TODO: Zaimplementować z walidacją odległości
-            throw new NotImplementedException("CreateAppointmentAsync not implemented yet");
-        }
         /// <summary>
         /// Anuluj wizytę (termin) klienta, jeśli wizyta należy do niego i nie jest już zakończona lub anulowana. Zwraca true jeśli anulowano, false jeśli nie można anulować z powodu statusu wizyty.
         /// </summary>
@@ -644,21 +669,43 @@ namespace H4H_API.Services.Implementations
             if (appointment == null)
                 throw new AppException("Nie znaleziono ogłoszenia.", ErrorCodes.AppointmentNotFound);
 
-            // Pobieramy zgłoszenia specjalistów z tabeli łączącej
+            // Pobieramy wszystkie oferty (AppointmentSpecialist) dla tego ogłoszenia wraz z danymi specjalisty
             var offers = await _context.Set<AppointmentSpecialist>() 
                 .Include(os => os.Specialist)
                 .Where(os => os.AppointmentId == appointmentId)
-                .Select(os => new AppointmentOfferDto
+                .ToListAsync();
+
+            var result = new List<AppointmentOfferDto>();
+
+            // Mapujemy każde zgłoszenie na DTO, w tym pobieramy nazwy usług, które specjalista zaznaczył w tej ofercie
+            foreach (var os in offers)
+            {
+                var offerDto = new AppointmentOfferDto
                 {
                     SpecialistId = os.SpecialistId,
                     FirstName = os.Specialist.FirstName,
                     LastName = os.Specialist.LastName,
-                    ProposedPrice = os.Price, 
-                    Bio = os.Specialist.Bio
-                })
-                .ToListAsync();
+                    ProposedPrice = os.Price,
+                    ProposedDate = os.ProposedDate,
+                    Bio = os.Specialist.Bio,
+                    SelectedServiceIds = os.ServiceTypeIds?.ToList() ?? new List<Guid>()
+                };
 
-            return offers;
+                // Pobieramy nazwy usług, które specjalista zaznaczył w tej konkretnej ofercie
+                if (os.ServiceTypeIds != null && os.ServiceTypeIds.Any())
+                {
+                    offerDto.SelectedServiceNames = await _context.specialist_services
+                        .Include(ss => ss.ServiceType)
+                        .Where(ss => os.ServiceTypeIds.Contains(ss.Id))
+                        .Select(ss => ss.ServiceType.Name)
+                        .ToListAsync();
+                }
+
+                result.Add(offerDto);
+            }
+
+            // zwracamy listę ofert dla tego ogłoszenia
+            return result;
         }
 
 
@@ -687,22 +734,25 @@ namespace H4H_API.Services.Implementations
             if (appointment == null)
                 throw new AppException("Ogłoszenie nie istnieje.", ErrorCodes.AppointmentNotFound);
 
-            // 1. Sprawdzamy czy ten specjalista na pewno wysłał ofertę
-            var offerExists = await _context.Set<AppointmentSpecialist>()
-                .AnyAsync(os => os.AppointmentId == appointmentId && os.SpecialistId == specialistId);
+            // 1. Pobieramy ofertę (od razu całość, żeby nie robić AnyAsync i potem FirstAsync osobno - tylko jedno zapytanie do bazy wiec będzie szybciej) 
+            var finalOffer = await _context.Set<AppointmentSpecialist>()
+                .FirstOrDefaultAsync(os => os.AppointmentId == appointmentId && os.SpecialistId == specialistId);
 
-            if (!offerExists)
+            if (finalOffer == null)
                 throw new AppException("Ten specjalista nie złożył oferty.", ErrorCodes.ValidationError);
 
-            // 2. Przypisujemy specjalistę do głównego zlecenia
+            // 2. Przypisujemy dane ze złożonej oferty do wizyty
             appointment.SpecialistId = specialistId;
-            appointment.AppointmentStatus = "confirmed"; // Zmieniamy status z 'open' na 'confirmed'
-            appointment.UpdatedAt = DateTime.Now;
+            appointment.AppointmentStatus = "confirmed";
+            appointment.TotalPrice = finalOffer.Price;      // Cena proponowana przez specjalistę w ofercie staje się ceną finalną wizyty
+            appointment.FinalDate = finalOffer.ProposedDate; // Data propozycji specjalisty staje się datą finalną wizyty (można to później zmienić, jeśli chcemy dać klientowi możliwość negocjacji terminu)
 
-            // 3. (Opcjonalnie) Pobieramy cenę z oferty i ustawiamy ją jako finałową
-            var finalOffer = await _context.Set<AppointmentSpecialist>()
-                .FirstAsync(os => os.AppointmentId == appointmentId && os.SpecialistId == specialistId);
-            appointment.TotalPrice = finalOffer.Price;
+            // Poprawka: przypisujemy wszystkie usługi, które specjalista zadeklarował w ofercie (może być ich kilka, oddzielone przecinkami)
+            appointment.SpecialistServiceIds = finalOffer.ServiceTypeIds?.ToArray() ?? Array.Empty<Guid>();
+
+
+            // 3. Zapisujemy zmiany w bazie danych wraz z aktualizacją daty modyfikacji wizyty
+            appointment.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
 
             await _context.SaveChangesAsync();
         }
