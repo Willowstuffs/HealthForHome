@@ -14,10 +14,12 @@ namespace H4H_API.Services.Implementations
     public class SpecialistService : ISpecialistService
     {
         private readonly ApplicationDbContext _context;
+        private readonly FirebaseNotificationService _firebaseNotificationService;
 
-        public SpecialistService(ApplicationDbContext context)
+        public SpecialistService(ApplicationDbContext context, FirebaseNotificationService firebaseNotificationService)
         {
             _context = context;
+            _firebaseNotificationService = firebaseNotificationService;
         }
 
         public async Task<SpecialistDto> GetProfileAsync(Guid userId)
@@ -386,8 +388,42 @@ namespace H4H_API.Services.Implementations
 
             appointment.AppointmentStatus = "pending";
 
+            var clientTokens = await _context.device_tokens
+                .Where(t => t.User.UserType == "client")
+                .Select(t => t.FcmToken)
+                .ToListAsync();
+
+            var body = "";
+
+            var serviceTypeName = await _context.service_types
+                .Where(st => st.Id == appointment.ServiceTypeId)
+                .Select(st => st.Name)
+                .FirstOrDefaultAsync();
+
+            if (appointment.ClientNotes != null && appointment.ClientNotes.Length > 30)
+                body = serviceTypeName != null ? $"Twoje ogłoszenie z kategorii {serviceTypeName} - {appointment.ClientNotes[..30]}... otrzymało nową ofertę!" :
+                    $"Twoje ogłoszenie - {appointment.ClientNotes[..30]}... otrzymało nową ofertę!";
+            else if (appointment.ClientNotes != null)
+                body = serviceTypeName != null ? $"Twoje ogłoszenie z kategorii {serviceTypeName} - {appointment.ClientNotes} otrzymało nową ofertę!" :
+                    $"Twoje ogłoszenie - {appointment.ClientNotes} otrzymało nową ofertę!";
+            else
+                body = serviceTypeName != null ? $"Twoje ogłoszenie z kategorii {serviceTypeName} otrzymało nową ofertę!" :
+                    $"Twoje ogłoszenie otrzymało nową ofertę!";
+
+            if (clientTokens.Count != 0)
+            {
+                await _firebaseNotificationService.SendNotificationToManyAsync(
+                    clientTokens,
+                    "Nowa oferta!",
+                    body,
+                    appointment.Id.ToString(),
+                    isClientApp: true
+                );
+            }
+
             await _context.SaveChangesAsync();
         }
+
         public async Task ShowConfirmAppointmentAsync(Guid userId, Guid appointmentId)
         {
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
