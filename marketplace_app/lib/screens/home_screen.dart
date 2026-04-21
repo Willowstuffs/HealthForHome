@@ -249,10 +249,10 @@ class HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 32),
 
           _buildPendingRequestsList(),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
 
           _buildAppointmentsList(),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
 
           _buildServiceRequestsList(),
           const SizedBox(height: 100),

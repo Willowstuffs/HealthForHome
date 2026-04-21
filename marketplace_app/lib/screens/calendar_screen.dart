@@ -219,9 +219,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       child: Column(
                         children: [
                           _buildCalendar(),
-                          SizedBox(height: 16),
+                          SizedBox(height: 32),
                           _buildAppointmentList(),
-                          SizedBox(height: 100), // spacing for bottom nav
+                          SizedBox(height: 32), // spacing for bottom nav
                         ],
                       ),
                     ),

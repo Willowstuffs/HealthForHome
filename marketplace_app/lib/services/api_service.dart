@@ -13,7 +13,7 @@ import '../models/specialist_offer.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiService {
-  static const bool isDev = true;
+  static const bool isDev = false;
   static const String _baseUrl = isDev
       ? 'https://10.0.2.2:7026'
       : 'https://h4h.makolino.com';
