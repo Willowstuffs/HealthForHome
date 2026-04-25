@@ -22,7 +22,7 @@ import 'package:http_parser/http_parser.dart';
 class ApiService {
   static const bool isEmulator = true;
   static const String _baseUrl = isEmulator
-      ? 'https://192.168.5.234:7026'
+      ? 'https://192.168.100.24:7026'
       : 'https://10.0.2.2:7026';
   late final Dio _dio;
   ApiService() {
@@ -257,7 +257,11 @@ class ApiService {
         queryParameters: queryParams,
       );
       print("📦 Backend  zwrócił zapytania: ${response.data}");
-      final data = response.data['data'] as List<dynamic>;
+      final raw = response.data['data'];
+
+if (raw == null) return [];
+
+final data = raw as List<dynamic>;
       return data.map((item) => Map<String, dynamic>.from(item)).toList();
     } on DioException catch (e) {
       throw _handleDioError(e);

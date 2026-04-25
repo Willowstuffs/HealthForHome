@@ -16,6 +16,14 @@ class UpcomingScreen extends StatefulWidget {
   State<UpcomingScreen> createState() => _UpcomingScreenState();
 }
 
+enum CalendarViewType {
+  all,
+  upcoming,
+  archive,
+}
+
+CalendarViewType _calendarView = CalendarViewType.upcoming;
+
 class _UpcomingScreenState extends State<UpcomingScreen> {
   List<Map<String, dynamic>> upcoming = [];
   List<Map<String, dynamic>> archive = [];
@@ -66,7 +74,16 @@ final Set<String> _selectedStatuses = {
       if (mounted) setState(() => isLoading = false);
     }
   }
-
+  List<Map<String, dynamic>> get _currentSource {
+    switch (_calendarView) {
+      case CalendarViewType.archive:
+        return archive;
+      case CalendarViewType.upcoming:
+        return upcoming;
+      case CalendarViewType.all:
+        return [...upcoming, ...archive];
+    }
+  }
   List<Map<String, dynamic>> _mapInquiries(List<dynamic> data) {
     return data.map((i) {
       final id = i['appointmentId'] ?? i['AppointmentId'];
@@ -99,22 +116,22 @@ final Set<String> _selectedStatuses = {
   }
 }
   void _updateUpcomingMap() {
-    _upcomingMap.clear();
+  _upcomingMap.clear();
 
-    for (var item in upcoming) {
-      final status = item['status'];
-      final start = item['start'] as DateTime?;
-if (start == null) continue;
+  for (var item in _currentSource) {
+    final status = item['status'];
+    final start = item['start'] as DateTime?;
 
-      final day = DateTime(start.year, start.month, start.day);
-      if (!_selectedStatuses.contains(status)) continue;
-      if (_upcomingMap[day] == null) {
-        _upcomingMap[day] = [];
-      }
-      _upcomingMap.putIfAbsent(day, () => []);
-      _upcomingMap[day]!.add(item);
-    }
+    if (start == null) continue;
+
+    final day = DateTime(start.year, start.month, start.day);
+
+    if (!_selectedStatuses.contains(status)) continue;
+
+    _upcomingMap.putIfAbsent(day, () => []);
+    _upcomingMap[day]!.add(item);
   }
+}
   List<Map<String, dynamic>> _getEventsForDay(DateTime day) {
     final date = DateTime(day.year, day.month, day.day);
     return _upcomingMap[date] ?? [];
@@ -141,6 +158,8 @@ if (start == null) continue;
                     ),
                     const SizedBox(height: 24),
                     _buildSectionHeader('Nadchodzące', Icons.calendar_today_rounded),
+                    const SizedBox(height: 16),
+                    _buildCalendarTypeFilters(),
                     const SizedBox(height: 16),
                     _buildStatusFilters(),
                     const SizedBox(height: 16),
@@ -187,7 +206,10 @@ if (start == null) continue;
 
     return Column(
       children: items
-          .map((item) => _buildInquiryCard(item, true))
+          .map((item) {
+            final isUpcoming = upcoming.contains(item);
+            return _buildInquiryCard(item, isUpcoming);
+          })
           .toList(),
     );
   }
@@ -354,6 +376,44 @@ if (start == null) continue;
         );
       },
     ),
+  );
+}
+Widget _buildCalendarTypeFilters() {
+  return Row(
+    children: [
+      ChoiceChip(
+        label: const Text("Wszystkie"),
+        selected: _calendarView == CalendarViewType.all,
+        onSelected: (_) {
+          setState(() {
+            _calendarView = CalendarViewType.all;
+            _updateUpcomingMap();
+          });
+        },
+      ),
+      const SizedBox(width: 8),
+      ChoiceChip(
+        label: const Text("Nadchodzące"),
+        selected: _calendarView == CalendarViewType.upcoming,
+        onSelected: (_) {
+          setState(() {
+            _calendarView = CalendarViewType.upcoming;
+            _updateUpcomingMap();
+          });
+        },
+      ),
+      const SizedBox(width: 8),
+      ChoiceChip(
+        label: const Text("Archiwum"),
+        selected: _calendarView == CalendarViewType.archive,
+        onSelected: (_) {
+          setState(() {
+            _calendarView = CalendarViewType.archive;
+            _updateUpcomingMap();
+          });
+        },
+      ),
+    ],
   );
 }
   Widget _buildInfoRow(IconData icon, String text) {

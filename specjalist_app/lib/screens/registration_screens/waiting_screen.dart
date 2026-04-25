@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:specjalist_app/services/api_service.dart';
 import '../../theme/app_theme.dart';
 import '../main_screens/maintoolbar_screen.dart';
+import 'dart:async';
 
 
 
@@ -12,42 +14,58 @@ class WaitingScreen extends StatefulWidget {
 }
 
 class _WaitingScreenState extends State<WaitingScreen> {
+Timer? _timer;
+  String _status = "oczekujący";
 
   @override
   void initState() {
     super.initState();
-    _waitForVerification();
+    _startCheckingStatus();
   }
 
-  Future<void> _waitForVerification() async {
+  void _startCheckingStatus() {
+    _checkVerification(); // od razu
+    _timer = Timer.periodic(
+      const Duration(minutes: 1),
+      (_) => _checkVerification(),
+    );
+  }
+
+  Future<void> _checkVerification() async {
     try {
-    // TODO: w przyszłości:
-      // while (true) {
-      //   final status = await apiService.getVerificationStatus();
-      //   if (status == 'approved') break;
-      //   await Future.delayed(const Duration(seconds: 5));
-      // }
+      final apiService = ApiService();
 
-      // ⏳ symulacja oczekiwania na ACCEPT
-      await Future.delayed(const Duration(seconds: 10));
+      final profile = await apiService.getProfile();
 
-   if (!mounted) return;
+      if (!mounted) return;
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const MainScreen()),
-      );
+      final bool isVerified =
+          profile['isVerified'] == true ||
+          profile['IsVerified'] == true;
 
+      setState(() {
+        _status = isVerified ? "zaakceptowany" : "oczekujący";
+      });
+
+      /// ✅ JEŚLI ZATWIERDZONY → WPUSZCZAMY
+      if (isVerified) {
+        _timer?.cancel();
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MainScreen()),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-        ),
+        SnackBar(content: Text(e.toString())),
       );
     }
   }
+
+
 
   
 @override
@@ -99,7 +117,7 @@ Widget build(BuildContext context) {
          Text(
             'Oczekiwanie na potwierdzenie \n'
             'Jeśli twoje konto zostanie zaakceptowane to \n zostaniesz przepuszczony do aplikacji \n '
-            'aktualny stan: oczekujący',
+            'aktualny stan: $_status',
           
 
             style: Theme.of(context).textTheme.headlineLarge!.copyWith(
@@ -111,9 +129,9 @@ Widget build(BuildContext context) {
       ],
     );
   }
-  @override
+   @override
   void dispose() {
-    
+    _timer?.cancel(); // 🔥 bardzo ważne
     super.dispose();
   }
 }

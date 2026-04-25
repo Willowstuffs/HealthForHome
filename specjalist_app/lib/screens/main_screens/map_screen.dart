@@ -10,14 +10,21 @@ import '../../services/geo_service.dart';
 import '../../services/api_service.dart';
 import '../offer_from_screen.dart';
 
+enum MapMode {
+  detailed, // StartScreen
+  simple,   // UpcomingScreen
+}
+
 class MapScreen extends StatefulWidget {
   final List<Map<String, dynamic>> inquiries;
   final String? highlightId;
+  final MapMode mode;
 
   const MapScreen({
     super.key,
     required this.inquiries,
     this.highlightId,
+    this.mode = MapMode.detailed,
   });
 
   @override
@@ -27,37 +34,71 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   final List<Marker> markers = [];
   final MapController mapController = MapController();
+
   Map<String, dynamic>? selectedInquiry;
+  List<Map<String, dynamic>> inquiriesList = [];
+
   double zoom = 12;
   LatLng? mapCenter;
-  final now = DateTime.now();
-  String? highlightedId;
   bool loading = true;
-  List<Map<String, dynamic>> inquiriesList = [];
+
+  String? highlightedId;
+
   final Map<String, LatLng> _addressCache = {};
+  bool get isSimpleMode => widget.mode == MapMode.simple;
+
+  bool get isDetailed => widget.mode == MapMode.detailed;
+
   @override
   void initState() {
     super.initState();
     highlightedId = widget.highlightId;
-    _fetchAndLoad();
+    _fetchAndBuild();
   }
 
-  Future<void> _fetchAndLoad() async {
+  @override
+  void deactivate() {
+    selectedInquiry = null;
+    highlightedId = null;
+    super.deactivate();
+  }
+
+  @override
+  void dispose() {
+    markers.clear();
+    selectedInquiry = null;
+    highlightedId = null;
+    inquiriesList.clear();
+    super.dispose();
+  }
+  String _shortAddress(String original) {
+    final parts = original.split(',');
+
+    if (parts.length >= 2) {
+      String street = parts[0].trim();
+      String city = parts[1].trim();
+
+      street = street.replaceAll(RegExp(r'[\d-]'), '');
+
+      return '$street, $city';
+    }
+
+    return original.replaceAll(RegExp(r'[\d-]'), '');
+  }
+
+  Future<void> _fetchAndBuild() async {
     try {
+      final now = DateTime.now();
       final areas = UserSession.profile?.serviceAreas;
 
       if (areas != null && areas.isNotEmpty) {
         final city = areas.first.city;
-
         final center = await GeoService.getLatLngFromAddress(city);
 
         if (center != null) {
           mapCenter = center;
         }
       }
-
-      final displayFormatter = DateFormat('dd-MM-yyyy HH:mm');
-
       inquiriesList = (await ApiService().getInquiries(
         patientName: "",
         dateFrom: DateTime(now.year, now.month, now.day),
@@ -66,172 +107,135 @@ class _MapScreenState extends State<MapScreen> {
       ))
           .map((i) {
         final id = i['appointmentId'] ?? i['AppointmentId'];
+        final fullAddress = (i['patientAddress'] ?? i['PatientAddress'] ?? '').toString();
 
-        DateTime? start = i['scheduledStart'] != null
-            ? DateTime.tryParse(i['scheduledStart'])
-            : (i['ScheduledStart'] != null
-                ? DateTime.tryParse(i['ScheduledStart'])
-                : null);
+        DateTime? start = DateTime.tryParse(
+          i['scheduledStart'] ?? i['ScheduledStart'] ?? '',
+        );
 
-        DateTime? end = i['scheduledEnd'] != null
-            ? DateTime.tryParse(i['scheduledEnd'])
-            : (i['ScheduledEnd'] != null
-                ? DateTime.tryParse(i['ScheduledEnd'])
-                : null);
+        DateTime? end = DateTime.tryParse(
+          i['scheduledEnd'] ?? i['ScheduledEnd'] ?? '',
+        );
 
         return {
           'id': id?.toString() ?? '',
-          'name': i['patientName'] ?? i['PatientName'] ?? '',
-          'startDate': start != null ? displayFormatter.format(start) : '',
-          'endDate': end != null ? displayFormatter.format(end) : '',
-          'description': i['description'] ?? i['Description'] ?? '',
-          'address': i['patientAddress'] ?? i['PatientAddress'] ?? '',
+          'name': i['patientName'] ?? '',
+          'startDate': start != null ? DateFormat('dd-MM-yyyy HH:mm').format(start) : '',
+          'endDate': end != null ? DateFormat('dd-MM-yyyy HH:mm').format(end) : '',
+          'description': i['description'] ?? '',
+          'address': isSimpleMode
+              ? _shortAddress(fullAddress)
+              : fullAddress,
+
+          'fullAddress': fullAddress,
+
         };
       }).toList();
-  
-      await _buildMarkersAndCircles();
 
-      if (highlightedId != null && selectedInquiry != null) {
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    Future.delayed(const Duration(milliseconds: 250), () {
-      mapController.move(
-        selectedInquiry!['latLng'],
-        15, // zoom
-      );
+      await _buildMarkers();
 
-      _showInquiryDetails(selectedInquiry!);
-    });
-  });
-}
+      if (!mounted) return;
+      setState(() => loading = false);
     } catch (e) {
       debugPrint("MAP ERROR: $e");
+      setState(() => loading = false);
+    }
+  }
+
+  Future<LatLng?> _getCachedLatLng(String address) async {
+    if (_addressCache.containsKey(address)) {
+      return _addressCache[address];
+    }
+
+    final result = await GeoService.getLatLngFromAddress(address);
+
+    if (result != null) {
+      _addressCache[address] = result;
+    }
+
+    return result;
+  }
+
+  LatLng _blur(LatLng original, String seed) {
+    final random = math.Random(seed.hashCode);
+    final latOffset = (random.nextDouble() - 0.5) * 0.006;
+    final lngOffset = (random.nextDouble() - 0.5) * 0.006;
+
+    return LatLng(
+      original.latitude + latOffset,
+      original.longitude + lngOffset,
+    );
+  }
+
+  Future<void> _buildMarkers() async {
+    final List<Marker> temp = [];
+    selectedInquiry = null;
+
+    for (final inquiry in inquiriesList) {
+      final address = inquiry['address'];
+      if (address == null || address.isEmpty) continue;
+
+      final latLng = await _getCachedLatLng(address);
+      if (latLng == null) continue;
+
+      final point = _blur(latLng, inquiry['id']);
+      inquiry['latLng'] = point;
+
+      final isHighlighted = inquiry['id'] == highlightedId;
+
+      if (isHighlighted) {
+        selectedInquiry = inquiry;
+      }
+
+      temp.add(
+        Marker(
+          point: point,
+          width: isHighlighted ? 60 : 45,
+          height: isHighlighted ? 60 : 45,
+          child: GestureDetector(
+            onTap: () {
+              if (isDetailed) {
+                _showBottomSheet(inquiry);
+              } else {
+                mapController.move(point, 15);
+              }
+            },
+            child: _buildMarker(isHighlighted),
+          ),
+        ),
+      );
     }
 
     if (!mounted) return;
 
     setState(() {
-      loading = false;
+      markers
+        ..clear()
+        ..addAll(temp);
     });
-  }
-  Future<LatLng?> getCachedLatLng(String address) async {
-    if (_addressCache.containsKey(address)) {
-      return _addressCache[address];
-    }
-    final LatLng? latLng = await GeoService.getLatLngFromAddress(address);
-    if (latLng != null) _addressCache[address] = latLng;
-    return latLng;
-  }
 
-  // --- deterministyczne rozmycie lokalizacji ---
-  LatLng _getBlurredLocation(LatLng original, String seed) {
-    final random = math.Random(seed.hashCode);
-    double latOffset = (random.nextDouble() - 0.5) * 0.006;
-    double lngOffset = (random.nextDouble() - 0.5) * 0.006;
-    return LatLng(original.latitude + latOffset, original.longitude + lngOffset);
-  }
-Future<void> _buildMarkersAndCircles() async {
-  final List<Marker> tempMarkers = [];
-
-  selectedInquiry = null;
-
-  // 🔥 najpierw sprawdzamy highlighted
-  if (highlightedId != null &&
-      !inquiriesList.any((e) => e['id'] == highlightedId)) {
-
-    final confirmed =
-        await ApiService().getConfirmedInquiryById(highlightedId!);
-
-    if (confirmed != null) {
-      inquiriesList.add(_mapConfirmedToInquiry(confirmed));
+    if (isDetailed &&
+        selectedInquiry != null &&
+        highlightedId != null) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        mapController.move(selectedInquiry!['latLng'], 15);
+        _showBottomSheet(selectedInquiry!);
+      });
     }
   }
 
-  // 🔥 dopiero TERAZ loop
-  for (var inquiry in inquiriesList) {
-    final address = inquiry['address'];
-    if (address == null || address.toString().isEmpty) continue;
-
-    final LatLng? exactLatLng = await getCachedLatLng(address);
-    if (exactLatLng == null) continue;
-
-    final LatLng blurredLatLng =
-        _getBlurredLocation(exactLatLng, inquiry['id']);
-
-    inquiry['latLng'] = blurredLatLng;
-
-    final bool isHighlighted = inquiry['id'] == highlightedId;
-
-    if (isHighlighted) {
-      selectedInquiry = inquiry;
-    }
-
-    tempMarkers.add(
-      Marker(
-        point: blurredLatLng,
-        width: isHighlighted ? 60 : 45,
-        height: isHighlighted ? 60 : 45,
-        child: GestureDetector(
-          onTap: () => _showInquiryDetails(inquiry),
-          child: _buildCustomMarker(isHighlighted: isHighlighted),
-        ),
-      ),
-    );
-  }
-
-  setState(() {
-    markers
-      ..clear()
-      ..addAll(tempMarkers);
-  });
-}
-  Map<String, dynamic> _mapConfirmedToInquiry(dynamic i) {
-  final displayFormatter = DateFormat('dd-MM-yyyy HH:mm');
-
-  DateTime? start =
-      DateTime.tryParse(i['scheduledStart'] ?? i['ScheduledStart']);
-
-  DateTime? end =
-      DateTime.tryParse(i['scheduledEnd'] ?? i['ScheduledEnd']);
-
-  return {
-    'id': (i['appointmentId'] ?? i['AppointmentId']).toString(),
-    'name': i['patientName'] ?? i['PatientName'] ?? '',
-    'startDate': start != null ? displayFormatter.format(start) : '',
-    'endDate': end != null ? displayFormatter.format(end) : '',
-    'description': i['description'] ?? i['Description'] ?? '',
-    'address': i['patientAddress'] ?? i['PatientAddress'] ?? '',
-  };
-}
-  void _showInquiryDetails(Map<String, dynamic> inquiry) {
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: Colors.transparent,
-    isScrollControlled: true,
-    builder: (context) => _buildBottomSheetSafe(inquiry),
-  );
-}
-
-// Opakowanie BottomSheet w SafeArea
-Widget _buildBottomSheetSafe(Map<String, dynamic> item) {
-  return SafeArea(
-    top: false, // ignoruje górny padding SafeArea
-    child: _buildBottomSheet(item),
-  );
-}
-  Widget _buildCustomMarker({required bool isHighlighted}) {
+  Widget _buildMarker(bool highlight) {
   return Container(
     decoration: BoxDecoration(
-      color: isHighlighted
-          ? Colors.green.withValues(alpha: 0.25)
-          : AppColors.error.withValues(alpha: 0.2),
+      color: Colors.red.withOpacity(0.2),
       shape: BoxShape.circle,
     ),
     child: Center(
       child: Container(
-        width: isHighlighted ? 18 : 14,
-        height: isHighlighted ? 18 : 14,
+        width: highlight ? 18 : 14,
+        height: highlight ? 18 : 14,
         decoration: BoxDecoration(
-          color: isHighlighted ? Colors.green : AppColors.error,
+          color: Colors.red,
           shape: BoxShape.circle,
           border: Border.all(color: Colors.white, width: 2),
         ),
@@ -239,11 +243,55 @@ Widget _buildBottomSheetSafe(Map<String, dynamic> item) {
     ),
   );
 }
-    
-  double getCircleRadius() {
-    double radius = zoom * 6; 
-    return radius < 50 ? 50 : radius;
+
+  void _showBottomSheet(Map<String, dynamic> item) {
+    if (!isDetailed) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return SafeArea(
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainer,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(item['name'] ?? ''),
+                const SizedBox(height: 8),
+                Text(item['address'] ?? ''),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => OfferFormScreen(
+                          appointmentId: item['id'],
+                          patientName: item['name'],
+                          startDate: item['startDate'],
+                          endDate: item['endDate'],
+                          description: item['description'],
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Text("Szczegóły"),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -265,83 +313,4 @@ Widget _buildBottomSheetSafe(Map<String, dynamic> item) {
             ),
     );
   }
-   Widget _buildBottomSheet(Map<String, dynamic> item) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainer,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 20),
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          Text(
-            item['name'] ?? "Brak nazwy",
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          _infoRow(Icons.calendar_month, item['startDate'] ?? "Brak daty"),
-          const SizedBox(height: 8),
-          _infoRow(Icons.location_on_outlined, "Okolice: ${item['address']}"),
-          const SizedBox(height: 16),
-          Text(
-            item['description'] ?? "",
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accent,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-              onPressed: () {
-                Navigator.pop(context); // Zamknij modal
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => OfferFormScreen(
-                      appointmentId: item['id'],
-                      patientName: item['name'],
-                      startDate: item['startDate'],
-                      endDate: item['endDate'] ?? "",
-                      description: item['description'],
-                    ),
-                  ),
-                );
-              },
-              child: const Text("Pokaż szczegóły i odpowiedz", style: TextStyle(fontSize: 16)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  Widget _infoRow(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: AppColors.error),
-        const SizedBox(width: 8),
-        Expanded(child: Text(text, style: const TextStyle(fontWeight: FontWeight.w500))),
-      ],
-    );
-  }
-
 }

@@ -21,6 +21,7 @@ dependencies:
   table_calendar: ^3.0.9
   geocoding: ^2.1.0
   shared_preferences: ^2.5.5
+  http: ^1.2.0
 
 
 dev_dependencies:

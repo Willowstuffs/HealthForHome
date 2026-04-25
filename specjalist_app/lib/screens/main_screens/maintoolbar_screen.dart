@@ -23,27 +23,24 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   late int _selectedIndex;
   List<Map<String, dynamic>> inquiries = [];
-
-  late final List<Widget> _screens;
+  List<Widget> get _screens => [
+        StartScreen(
+          highlightAppointmentId: widget.highlightAppointmentId,
+        ),
+        const WorkScreen(),
+        MapScreen(
+          key: ValueKey(widget.highlightAppointmentId),
+          inquiries: inquiries,
+          highlightId: widget.highlightAppointmentId,
+        ),
+        const UpcomingScreen(),
+        const ProfilScreen(),
+      ];
 
   @override
   void initState() {
     super.initState();
     _selectedIndex = widget.startIndex;
-
-    _screens = [
-      StartScreen(
-        highlightAppointmentId: widget.highlightAppointmentId,
-      ),
-      const WorkScreen(),
-      MapScreen(
-        key: ValueKey(widget.highlightAppointmentId), 
-        inquiries: inquiries,
-        highlightId: widget.highlightAppointmentId,
-      ),
-      const UpcomingScreen(),
-      const ProfilScreen(),
-    ];
   }
 
 
@@ -52,15 +49,39 @@ class _MainScreenState extends State<MainScreen> {
       _selectedIndex = index;
     });
   }
+  
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _screens,
-      ),
-      bottomNavigationBar: BottomNavigationBar(
+    // Owinięcie całego Scaffold w PopScope
+    return PopScope(
+      canPop: false, // Blokuje natywne zamknięcie aplikacji/powrót
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+
+        // Logika przycisku wstecz:
+        if (_selectedIndex != 0) {
+          // Jeśli nie jesteśmy na Home (index 0), wróć do Home
+          setState(() {
+            _selectedIndex = 0;
+          });
+        } else {
+          // Jeśli jesteśmy już na Home, wyświetlamy informację
+          // (Użytkownik musi użyć przycisku systemowego Home/Gesture, by wyjść)
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Jesteś na ekranie głównym. Użyj przycisku Home, aby wyjść.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      },
+      child: Scaffold(
+        body: IndexedStack(
+          index: _selectedIndex,
+          children: _screens,
+        ),
+        bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
@@ -144,6 +165,7 @@ class _MainScreenState extends State<MainScreen> {
             label: 'Profil',
           ),
         ],
+      ),
       ),
     );
   }

@@ -26,7 +26,7 @@ class _StartScreenState extends State<StartScreen> {
   final Set<String> _readIds = {};
   bool isLoading = true;
   String? highlightedId;
-  final firstName = UserSession.firstName ?? '';
+  String get firstName => UserSession.firstName ?? '';
   final now = DateTime.now();
  @override
   void initState() {
@@ -35,12 +35,40 @@ class _StartScreenState extends State<StartScreen> {
   }
 
   Future<void> _initializeData() async {
+    await _loadProfile();   
+    await _loadServices();
     await _loadReadStatus(); 
     await _initializeNotifications();
     await _fetchData(); 
 
     AppRefreshService().stream.listen((_) => _fetchData());
   }
+  Future<void> _loadServices() async {
+  try {
+    final result = await ApiService().getServices();
+    UserSession.services = result;
+  } catch (e) {
+    debugPrint("Services load error: $e");
+  }
+}
+ bool get _hasValidProfile {
+  final hasCity = UserSession.profile?.serviceAreas?.any(
+        (a) => a.city.trim().isNotEmpty,
+      ) ??
+      false;
+
+  final hasService = UserSession.services.isNotEmpty;
+
+  return hasCity && hasService;
+}
+Future<void> _loadProfile() async {
+  try {
+    final profileJson = await ApiService().getProfile();
+    UserSession.setProfileFromApi(profileJson, UserSession.token ?? '');
+  } catch (e) {
+    debugPrint("Profile load error: $e");
+  }
+}
  Future<void> _loadReadStatus() async {
     final prefs = await SharedPreferences.getInstance();
     final List<String>? savedIds = prefs.getStringList('read_appointments');
@@ -160,28 +188,112 @@ class _StartScreenState extends State<StartScreen> {
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: SafeArea(
-        child: isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
-                onRefresh: _fetchData,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildHeader(),
-                      const SizedBox(height: 32),
-                      _buildSectionTitle('Nowe zapytania', Icons.notifications_active_outlined),
-                      const SizedBox(height: 16),
-                      _buildInquiriesList(),
-                    ],
-                  ),
+  child: isLoading
+      ? const Center(child: CircularProgressIndicator())
+      : !_hasValidProfile
+          ? _buildIncompleteProfileInfo()
+          : RefreshIndicator(
+              onRefresh: _fetchData,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(),
+                    const SizedBox(height: 32),
+                    _buildSectionTitle(
+                        'Nowe zapytania',
+                        Icons.notifications_active_outlined),
+                    const SizedBox(height: 16),
+                    _buildInquiriesList(),
+                  ],
                 ),
               ),
-      ),
+            ),
+),
     );
   }
+  Widget _buildDebugInfo() {
+  final cities = UserSession.profile?.serviceAreas ?? [];
+  final specs = UserSession.profile?.specializations ?? [];
+
+  return Container(
+    padding: const EdgeInsets.all(12),
+    margin: const EdgeInsets.only(bottom: 16),
+    decoration: BoxDecoration(
+      color: Colors.black12,
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("DEBUG PROFIL", style: TextStyle(fontWeight: FontWeight.bold)),
+        Text("Miasta: ${cities.map((e) => e.city).join(', ')}"),
+        Text("Usługi: ${specs.join(', ')}"),
+      ],
+    ),
+  );
+}
+  Widget _buildIncompleteProfileInfo() {
+  return Center(
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child: Container(
+        padding: const EdgeInsets.all(28),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainer,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.outlineVariant),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.info_outline,
+                size: 56, color: AppColors.primary),
+
+            const SizedBox(height: 20),
+
+            Text(
+              "Uzupełnij profil, aby otrzymywać oferty",
+              
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+          _buildDebugInfo(),
+            const SizedBox(height: 12),
+
+            Text(
+              "Dodaj przynajmniej jedną usługę oraz ustaw miejsce pracy (miasto). Bez tego zapytania nie będą wyświetlane.",
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+
+            const SizedBox(height: 24),
+
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const MainScreen(startIndex: 4),
+                    ),
+                  );
+                },
+                child: const Text("Uzupełnij profil"),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
 Widget _buildHeader() {
    final newCount = inquiries.where((i) => i['isNew'] == true).length;
     return Container(

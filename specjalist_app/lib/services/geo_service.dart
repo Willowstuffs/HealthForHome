@@ -1,7 +1,11 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:geocoding/geocoding.dart';
 
 class GeoService {
+
+  /// ADDRESS → LAT LNG
   static Future<LatLng?> getLatLngFromAddress(String address) async {
     try {
       final locations = await locationFromAddress(address);
@@ -16,6 +20,8 @@ class GeoService {
       return null;
     }
   }
+
+  /// SERVICE AREA PAYLOAD
   static Future<Map<String, dynamic>> getServiceAreaPayload({
     required String city,
     String? postalCode,
@@ -36,7 +42,6 @@ class GeoService {
       }
     } catch (e) {
       print("Geocoding error: $e");
-      point = null;
     }
 
     return {
@@ -48,7 +53,36 @@ class GeoService {
     };
   }
 
-  /// 🔥 Reverse geocoding – coordinates → approximate address
+  /// ✅ REAL ADDRESS VALIDATION (OpenStreetMap)
+  static Future<bool> validateAddress({
+    required String city,
+    required String postalCode,
+  }) async {
+    try {
+      final uri = Uri.parse(
+        "https://nominatim.openstreetmap.org/search"
+        "?city=$city&postalcode=$postalCode&format=json&limit=1",
+      );
+
+      final response = await http.get(
+        uri,
+        headers: {"User-Agent": "specjalist-app"},
+      );
+
+      if (response.statusCode != 200) {
+        return false;
+      }
+
+      final data = jsonDecode(response.body);
+
+      return data != null && data.isNotEmpty;
+    } catch (e) {
+      print("Validation error: $e");
+      return false;
+    }
+  }
+
+  /// COORDINATES → ADDRESS
   static Future<String?> getAddressFromLatLng(LatLng point) async {
     try {
       final placemarks =
@@ -58,7 +92,6 @@ class GeoService {
 
       final place = placemarks.first;
 
-      // Składamy przybliżony adres
       final parts = [
         place.street,
         place.locality,

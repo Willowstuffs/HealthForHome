@@ -3,6 +3,7 @@ import 'package:specjalist_app/screens/edit_profile_info.dart';
 import 'package:specjalist_app/screens/home_screen.dart';
 import 'package:specjalist_app/services/user_profile.dart';
 import '../../theme/app_theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfilScreen extends StatefulWidget {
   const ProfilScreen({super.key});
@@ -205,21 +206,29 @@ Widget _buildProfileCard() {
         SizedBox(
           width: double.infinity,
           child: TextButton(
-            onPressed: () {
-              UserSession.clear();
-
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const HomeScreen(),
-                ),
-              );
-            },
+            onPressed: _logout,
             child: const Text('Wyloguj się'),
           ),
         ),
       ],
     ),
+  );
+}
+Future<void> _logout() async {
+  final prefs = await SharedPreferences.getInstance();
+
+  await prefs.clear();
+
+  UserSession.clear();
+
+  //await NotificationService().deleteTokenFromServer();
+
+  if (!mounted) return;
+
+  Navigator.pushAndRemoveUntil(
+    context,
+    MaterialPageRoute(builder: (_) => const HomeScreen()),
+    (route) => false,
   );
 }
 Widget _buildInfoRow(String title, String value) {

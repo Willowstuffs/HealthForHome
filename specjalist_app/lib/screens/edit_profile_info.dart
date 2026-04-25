@@ -23,6 +23,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
   final TextEditingController cityController = TextEditingController();
   final TextEditingController areaController = TextEditingController();
   final TextEditingController postalCodeController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
   File? _selectedImage;
   bool isLoading = true;
 @override
@@ -66,22 +67,38 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
     }
   }
   Future<void> _saveProfile() async {
-    final cityValue = cityController.text.trim();
-    final distanceValue = int.tryParse(areaController.text.trim()) ?? 0;
-
-    if (cityValue.isEmpty || distanceValue <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Wprowadź poprawne dane: miasto i zasięg pracy')),
-      );
+    
+    if (!_formKey.currentState!.validate()) {
       return;
     }
+    
+      final cityValue = cityController.text.trim();
+      final distanceValue = int.tryParse(areaController.text.trim()) ?? 0;
+
+     if (cityValue.isEmpty || distanceValue <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Wprowadź poprawne dane: miasto i zasięg pracy')),
+        );
+        return;
+      }
 
     try {
       setState(() => isLoading = true);
+       final isValidAddress = await GeoService.validateAddress(
+          city: cityController.text.trim(),
+          postalCode: postalCodeController.text.trim(),
+        );
 
+        if (!isValidAddress) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Adres nie istnieje"),
+            ),
+          );
+          return;
+        }
       final api = ApiService();
-      print("Zapisuję profil...");
       // Aktualizacja profilu (dane i avatar)
       await api.updateProfile(
         firstName: firstNameController.text.trim(),
@@ -133,9 +150,11 @@ Widget build(BuildContext context) {
       title: const Text("Edytuj profil"),
       centerTitle: true,
     ),
-    body: isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : SingleChildScrollView(
+   body: isLoading
+    ? const Center(child: CircularProgressIndicator())
+    : Form(
+        key: _formKey,
+        child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Center(
               child: ConstrainedBox(
@@ -149,11 +168,30 @@ Widget build(BuildContext context) {
                     _buildEditableCard("Nazwisko", lastNameController),
                     _buildEditableCard("Email", emailController),
                     _buildEditableCard("Telefon", phoneController),
-                    _buildEditableCard("Miasto", cityController),
+                    _buildEditableCard(
+                      "Miasto",
+                      cityController,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Podaj miasto";
+                        }
+                        if (value.length < 2) {
+                          return "Niepoprawne miasto";
+                        }
+                        return null;
+                      },
+                    ),
                     _buildEditableCard(
                       "Zasięg pracy (km)",
                       areaController,
                       keyboardType: TextInputType.number,
+                      validator: (value) {
+                        final number = int.tryParse(value ?? "");
+                        if (number == null || number <= 0) {
+                          return "Podaj poprawny zasięg";
+                        }
+                        return null;
+                      },
                     ),
 
                     const SizedBox(height: 24),
@@ -170,12 +208,14 @@ Widget build(BuildContext context) {
               ),
             ),
           ),
+    ),
   );
 }
-  Widget _buildEditableCard(
+Widget _buildEditableCard(
   String title,
   TextEditingController controller, {
   TextInputType? keyboardType,
+  String? Function(String?)? validator,
 }) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 16),
@@ -189,9 +229,10 @@ Widget build(BuildContext context) {
               ),
         ),
         const SizedBox(height: 8),
-        TextField(
+        TextFormField(
           controller: controller,
           keyboardType: keyboardType,
+          validator: validator,
           decoration: const InputDecoration(),
         ),
       ],

@@ -25,6 +25,28 @@ class AppColors {
   static const Color outlineVariant = Color(0xFFF3F4F6);
 
   static const Color error = Color(0xFFEF4444);
+   static const Color statusOpen = Color(0xFF0284C7);
+  static const Color statusConfirmed = accent;
+  static const Color statusCancelled = error;
+  static const Color statusCompleted = Color(0xFF475569);
+  static const Color statusPending = Color(0xFFD97706);
+
+  static Color getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'open':
+        return statusOpen;
+      case 'confirmed':
+        return statusConfirmed;
+      case 'cancelled':
+        return statusCancelled;
+      case 'completed':
+        return statusCompleted;
+      case 'pending':
+        return statusPending;
+      default:
+        return textSecondary;
+    }
+  }
 }
 
 class AppTheme {

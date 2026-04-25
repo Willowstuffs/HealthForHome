@@ -1,6 +1,9 @@
+import 'package:specjalist_app/services/specjalist_service.dart';
+
 class UserSession {
   static Map<String, dynamic>? rawProfile;
   static UserProfile? profile;
+  static List<SpecialistService> services = [];
   static String? token;
   // GETTERY POD UI
   static String? get firstName => profile?.firstName;
@@ -16,7 +19,9 @@ class UserSession {
     profile = UserProfile.fromApi(json);
     token = jwtToken;
   }
-
+  static void setServices(List<SpecialistService> list) {
+    services = list;
+  }
   // WYCZYŚĆ (logout)
   static void clear() {
     rawProfile = null;
