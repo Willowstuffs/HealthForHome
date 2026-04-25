@@ -1,14 +1,11 @@
-using Google.Apis.Requests;
 using H4H.Core.Models;
 using H4H.Data;
 using H4H_API.DTOs.Client;
 using H4H_API.DTOs.Specialist;
 using H4H_API.Exceptions;
-using H4H_API.Helpers;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using NetTopologySuite;
-using NetTopologySuite.Algorithm;
 using ErrorCodes = H4H_API.Helpers.ErrorCodes;
 using SpecialistServiceEntity = H4H.Core.Models.SpecialistService;
 
@@ -17,10 +14,12 @@ namespace H4H_API.Services.Implementations
     public class SpecialistService : ISpecialistService
     {
         private readonly ApplicationDbContext _context;
+        private readonly FirebaseNotificationService _firebaseNotificationService;
 
-        public SpecialistService(ApplicationDbContext context)
+        public SpecialistService(ApplicationDbContext context, FirebaseNotificationService firebaseNotificationService)
         {
             _context = context;
+            _firebaseNotificationService = firebaseNotificationService;
         }
 
         public async Task<SpecialistDto> GetProfileAsync(Guid userId)
@@ -84,7 +83,7 @@ namespace H4H_API.Services.Implementations
             /// </summary>
             var query = _context.appointments
                 .Include(a => a.Client)
-                .Include(a => a.ServiceType)
+                .Include(a => a.ServiceType) 
                 .AsQueryable();
 
             query = query.Where(a =>
@@ -137,7 +136,8 @@ namespace H4H_API.Services.Implementations
                     ScheduledStart = a.ScheduledStart,
                     ScheduledEnd = a.ScheduledEnd,
                     PatientName = a.Client.FirstName + " " + a.Client.LastName,
-                    ServiceName = a.SpecialistService!.ServiceType.Name,
+                    // Pobieramy nazwę z ServiceType przypisanego do ogłoszenia
+                    ServiceName = a.ServiceType != null ? a.ServiceType.Name : "Nieznana kategoria",
                     Status = a.AppointmentStatus,
                     PatientAddress = a.ClientAddress ?? a.Client.Address ?? "Brak adresu",
                     Price = a.TotalPrice ?? 0,
@@ -145,7 +145,7 @@ namespace H4H_API.Services.Implementations
 
                     DistanceKm = Math.Round(a.Location!.Distance(area.Location) / 1000, 2)
                 })
-    .ToListAsync();
+                .ToListAsync();
             return result;
         }
         public async Task UpdateLicenseNumberAsync(Guid userId, string licenseNumber)
@@ -229,28 +229,65 @@ namespace H4H_API.Services.Implementations
 
             return types;
         }
+
         public async Task AddServiceAsync(Guid userId, SpecialistServiceManageDto dto)
         {
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
-                 ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound); // ErrorCode: SPEC_001
+                 ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
 
-            // Duplikaty
+            Guid serviceTypeId;
+
+            //Logika ustalania ServiceTypeId (Istniejące vs Nowe)
+            if (dto.ServiceTypeId.HasValue && dto.ServiceTypeId != Guid.Empty)
+            {
+                serviceTypeId = dto.ServiceTypeId.Value;
+            }
+            else if (!string.IsNullOrWhiteSpace(dto.ServiceName))
+            {
+                //Szukamy czy taka nazwa już istnieje w bazie (case-insensitive)
+                var existingType = await _context.service_types
+                    .FirstOrDefaultAsync(st => st.Name.ToLower() == dto.ServiceName.ToLower());
+
+                if (existingType != null)
+                {
+                    serviceTypeId = existingType.Id;
+                }
+                else
+                {
+                    //Tworzymy nowy typ usługi, jeśli nie znaleziono
+                    var newType = new ServiceType
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = dto.ServiceName,
+                        Category = dto.Category ?? "Inne", // domyślna kategoria jeśli nie podano
+                        DefaultDuration = dto.DurationMinutes
+                    };
+                    _context.service_types.Add(newType);
+                    await _context.SaveChangesAsync(); // zapisujemy od razu by miec ID
+                    serviceTypeId = newType.Id;
+                }
+            }
+            else
+            {
+                throw new AppException("Musisz podać ID usługi lub jej nazwę.", ErrorCodes.ValidationError);
+            }
+
+            //Sprawdzenie duplikatu u tego konkretnego specjalisty
             var exists = await _context.specialist_services
-                .AnyAsync(ss => ss.SpecialistId == specialist.Id && ss.ServiceTypeId == dto.ServiceTypeId);
-            // Wlasny wyjatek z kodem bledu dla duplikatu
-            if (exists) throw new AppException("Masz już tę usługę.", ErrorCodes.ServiceAlreadyExists);
+                .AnyAsync(ss => ss.SpecialistId == specialist.Id && ss.ServiceTypeId == serviceTypeId);
 
-            // Nowa encja z bazy danych
+            if (exists) throw new AppException("Masz już tę usługę w swoim profilu.", ErrorCodes.ServiceAlreadyExists);
+
+            //Dodanie usługi do profilu specjalisty
             var newService = new SpecialistServiceEntity
             {
                 Id = Guid.NewGuid(),
                 SpecialistId = specialist.Id,
-                ServiceTypeId = dto.ServiceTypeId,
+                ServiceTypeId = serviceTypeId,
                 Price = dto.Price,
                 DurationMinutes = dto.DurationMinutes,
                 Description = dto.Description,
                 IsActive = true,
-                //CreatedAt = DateTime.UtcNow
                 CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
             };
 
@@ -262,21 +299,18 @@ namespace H4H_API.Services.Implementations
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
                 ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
 
-            // Pobieranie konkretnej uslugi
             var service = await _context.specialist_services
-                .FirstOrDefaultAsync(ss => ss.Id == serviceId && ss.SpecialistId == specialist.Id);
+                .FirstOrDefaultAsync(ss => ss.Id == serviceId && ss.SpecialistId == specialist.Id)
+                ?? throw new AppException("Usługa nie znaleziona.", ErrorCodes.ServiceNotFound);
 
-            if (service != null)
-            {
-                // Aktualizacja pól
-                service.Price = dto.Price;
-                service.DurationMinutes = dto.DurationMinutes;
-                service.Description = dto.Description;
-                service.ServiceTypeId = dto.ServiceTypeId;
+            service.Price = dto.Price;
+            service.DurationMinutes = dto.DurationMinutes;
+            service.Description = dto.Description;
 
-                await _context.SaveChangesAsync();
-            }
-            throw new AppException("Usługa nie znaleziona.", ErrorCodes.ServiceNotFound); //SERV_002
+            // Jeśli DTO przesyła nowe ServiceTypeId, też je aktualizujemy
+            if (dto.ServiceTypeId.HasValue) service.ServiceTypeId = dto.ServiceTypeId.Value;
+
+            await _context.SaveChangesAsync();
         }
 
         public async Task DeleteServiceAsync(Guid userId, Guid serviceId)
@@ -336,7 +370,7 @@ namespace H4H_API.Services.Implementations
             await _context.SaveChangesAsync();
         }
 
-        public async Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId, List<Guid> serviceTypeIds, decimal price)
+        public async Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId, List<Guid> serviceTypeIds, decimal price, DateTime proposedDate)
         {
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
                 ?? throw new AppException("Profil nie istnieje.", ErrorCodes.SpecialistNotFound);
@@ -359,14 +393,54 @@ namespace H4H_API.Services.Implementations
                 SpecialistId = specialist.Id,
                 Price = price,
                 ServiceTypeIds = serviceTypeIds,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                ProposedDate = proposedDate
             };
             _context.appointments_specialists.Add(appointmentSpecialist);
 
             appointment.AppointmentStatus = "pending";
 
+            var clientUserId = await _context.clients
+                .Where(c => c.Id == appointment.ClientId)
+                .Select(c => c.UserId)
+                .FirstOrDefaultAsync();
+
+            var clientToken = await _context.device_tokens
+                .Where(dt => dt.UserId == clientUserId)
+                .Select(dt => dt.FcmToken)
+                .FirstOrDefaultAsync();
+
+            var body = "";
+
+            var serviceTypeName = await _context.service_types
+                .Where(st => st.Id == appointment.ServiceTypeId)
+                .Select(st => st.Name)
+                .FirstOrDefaultAsync();
+
+            if (appointment.ClientNotes != null && appointment.ClientNotes.Length > 30)
+                body = serviceTypeName != null ? $"Twoje ogłoszenie z kategorii {serviceTypeName} - {appointment.ClientNotes[..30]}... otrzymało nową ofertę!" :
+                    $"Twoje ogłoszenie - {appointment.ClientNotes[..30]}... otrzymało nową ofertę!";
+            else if (appointment.ClientNotes != null)
+                body = serviceTypeName != null ? $"Twoje ogłoszenie z kategorii {serviceTypeName} - {appointment.ClientNotes} otrzymało nową ofertę!" :
+                    $"Twoje ogłoszenie - {appointment.ClientNotes} otrzymało nową ofertę!";
+            else
+                body = serviceTypeName != null ? $"Twoje ogłoszenie z kategorii {serviceTypeName} otrzymało nową ofertę!" :
+                    $"Twoje ogłoszenie otrzymało nową ofertę!";
+
+            if (clientToken != null)
+            {
+                await _firebaseNotificationService.SendNotificationAsync(
+                    clientToken,
+                    "Nowa oferta!",
+                    body,
+                    appointment.Id.ToString(),
+                    isClientApp: true
+                );
+            }
+
             await _context.SaveChangesAsync();
         }
+
         public async Task ShowConfirmAppointmentAsync(Guid userId, Guid appointmentId)
         {
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
@@ -417,9 +491,8 @@ namespace H4H_API.Services.Implementations
             /// </summary>
             var query = _context.appointments
                 .Include(a => a.Client)
-                .Include(a => a.SpecialistService)
-                    .ThenInclude(ss => ss!.ServiceType) //by dostac nazwe uslugi
-                .Where(a => a.SpecialistService!.SpecialistId == specialist.Id)
+                .Where(a => a.SpecialistId == specialist.Id)
+                .Where(a => a.AppointmentStatus == "confirmed") // Pokazujemy tylko potwierdzone wizyty, które są w przyszłości (lub dzisiaj)
                 .AsQueryable();
 
 
@@ -437,25 +510,34 @@ namespace H4H_API.Services.Implementations
                     (a.Client.LastName != null && a.Client.LastName.ToLower().Contains(search))
                 );
             }
-            //filtrowanie po statusie
-            query = query.Where(a => a.AppointmentStatus == "confirmed");
 
             //Pobranie danych i mapowanie na DTO
-            var result = await query
-                .OrderByDescending(a => a.ScheduledStart)
-                .Select(a => new InquiryListItemDto
-                {
-                    AppointmentId = a.Id,
-                    ScheduledStart = a.ScheduledStart,
-                    ScheduledEnd = a.ScheduledEnd,
-                    PatientName = a.Client.FirstName + " " + a.Client.LastName,
-                    ServiceName = a.SpecialistService!.ServiceType.Name,
-                    Status = a.AppointmentStatus,
-                    PatientAddress = a.ClientAddress ?? a.Client.Address ?? "Brak adresu",
-                    Price = a.TotalPrice ?? 0
-                })
-                .ToListAsync();
-            return result;
+            var appointments = await query.OrderByDescending(a => a.ScheduledStart).ToListAsync();
+
+            var allServiceIds = appointments.SelectMany(a => a.SpecialistServiceIds).Distinct().ToList();
+            var serviceNamesMap = new Dictionary<Guid, string>();
+
+            if (allServiceIds.Any())
+            {
+                serviceNamesMap = await _context.specialist_services
+                    .Include(ss => ss.ServiceType)
+                    .Where(ss => allServiceIds.Contains(ss.Id))
+                    .ToDictionaryAsync(ss => ss.Id, ss => ss.ServiceType.Name);
+            }
+
+            return appointments.Select(a => new InquiryListItemDto
+            {
+                AppointmentId = a.Id,
+                ScheduledStart = a.ScheduledStart,
+                ScheduledEnd = a.ScheduledEnd,
+                PatientName = a.Client.FirstName + " " + a.Client.LastName,
+                ServiceName = string.Join(", ", a.SpecialistServiceIds
+                                .Where(id => serviceNamesMap.ContainsKey(id))
+                                .Select(id => serviceNamesMap[id])),
+                Status = a.AppointmentStatus,
+                PatientAddress = a.ClientAddress ?? a.Client.Address ?? "Brak adresu",
+                Price = a.TotalPrice ?? 0
+            }).ToList();
         }
         public async Task<List<InquiryListItemDto>> GetArchiveInquiriesAsync(Guid userId, InquiryFilterDto filters)
         {
@@ -467,12 +549,9 @@ namespace H4H_API.Services.Implementations
             /// </summary>
             var query = _context.appointments
                 .Include(a => a.Client)
-                .Include(a => a.SpecialistService)
-                    .ThenInclude(ss => ss!.ServiceType) //by dostac nazwe uslugi
-                .Where(a => a.SpecialistService!.SpecialistId == specialist.Id)
+                .Where(a => a.SpecialistId == specialist.Id) // Filtrujemy bezpośrednio po ID specjalisty w wizycie
+                .Where(a => a.AppointmentStatus == "completed")
                 .AsQueryable();
-
-
 
             if (!string.IsNullOrEmpty(filters.PatientName))
             {
@@ -482,24 +561,40 @@ namespace H4H_API.Services.Implementations
                     (a.Client.LastName != null && a.Client.LastName.ToLower().Contains(search))
                 );
             }
-            //filtrowanie po statusie
-            query = query.Where(a => a.AppointmentStatus == "completed");
 
-            //Pobranie danych i mapowanie na DTO
-            var result = await query
+            // Pobieramy listę wizyt z bazy
+            var appointments = await query
                 .OrderByDescending(a => a.ScheduledStart)
-                .Select(a => new InquiryListItemDto
-                {
-                    AppointmentId = a.Id,
-                    ScheduledStart = a.ScheduledStart,
-                    ScheduledEnd = a.ScheduledEnd,
-                    PatientName = a.Client.FirstName + " " + a.Client.LastName,
-                    ServiceName = a.SpecialistService!.ServiceType.Name,
-                    Status = a.AppointmentStatus,
-                    PatientAddress = a.ClientAddress ?? a.Client.Address ?? "Brak adresu",
-                    Price = a.TotalPrice ?? 0
-                })
                 .ToListAsync();
+
+            // Pobieramy nazwy usług dla wszystkich wizyt (jedno zapytanie do bazy)
+            var allServiceIds = appointments.SelectMany(a => a.SpecialistServiceIds).Distinct().ToList();
+            var serviceNamesMap = new Dictionary<Guid, string>();
+
+            if (allServiceIds.Any())
+            {
+                serviceNamesMap = await _context.specialist_services
+                    .Include(ss => ss.ServiceType)
+                    .Where(ss => allServiceIds.Contains(ss.Id))
+                    .ToDictionaryAsync(ss => ss.Id, ss => ss.ServiceType.Name);
+            }
+
+            // Mapujemy na DTO i łączymy nazwy usług w jeden ciąg tekstowy (np. "Konsultacja, Zastrzyk")
+            var result = appointments.Select(a => new InquiryListItemDto
+            {
+                AppointmentId = a.Id,
+                ScheduledStart = a.ScheduledStart,
+                ScheduledEnd = a.ScheduledEnd,
+                PatientName = a.Client.FirstName + " " + a.Client.LastName,
+                // Pobieramy nazwy z mapy na podstawie tablicy ID
+                ServiceName = string.Join(", ", a.SpecialistServiceIds
+                                .Where(id => serviceNamesMap.ContainsKey(id))
+                                .Select(id => serviceNamesMap[id])),
+                Status = a.AppointmentStatus,
+                PatientAddress = a.ClientAddress ?? a.Client.Address ?? "Brak adresu",
+                Price = a.TotalPrice ?? 0
+            }).ToList();
+
             return result;
         }
         public async Task UpdateProfileAsync(Guid userId, UpdateSpecialistProfileDto dto)
@@ -650,6 +745,6 @@ namespace H4H_API.Services.Implementations
                 .OrderBy(s => s.DistanceKm)
                 .ToListAsync();
         }
-        
+
     }
 }

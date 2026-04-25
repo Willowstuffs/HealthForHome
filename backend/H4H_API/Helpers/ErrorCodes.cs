@@ -12,8 +12,14 @@ namespace H4H_API.Helpers
         public const string InvalidCredentials = "AUTH_001";
         public const string EmailTaken = "AUTH_002";
         public const string UserNotFound = "AUTH_003";
+        public const string InvalidToken = "AUTH_007";
+        public const string RefreshTokenInvalidOrExpired = "AUTH_008";
+        public const string UserInactive = "AUTH_009";
+
         // Specjalista
+
         public const string SpecialistNotFound = "SPEC_001";
+
         // Walidacja danych
         public const string ValidationError = "VAL_001";
         public const string ServiceAlreadyExists = "SERV_001";

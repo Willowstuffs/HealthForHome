@@ -3,12 +3,13 @@ using H4H_API.DTOs.Common;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 namespace H4H_API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    // TODO: Dodać [Authorize(Roles = "admin")] gdy wdrożymy JWT dla admina
+    [Authorize(Roles = "admin")]
     public class AdminController : ControllerBase
     {
         private readonly IAdminService _adminService;

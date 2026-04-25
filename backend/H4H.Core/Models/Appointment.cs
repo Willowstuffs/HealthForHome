@@ -15,11 +15,11 @@ namespace H4H.Core.Models
         [Column("specialist_id")]
         public Guid? SpecialistId { get; set; } // Zmiana na nullable (dla ogłoszeń "open")
 
-        [Column("specialist_service_id")]
-        public Guid? SpecialistServiceId { get; set; }
+        [Column("specialist_service_ids")]
+        public Guid[] SpecialistServiceIds { get; set; } = Array.Empty<Guid>(); // Zmiana na tablicę Guidów (dla wielu usług) - może być pusta dla ogłoszeń "open"
 
         [Column("service_type_id")]
-        public Guid? ServiceTypeId { get; set; } // kategoria
+        public Guid ServiceTypeId { get; set; } // kategoria uslugi akceptowana w ogłoszeniu
 
         [Column("location")]
         public Point? Location { get; set; } // Kolumna do obliczeń dystansu (PostGIS/NetTopologySuite)
@@ -70,10 +70,13 @@ namespace H4H.Core.Models
         [Column("selected_specialist_id")]
         public Guid? SelectedSpecialistId { get; set; }
 
+        [Column("final_date")] // dodanie pola na ostateczną datę (z godziną) po wyborze specjalisty
+        public DateTime? FinalDate { get; set; }
+
 
         public virtual Client Client { get; set; } = null!;
         public virtual Specialist? Specialist { get; set; } 
-        public virtual SpecialistService? SpecialistService { get; set; }
+        //public virtual SpecialistService? SpecialistService { get; set; } // usuwam, bo teraz mamy tablicę SpecialistServiceIds - relacja będzie realizowana przez AppointmentSpecialist
         public virtual ServiceType ServiceType { get; set; } = null!;
 
         public virtual Payment? Payment { get; set; }
