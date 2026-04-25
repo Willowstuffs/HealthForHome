@@ -1,14 +1,11 @@
-using Google.Apis.Requests;
 using H4H.Core.Models;
 using H4H.Data;
 using H4H_API.DTOs.Client;
 using H4H_API.DTOs.Specialist;
 using H4H_API.Exceptions;
-using H4H_API.Helpers;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using NetTopologySuite;
-using NetTopologySuite.Algorithm;
 using ErrorCodes = H4H_API.Helpers.ErrorCodes;
 using SpecialistServiceEntity = H4H.Core.Models.SpecialistService;
 
@@ -17,10 +14,12 @@ namespace H4H_API.Services.Implementations
     public class SpecialistService : ISpecialistService
     {
         private readonly ApplicationDbContext _context;
+        private readonly FirebaseNotificationService _firebaseNotificationService;
 
-        public SpecialistService(ApplicationDbContext context)
+        public SpecialistService(ApplicationDbContext context, FirebaseNotificationService firebaseNotificationService)
         {
             _context = context;
+            _firebaseNotificationService = firebaseNotificationService;
         }
 
         public async Task<SpecialistDto> GetProfileAsync(Guid userId)
@@ -258,7 +257,7 @@ namespace H4H_API.Services.Implementations
             }
             else
             {
-                throw new AppException("Musisz podać ID usługi lub jej nazwę.", ErrorCodes.ValidationError); 
+                throw new AppException("Musisz podać ID usługi lub jej nazwę.", ErrorCodes.ValidationError);
             }
 
             //Sprawdzenie duplikatu u tego konkretnego specjalisty
@@ -359,7 +358,7 @@ namespace H4H_API.Services.Implementations
             await _context.SaveChangesAsync();
         }
 
-        public async Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId, List<Guid> serviceTypeIds, decimal price)
+        public async Task ConfirmAppointmentAsync(Guid userId, Guid appointmentId, List<Guid> serviceTypeIds, decimal price, DateTime proposedDate)
         {
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
                 ?? throw new AppException("Profil nie istnieje.", ErrorCodes.SpecialistNotFound);
@@ -382,14 +381,54 @@ namespace H4H_API.Services.Implementations
                 SpecialistId = specialist.Id,
                 Price = price,
                 ServiceTypeIds = serviceTypeIds,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                ProposedDate = proposedDate
             };
             _context.appointments_specialists.Add(appointmentSpecialist);
 
             appointment.AppointmentStatus = "pending";
 
+            var clientUserId = await _context.clients
+                .Where(c => c.Id == appointment.ClientId)
+                .Select(c => c.UserId)
+                .FirstOrDefaultAsync();
+
+            var clientToken = await _context.device_tokens
+                .Where(dt => dt.UserId == clientUserId)
+                .Select(dt => dt.FcmToken)
+                .FirstOrDefaultAsync();
+
+            var body = "";
+
+            var serviceTypeName = await _context.service_types
+                .Where(st => st.Id == appointment.ServiceTypeId)
+                .Select(st => st.Name)
+                .FirstOrDefaultAsync();
+
+            if (appointment.ClientNotes != null && appointment.ClientNotes.Length > 30)
+                body = serviceTypeName != null ? $"Twoje ogłoszenie z kategorii {serviceTypeName} - {appointment.ClientNotes[..30]}... otrzymało nową ofertę!" :
+                    $"Twoje ogłoszenie - {appointment.ClientNotes[..30]}... otrzymało nową ofertę!";
+            else if (appointment.ClientNotes != null)
+                body = serviceTypeName != null ? $"Twoje ogłoszenie z kategorii {serviceTypeName} - {appointment.ClientNotes} otrzymało nową ofertę!" :
+                    $"Twoje ogłoszenie - {appointment.ClientNotes} otrzymało nową ofertę!";
+            else
+                body = serviceTypeName != null ? $"Twoje ogłoszenie z kategorii {serviceTypeName} otrzymało nową ofertę!" :
+                    $"Twoje ogłoszenie otrzymało nową ofertę!";
+
+            if (clientToken != null)
+            {
+                await _firebaseNotificationService.SendNotificationAsync(
+                    clientToken,
+                    "Nowa oferta!",
+                    body,
+                    appointment.Id.ToString(),
+                    isClientApp: true
+                );
+            }
+
             await _context.SaveChangesAsync();
         }
+
         public async Task ShowConfirmAppointmentAsync(Guid userId, Guid appointmentId)
         {
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
@@ -694,6 +733,6 @@ namespace H4H_API.Services.Implementations
                 .OrderBy(s => s.DistanceKm)
                 .ToListAsync();
         }
-        
+
     }
 }
