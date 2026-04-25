@@ -106,17 +106,23 @@ namespace H4H_API.Services.Implementations
                 if (dto.DateOfBirth.HasValue)
                     client.DateOfBirth = dto.DateOfBirth.Value;
 
-                // AKTUALIZACJA ADRESU Z GEOKODOWANIEM
+                // AKTUALIZACJA ADRESU Z GEOKODOWANIEM (Walidacja blokująca)
                 if (!string.IsNullOrEmpty(dto.Address))
                 {
                     var oldAddress = client.Address;
-                    client.Address = dto.Address;
-                    client.User.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
 
-                    // Automatyczna geolokalizacja adresu (tylko jeśli adres się zmienił)
                     if (oldAddress != dto.Address)
                     {
-                        await GeocodeClientAddressAsync(client);
+                        // ZMIANA: Teraz rzucamy wyjątek, jeśli geokodowanie się nie uda
+                        var geocoded = await _geocoder.GeocodeAddressAsync(dto.Address);
+                        if (geocoded == null)
+                            throw new AppException("Nie mogliśmy zweryfikować nowego adresu. Proszę poprawić dane.", ErrorCodes.GeocodingFailed);
+
+                        client.Address = geocoded.FormattedAddress; // Zapisujemy ładnie sformatowany adres zwrócony przez geocoder <3
+                        client.AddressPoint = _geocoder.CreatePoint(geocoded.Longitude, geocoded.Latitude);
+                        client.AddressGeocodedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
+
+                        client.User.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
                     }
                 }
 
@@ -160,7 +166,8 @@ namespace H4H_API.Services.Implementations
         }
 
         /// <summary>
-        /// Geokoduje adres klienta i zapisuje współrzędne
+        /// Geokoduje adres klienta i zapisuje współrzędne; po zmianie staje się zbędna, bo teraz geokodowanie jest integralną 
+        /// częścią aktualizacji profilu, ale zostawiam na wszelki wypadek, może się przydać do ręcznego geokodowania z endpointu API
         /// </summary>
         private async Task<bool> GeocodeClientAddressAsync(Client client)
         {

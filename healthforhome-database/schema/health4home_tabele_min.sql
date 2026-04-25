@@ -451,6 +451,7 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 
 -- Usuwamy stary klucz obcy
 ALTER TABLE appointments DROP CONSTRAINT IF EXISTS "FK_appointments_specialist_services_specialist_service_id";
+ALTER TABLE appointments DROP CONSTRAINT IF EXISTS "appointments_specialist_service_id_fkey";
 
 -- Zmiana nazwy specialist_service_id -> specialist_service_ids
 DO $$ 
