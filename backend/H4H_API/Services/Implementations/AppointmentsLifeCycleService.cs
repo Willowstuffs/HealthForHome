@@ -31,6 +31,19 @@ namespace H4H_API.Services.Implementations
             await SendCompletedNotification(appointment);
         }
 
+        public async Task CancelAppointmentAsync(Appointment appointment)
+        {
+            if (appointment.AppointmentStatus == "confirmed")
+                return;
+            else if (appointment.AppointmentStatus == "cancelled")
+                return;
+
+            appointment.AppointmentStatus = "cancelled";
+            appointment.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+        }
+
         private async Task SendCompletedNotification(Appointment appointment)
         {
             var clientUserId = await _context.clients
