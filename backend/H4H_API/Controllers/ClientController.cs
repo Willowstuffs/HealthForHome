@@ -283,7 +283,7 @@ namespace H4H_API.Controllers
             }
             catch (AppException ex) when (ex.ErrorCode == ErrorCodes.ClientNotFound)
             {
-                return BadRequest(ApiResponse<object?>.ErrorResponse(
+                return NotFound(ApiResponse<object?>.ErrorResponse(
                     "Nie znaleziono profilu klienta",
                     ErrorCodes.ClientNotFound));
             }
