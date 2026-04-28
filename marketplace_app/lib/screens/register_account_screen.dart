@@ -3,6 +3,9 @@ import 'package:marketplace_app/widgets/screen_status_bar.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import 'verification_screen.dart';
+import 'package:flutter/gestures.dart';
+import 'tos_screen.dart';
+import 'privacy_policy_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -27,6 +30,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   DateTime? dateOfBirth;
 
   bool isLoading = false;
+  bool _acceptedTos = false;
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
@@ -246,6 +250,102 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     validator: (v) => v == passwordController.text
                         ? null
                         : 'Hasła nie są zgodne',
+                  ),
+                  const SizedBox(height: 24),
+
+                  FormField<bool>(
+                    initialValue: _acceptedTos,
+                    validator: (value) {
+                      if (value != true) {
+                        return 'Musisz zaakceptować warunki oraz politykę prywatności';
+                      }
+                      return null;
+                    },
+                    builder: (FormFieldState<bool> state) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: Checkbox(
+                                  value: state.value,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _acceptedTos = value ?? false;
+                                    });
+                                    state.didChange(value);
+                                  },
+                                  activeColor: AppColors.primary,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: RichText(
+                                  text: TextSpan(
+                                    text: 'Akceptuję ',
+                                    style: TextStyle(
+                                      color: AppColors.onSurface,
+                                      fontSize: 14,
+                                      height: 1.4,
+                                    ),
+                                    children: [
+                                      TextSpan(
+                                        text: 'Warunki korzystania',
+                                        style: TextStyle(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        recognizer: TapGestureRecognizer()
+                                          ..onTap = () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => const TosScreen(),
+                                              ),
+                                            );
+                                          },
+                                      ),
+                                      const TextSpan(text: ' oraz '),
+                                      TextSpan(
+                                        text: 'Politykę prywatności',
+                                        style: TextStyle(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        recognizer: TapGestureRecognizer()
+                                          ..onTap = () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => const PrivacyPolicyScreen(),
+                                              ),
+                                            );
+                                          },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (state.hasError)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8, left: 36),
+                              child: Text(
+                                state.errorText!,
+                                style: TextStyle(
+                                  color: AppColors.accent,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 32),
 
