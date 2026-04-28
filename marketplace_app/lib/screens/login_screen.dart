@@ -39,7 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
           await apiService.updateDeviceToken(fcmToken);
         }
       } catch (e) {
-        print("Błąd pobierania FCM tokena po zalogowaniu: $e");
+        debugPrint("Error downloading FCM token after login: $e");
       }
 
       if (!mounted) return;

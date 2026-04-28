@@ -12,6 +12,8 @@ import '../../models/appointment.dart';
 import '../../theme/app_theme.dart';
 import '../../screens/calendar_screen.dart';
 import '../../screens/search_specialists_screen.dart';
+import '../../services/notification_service.dart';
+import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -36,15 +38,58 @@ class HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  StreamSubscription? _notificationSub;
+  StreamSubscription? _foregroundSub;
+
+  Future<List<ServiceRequest>>? _myRequestsFuture;
+  Future<List<Appointment>>? _appointmentsFuture;
+
   @override
   void initState() {
     super.initState();
-    _checkLoginAndLoadProfile();
+    _refreshData();
+    _notificationSub = NotificationService().notificationStream.listen((data) {
+      _handleNotificationAction(data);
+    });
+    _foregroundSub = NotificationService().foregroundMessageStream.listen((
+      data,
+    ) {
+      _refreshData();
+    });
   }
 
   @override
   void dispose() {
+    _notificationSub?.cancel();
+    _foregroundSub?.cancel();
     super.dispose();
+  }
+
+  Future<void> _refreshData() async {
+    if (!ApiService().isLoggedIn) {
+      _checkLoginAndLoadProfile();
+      return;
+    }
+    setState(() {
+      _myRequestsFuture = ApiService().getMyServiceRequests();
+      _appointmentsFuture = ApiService().getAppointments();
+    });
+    await _checkLoginAndLoadProfile();
+  }
+
+  void _handleNotificationAction(Map<String, dynamic> data) async {
+    if (data['screen'] == 'offer' && data['appointmentId'] != null) {
+      final appointmentId = data['appointmentId'];
+      try {
+        final requests = await ApiService().getMyServiceRequests();
+        final request = requests.firstWhere((r) => r.id == appointmentId);
+        if (mounted) {
+          _showSpecialistSelectionDialog(context, request);
+        }
+      } catch (e) {
+        debugPrint('Error handling notification tap: $e');
+      }
+    }
   }
 
   Future<void> _checkLoginAndLoadProfile() async {
@@ -216,14 +261,15 @@ class HomeScreenState extends State<HomeScreen> {
         ),
         floatingActionButton: _currentIndex == 0
             ? FloatingActionButton.extended(
-                onPressed: () {
-                  Navigator.push(
+                onPressed: () async {
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) =>
                           const RequestFormScreen(categoryName: 'Fizjoterapia'),
                     ),
                   );
+                  _refreshData();
                 },
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
@@ -240,23 +286,27 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDashboard() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildUserInfoHeader(),
-          const SizedBox(height: 32),
+    return RefreshIndicator(
+      onRefresh: _refreshData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildUserInfoHeader(),
+            const SizedBox(height: 32),
 
-          _buildPendingRequestsList(),
-          const SizedBox(height: 32),
+            _buildPendingRequestsList(),
+            const SizedBox(height: 32),
 
-          _buildAppointmentsList(),
-          const SizedBox(height: 32),
+            _buildAppointmentsList(),
+            const SizedBox(height: 32),
 
-          _buildServiceRequestsList(),
-          const SizedBox(height: 100),
-        ],
+            _buildServiceRequestsList(),
+            const SizedBox(height: 100),
+          ],
+        ),
       ),
     );
   }
@@ -355,7 +405,7 @@ class HomeScreenState extends State<HomeScreen> {
 
   Widget _buildServiceRequestsList() {
     return FutureBuilder<List<ServiceRequest>>(
-      future: ApiService().getMyServiceRequests(),
+      future: _myRequestsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return SizedBox(
@@ -615,7 +665,7 @@ class HomeScreenState extends State<HomeScreen> {
 
   Widget _buildAppointmentsList() {
     return FutureBuilder<List<Appointment>>(
-      future: ApiService().getAppointments(),
+      future: _appointmentsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return SizedBox(
@@ -884,14 +934,15 @@ class HomeScreenState extends State<HomeScreen> {
             return CategoryChip(
               title: category.title,
               icon: category.icon,
-              onTap: () {
-                Navigator.push(
+              onTap: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) =>
                         RequestFormScreen(categoryName: category.title),
                   ),
                 );
+                _refreshData();
               },
             );
           },
@@ -1049,7 +1100,7 @@ class HomeScreenState extends State<HomeScreen> {
                                             ),
                                           ),
                                         );
-                                        setState(() {});
+                                        _refreshData();
                                       }
                                     } catch (e) {
                                       if (context.mounted) {
@@ -1342,8 +1393,8 @@ class HomeScreenState extends State<HomeScreen> {
                                     ),
                                   ),
                                 );
-                                // Refresh dashboard
-                                setState(() {});
+                                // refresh dashboard
+                                _refreshData();
                               }
                             } catch (e) {
                               if (context.mounted) {
@@ -1375,7 +1426,7 @@ class HomeScreenState extends State<HomeScreen> {
 
   Widget _buildPendingRequestsList() {
     return FutureBuilder<List<ServiceRequest>>(
-      future: ApiService().getMyServiceRequests(),
+      future: _myRequestsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return SizedBox(

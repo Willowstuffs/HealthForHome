@@ -61,6 +61,27 @@ class ApiService {
           }
           return handler.next(options);
         },
+        onError: (DioException e, handler) async {
+          // if unauthorized and we have a refresh token
+          if (e.response?.statusCode == 401 && _refreshToken != null) {
+            // avoid infinite loops for auth endpoints
+            if (!e.requestOptions.path.contains('/api/Auth/')) {
+              final success = await refreshSession();
+              if (success && _accessToken != null) {
+                // retry the original request with the new token
+                final opts = e.requestOptions;
+                opts.headers['Authorization'] = 'Bearer $_accessToken';
+                try {
+                  final cloneReq = await _dio.fetch(opts);
+                  return handler.resolve(cloneReq);
+                } catch (e2) {
+                  return handler.next(e);
+                }
+              }
+            }
+          }
+          return handler.next(e);
+        },
       ),
     );
 
@@ -130,7 +151,7 @@ class ApiService {
     }
   }
 
-  Future<void> refreshSession() async {
+  Future<bool> refreshSession() async {
     try {
       final response = await _dio.post(
         '/api/Auth/refresh-token',
@@ -146,11 +167,14 @@ class ApiService {
           response.data['data'] != null) {
         final loginResponse = LoginResponse.fromJson(response.data['data']);
         await saveSession(loginResponse);
+        return true;
       } else {
         await clearToken();
+        return false;
       }
     } catch (_) {
       await clearToken();
+      return false;
     }
   }
 

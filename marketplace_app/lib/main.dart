@@ -6,13 +6,14 @@ import 'firebase_options.dart';
 import 'screens/home_screen.dart';
 import 'theme/app_theme.dart';
 import 'services/api_service.dart';
+import 'services/notification_service.dart';
 
 @pragma(
   'vm:entry-point',
 ) // required for background message handler so that it can be called from native code
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  print("Handling a background message: ${message.messageId}");
+  debugPrint("Handling a background message: ${message.messageId}");
 }
 
 void main() async {
@@ -27,6 +28,9 @@ void main() async {
   // initialize Firebase using the newly generated firebase_options.dart
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
+  // initialize NotificationService
+  NotificationService().initialize();
+
   // set up background messaging handler
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
@@ -37,23 +41,23 @@ void main() async {
     badge: true,
     sound: true,
   );
-  print('User granted permission: ${settings.authorizationStatus}');
+  debugPrint('User granted permission: ${settings.authorizationStatus}');
 
   // print the FCM token
   try {
     String? fcmToken = await messaging.getToken();
-    print('FCM Token: $fcmToken');
-    
+    debugPrint('FCM Token: $fcmToken');
+
     await ApiService().initToken();
     if (fcmToken != null && ApiService().isLoggedIn) {
       try {
         await ApiService().updateDeviceToken(fcmToken);
       } catch (e) {
-        print('Nie udało się zaktualizować tokenu na serwerze: $e');
+        debugPrint('Error updating token on server: $e');
       }
     }
   } catch (e) {
-    print('Failed to get FCM Token: $e');
+    debugPrint('Failed to get FCM Token: $e');
     await ApiService().initToken();
   }
 
