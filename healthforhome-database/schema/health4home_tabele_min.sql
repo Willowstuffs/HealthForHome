@@ -471,3 +471,7 @@ ALTER TABLE appointments
 
 ALTER TABLE appointments ALTER COLUMN specialist_service_ids SET DEFAULT '{}';
 ALTER TABLE appointments DROP COLUMN IF EXISTS "SpecialistServiceId";
+
+-- Aktualizacja 28.04.2026 - Dodanie do tabeli appointments kolumny is_rated
+ALTER TABLE appointments 
+ADD COLUMN IF NOT EXISTS is_rated BOOLEAN DEFAULT FALSE NOT NULL;

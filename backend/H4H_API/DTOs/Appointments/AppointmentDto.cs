@@ -27,6 +27,7 @@ namespace H4H_API.DTOs.Appointments
         public DateTime UpdatedAt { get; set; }
         public DateTime? CancelledAt { get; set; }                      // Data anulowania (jeśli anulowane)
         public DateTime? FinalDate { get; set; }
+        public bool IsRated { get; set; }
 
         // Właściwości nawigacyjne (opcjonalne - do wypełnienia jeśli potrzebne)
         public string? SpecialistName { get; set; }

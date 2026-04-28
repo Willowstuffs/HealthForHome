@@ -73,6 +73,9 @@ namespace H4H.Core.Models
         [Column("final_date")] // dodanie pola na ostateczną datę (z godziną) po wyborze specjalisty
         public DateTime? FinalDate { get; set; }
 
+        [Column("is_rated")] // dodanie pola do oznaczania, czy wizyta została oceniona (po wystawieniu opinii przez klienta)
+        public bool IsRated { get; set; } = false;
+
 
         public virtual Client Client { get; set; } = null!;
         public virtual Specialist? Specialist { get; set; } 
