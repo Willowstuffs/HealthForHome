@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace H4H_API.Services.Implementations
 {
-    public class AppointmentsLifeCycleService: IAppointmentsLifeCycleServer
+    public class AppointmentsLifeCycleService : IAppointmentsLifeCycleServer
     {
         private readonly ApplicationDbContext _context;
         private readonly FirebaseNotificationService _firebase;
@@ -30,6 +30,20 @@ namespace H4H_API.Services.Implementations
 
             await SendCompletedNotification(appointment);
         }
+
+        public async Task CancelAppointmentAsync(Appointment appointment)
+        {
+            if (appointment.AppointmentStatus == "confirmed")
+                return;
+            else if (appointment.AppointmentStatus == "cancelled")
+                return;
+
+            appointment.AppointmentStatus = "cancelled";
+            appointment.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+        }
+
         private async Task SendCompletedNotification(Appointment appointment)
         {
             var clientUserId = await _context.clients
@@ -41,18 +55,19 @@ namespace H4H_API.Services.Implementations
                 .Where(t => t.UserId == clientUserId)
                 .Select(t => t.FcmToken)
                 .ToListAsync();
+
             if (!tokens.Any())
                 return;
+
             await _firebase.SendNotificationToManyAsync(
                 tokens,
                 "Wizyta zakończona",
                 "Twoja wizyta została zakończona. Oceń specjalistę ⭐",
                 appointment.Id.ToString(),
+                "rating",
                 true
             );
         }
-
-       
     }
 }
-   
+

@@ -65,6 +65,29 @@ namespace H4H_API.Services.Implementations
             return result;
         }
 
+        public async Task<string> SendNotificationAsync(string fcmToken, string title, string body, string appointmentId, string screen, bool isClientApp = false)
+        {
+            var message = new Message()
+            {
+                Token = fcmToken,
+                Notification = new Notification()
+                {
+                    Title = title,
+                    Body = body
+                },
+                Data = new Dictionary<string, string>
+                {
+                    { "appointmentId", appointmentId },
+                    { "screen", screen }
+                },
+                Android = new AndroidConfig() { Priority = Priority.High },
+                Apns = new ApnsConfig() { Aps = new Aps() { ContentAvailable = true } }
+            };
+
+            var result = await GetMessaging(isClientApp).SendAsync(message);
+            return result;
+        }
+
         public async Task SendNotificationToManyAsync(List<string> fcmTokens, string title, string body, string appointmentId, bool isClientApp = false)
         {
             if (fcmTokens == null || !fcmTokens.Any()) return;
@@ -81,6 +104,32 @@ namespace H4H_API.Services.Implementations
                 {
                     { "appointmentId", appointmentId },
                     { "screen", "offer" }
+                },
+                Android = new AndroidConfig() { Priority = Priority.High },
+                Apns = new ApnsConfig() { Aps = new Aps() { ContentAvailable = true } }
+            }).ToList();
+
+            var response = await GetMessaging(isClientApp).SendEachAsync(messages);
+
+            Console.WriteLine($"Success: {response.SuccessCount}, Failure: {response.FailureCount}");
+        }
+
+        public async Task SendNotificationToManyAsync(List<string> fcmTokens, string title, string body, string appointmentId, string screen, bool isClientApp = false)
+        {
+            if (fcmTokens == null || !fcmTokens.Any()) return;
+
+            var messages = fcmTokens.Select(token => new Message()
+            {
+                Token = token,
+                Notification = new Notification()
+                {
+                    Title = title,
+                    Body = body
+                },
+                Data = new Dictionary<string, string>
+                {
+                    { "appointmentId", appointmentId },
+                    { "screen", screen }
                 },
                 Android = new AndroidConfig() { Priority = Priority.High },
                 Apns = new ApnsConfig() { Aps = new Aps() { ContentAvailable = true } }

@@ -22,7 +22,7 @@ namespace H4H_API.Helpers
                 var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 var lifecycle = scope.ServiceProvider.GetRequiredService<AppointmentsLifeCycleService>();
 
-                var now = DateTime.UtcNow;
+                var now = DateTime.Now;
 
                 var appointments = await context.appointments
                     .Where(a =>
@@ -33,6 +33,18 @@ namespace H4H_API.Helpers
                 foreach (var appointment in appointments)
                 {
                     await lifecycle.CompleteAppointmentAsync(appointment);
+                }
+
+                appointments = await context.appointments
+                    .Where(a =>
+                        a.AppointmentStatus != "confirmed" &&
+                        a.AppointmentStatus != "cancelled" &&
+                        a.ScheduledEnd < now)
+                    .ToListAsync();
+
+                foreach (var appointment in appointments)
+                {
+                    await lifecycle.CancelAppointmentAsync(appointment);
                 }
 
                 await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);

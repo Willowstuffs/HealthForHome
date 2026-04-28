@@ -106,17 +106,23 @@ namespace H4H_API.Services.Implementations
                 if (dto.DateOfBirth.HasValue)
                     client.DateOfBirth = dto.DateOfBirth.Value;
 
-                // AKTUALIZACJA ADRESU Z GEOKODOWANIEM
+                // AKTUALIZACJA ADRESU Z GEOKODOWANIEM (Walidacja blokująca)
                 if (!string.IsNullOrEmpty(dto.Address))
                 {
                     var oldAddress = client.Address;
-                    client.Address = dto.Address;
-                    client.User.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
 
-                    // Automatyczna geolokalizacja adresu (tylko jeśli adres się zmienił)
                     if (oldAddress != dto.Address)
                     {
-                        await GeocodeClientAddressAsync(client);
+                        // ZMIANA: Teraz rzucamy wyjątek, jeśli geokodowanie się nie uda
+                        var geocoded = await _geocoder.GeocodeAddressAsync(dto.Address);
+                        if (geocoded == null)
+                            throw new AppException("Nie mogliśmy zweryfikować nowego adresu. Proszę poprawić dane.", ErrorCodes.GeocodingFailed);
+
+                        client.Address = geocoded.FormattedAddress; // Zapisujemy ładnie sformatowany adres zwrócony przez geocoder <3
+                        client.AddressPoint = _geocoder.CreatePoint(geocoded.Longitude, geocoded.Latitude);
+                        client.AddressGeocodedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
+
+                        client.User.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
                     }
                 }
 
@@ -160,7 +166,8 @@ namespace H4H_API.Services.Implementations
         }
 
         /// <summary>
-        /// Geokoduje adres klienta i zapisuje współrzędne
+        /// Geokoduje adres klienta i zapisuje współrzędne; po zmianie staje się zbędna, bo teraz geokodowanie jest integralną 
+        /// częścią aktualizacji profilu, ale zostawiam na wszelki wypadek, może się przydać do ręcznego geokodowania z endpointu API
         /// </summary>
         private async Task<bool> GeocodeClientAddressAsync(Client client)
         {
@@ -754,6 +761,77 @@ namespace H4H_API.Services.Implementations
             // 3. Zapisujemy zmiany w bazie danych wraz z aktualizacją daty modyfikacji wizyty
             appointment.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
 
+            await _context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Asynchronously submits a rating for a specialist for a completed appointment.
+        /// </summary>
+        /// <param name="userId">The unique identifier of the client submitting the rating.</param>
+        /// <param name="appointmentId">The unique identifier of the appointment being rated.</param>
+        /// <param name="dto">The rating request containing rating value (0-5) and optional comment.</param>
+        /// <returns></returns>
+        /// <exception cref="AppException"></exception>
+        public async Task RateSpecialistAsync(Guid userId, Guid appointmentId, RateSpecialistDto dto)
+        {
+            // validate rating is in valid range
+            if (dto.Rating < 0 || dto.Rating > 5)
+                throw new AppException("Ocena musi być w przedziale od 0 do 5", ErrorCodes.ValidationError);
+
+            // get client
+            var client = await _context.clients.FirstOrDefaultAsync(c => c.UserId == userId) ??
+                throw new AppException("Nie znaleziono profilu klienta", ErrorCodes.ClientNotFound);
+
+            // get appointment and check ownership
+            var appointment = await _context.appointments
+                .FirstOrDefaultAsync(a => a.Id == appointmentId && a.ClientId == client.Id) ??
+                throw new AppException("Nie znaleziono wizyty dla tego klienta", ErrorCodes.AppointmentNotFound);
+
+            // check if appointment has already been rated
+            if (appointment.IsRated)
+                throw new AppException("Ta wizyta została już oceniona", ErrorCodes.AppointmentAlreadyRated);
+
+            // ensure specialist is assigned
+            if (!appointment.SpecialistId.HasValue)
+                throw new AppException("Wizyta nie ma przypisanego specjalisty", ErrorCodes.ValidationError);
+
+            // create review record
+            var review = new Review
+            {
+                Id = Guid.NewGuid(),
+                AppointmentId = appointmentId,
+                ClientId = client.Id,
+                SpecialistId = appointment.SpecialistId.Value,
+                Rating = dto.Rating,
+                Comment = dto.Comment,
+                IsVerified = true,
+                CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified),
+                UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
+            };
+
+            // mark appointment as rated
+            appointment.IsRated = true;
+            appointment.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
+
+            // get specialist and update average rating
+            var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.Id == appointment.SpecialistId.Value);
+            if (specialist != null)
+            {
+                // fetch all existing reviews for this specialist
+                var existingReviews = await _context.Set<Review>()
+                    .Where(r => r.SpecialistId == specialist.Id)
+                    .ToListAsync();
+
+                // calculate new average rating
+                var allRatings = existingReviews.Select(r => (decimal)r.Rating).ToList();
+                allRatings.Add(dto.Rating);
+
+                specialist.AverageRating = Math.Round(allRatings.Average(), 2);
+                specialist.TotalReviews = existingReviews.Count + 1;
+            }
+
+            // save all changes
+            _context.Set<Review>().Add(review);
             await _context.SaveChangesAsync();
         }
     }

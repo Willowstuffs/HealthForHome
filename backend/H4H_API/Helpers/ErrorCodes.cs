@@ -32,7 +32,7 @@ namespace H4H_API.Helpers
         // Wizyty
         public const string AppointmentNotFound = "APPT_001";
         public const string AppointmentStatusNotPending = "APPT_002";
-
+        public const string AppointmentAlreadyRated = "APPT_003";
 
         // Geokodowanie
         public const string GeocodingFailed = "GEO_001";

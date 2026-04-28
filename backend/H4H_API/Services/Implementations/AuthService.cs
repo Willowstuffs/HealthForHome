@@ -7,6 +7,7 @@ using H4H_API.Exceptions;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using NetTopologySuite.Geometries;
 using ErrorCodes = H4H_API.Helpers.ErrorCodes;
 
 
@@ -27,18 +28,20 @@ namespace H4H_API.Services.Implementations
         private readonly IJwtService _jwtService;
         private readonly IEmailService _emailService; //wstrzykniecie serwisu email do wysylania kodow weryfikacyjnych
         private readonly IConfiguration _configuration;
+        private readonly IGeocoder _geocoder; // wstrzykniecie serwisu geokodowania do walidacji adresu przy rejestracji klienta
 
         /// <summary>
         /// Initializes a new instance of the AuthService class using the specified database context and JWT service.
         /// </summary>
         /// <param name="context">The database context used to access application data for authentication operations. Cannot be null.</param>
         /// <param name="jwtService">The JWT service used to generate and validate JSON Web Tokens for authentication. Cannot be null.</param>
-        public AuthService(ApplicationDbContext context, IJwtService jwtService, IEmailService emailService, IConfiguration configuration)
+        public AuthService(ApplicationDbContext context, IJwtService jwtService, IEmailService emailService, IConfiguration configuration, IGeocoder geocoder)
         {
             _context = context;
             _jwtService = jwtService;
             _emailService = emailService;
             _configuration = configuration;
+            _geocoder = geocoder;
         }
 
         /// <summary>
@@ -140,6 +143,22 @@ namespace H4H_API.Services.Implementations
             if (await _context.users.AnyAsync(u => u.Email == request.Email))
                 throw new ArgumentException("Użytkownik o podanym emailu już istnieje");
 
+            // --- NOWA SEKCJA: Walidacja adresu przy rejestracji ---
+            string? validatedAddress = request.Address;
+            Point? addressPoint = null;
+
+            if (!string.IsNullOrWhiteSpace(request.Address))
+            {
+                var geocodeResult = await _geocoder.GeocodeAddressAsync(request.Address);
+                if (geocodeResult == null)
+                    throw new AppException("Podany adres nie został odnaleziony. Proszę podać dokładniejszy adres lub uzupełnić profil później.", ErrorCodes.GeocodingFailed);
+
+                validatedAddress = geocodeResult.FormattedAddress; // Podmieniamy na "ładny" adres
+                addressPoint = _geocoder.CreatePoint(geocodeResult.Longitude, geocodeResult.Latitude);
+            }
+            // -----------------------------------------------------
+
+
             // Utwórz użytkownika
             var user = new User
             {
@@ -163,7 +182,9 @@ namespace H4H_API.Services.Implementations
                 FirstName = request.FirstName,
                 LastName = request.LastName,
                 DateOfBirth = request.DateOfBirth,
-                Address = request.Address,
+                //Address = request.Address,
+                Address = validatedAddress, // ZMIANA: używamy zwalidowanego adresu
+                AddressPoint = addressPoint, // ZMIANA: zapisujemy punkt od razu
                 EmergencyContact = request.EmergencyContact,
                 CreatedAt = DateTime.Now
             };

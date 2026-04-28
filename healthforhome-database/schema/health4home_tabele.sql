@@ -611,6 +611,7 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 
 -- Usuwamy stary klucz obcy
 ALTER TABLE appointments DROP CONSTRAINT IF EXISTS "FK_appointments_specialist_services_specialist_service_id";
+ALTER TABLE appointments DROP CONSTRAINT IF EXISTS "appointments_specialist_service_id_fkey";
 
 -- Zmiana nazwy specialist_service_id -> specialist_service_ids
 DO $$ 
@@ -630,3 +631,7 @@ ALTER TABLE appointments
 
 ALTER TABLE appointments ALTER COLUMN specialist_service_ids SET DEFAULT '{}';
 ALTER TABLE appointments DROP COLUMN IF EXISTS "SpecialistServiceId";
+
+-- Aktualizacja 28.04.2026 - Dodanie do tabeli appointments kolumny is_rated
+ALTER TABLE appointments 
+ADD COLUMN IF NOT EXISTS is_rated BOOLEAN DEFAULT FALSE NOT NULL;
