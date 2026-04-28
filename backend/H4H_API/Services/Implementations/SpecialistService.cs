@@ -72,6 +72,10 @@ namespace H4H_API.Services.Implementations
 
             if (area == null || area.Location == null)
                 throw new AppException("Nie ustawiono obszaru świadczenia usług.", ErrorCodes.NoServiceAreaDefined);
+            var profession = await _context.specialist_qualifications
+                .Where(q => q.SpecialistId == specialist.Id && q.IsActive)
+                .Select(q => q.Profession)
+                .FirstOrDefaultAsync();
             //PostGIS uzywa metrow
             var maxMeters = area.MaxDistanceKm * 1000;
             ///<summary>
@@ -79,16 +83,24 @@ namespace H4H_API.Services.Implementations
             /// </summary>
             var query = _context.appointments
                 .Include(a => a.Client)
-                .Include(a => a.ServiceType) // Używamy ServiceType wizyty, aby pobrać nazwę kategorii (np. Pielęgniarstwo)
+                .Include(a => a.ServiceType) 
                 .AsQueryable();
+
+            query = query.Where(a =>
+                 a.ServiceType != null &&
+                 (
+                     (profession == "nurse" && a.ServiceType.Category == "nursing") ||
+                     (profession == "physiotherapist" && a.ServiceType.Category == "physiotherapy")
+                 )
+             );
+
             ///<summary>
             ///dadanie sprawdzenia czy dany specjalista już nie dodał ogłoszenia
             /// </summary>>
-            var appointmentIds = query.Select(q => q.Id).ToList();
-
-            query = query.Where(a => !_context.appointments_specialists
-                            .Any(aspl => aspl.AppointmentId == a.Id && aspl.SpecialistId == specialist.Id));
-
+            query = query.Where(a =>
+                   !_context.appointments_specialists
+                       .Any(aspl => aspl.AppointmentId == a.Id && aspl.SpecialistId == specialist.Id)
+               );
 
 
 
@@ -428,47 +440,7 @@ namespace H4H_API.Services.Implementations
 
             await _context.SaveChangesAsync();
         }
-
-        public async Task ShowConfirmAppointmentAsync(Guid userId, Guid appointmentId)
-        {
-            var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
-                ?? throw new AppException("Profil nie istnieje.", ErrorCodes.SpecialistNotFound);
-
-
-            // Szukamy wizyty, która należy do tego specjalisty i ma status pending
-            var appointment = await _context.appointments
-                .FirstOrDefaultAsync(a => a.Id == appointmentId && a.SpecialistId == specialist.Id);
-
-            if (appointment == null)
-                throw new AppException("Wizyta nie znaleziona.", ErrorCodes.AppointmentNotFound);
-
-            if (appointment.AppointmentStatus != "pending")
-                throw new AppException("Można potwierdzić tylko wizyty oczekujące.", ErrorCodes.AppointmentStatusNotPending);
-
-            appointment.AppointmentStatus = "confirmed";
-
-            await _context.SaveChangesAsync();
-        }
-        public async Task ShowArchiwumAsync(Guid userId, Guid appointmentId)
-        {
-            var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
-                ?? throw new AppException("Profil nie istnieje.", ErrorCodes.SpecialistNotFound);
-
-            // Szukamy wizyty, która należy do tego specjalisty i ma status pending
-            var appointment = await _context.appointments
-                .FirstOrDefaultAsync(a => a.Id == appointmentId && a.SpecialistId == specialist.Id);
-
-            if (appointment == null)
-                throw new AppException("Wizyta nie znaleziona.", ErrorCodes.AppointmentNotFound);
-
-            if (appointment.AppointmentStatus != "pending")
-                throw new AppException("Można potwierdzić tylko wizyty oczekujące.", ErrorCodes.AppointmentStatusNotPending);
-
-            appointment.AppointmentStatus = "confirmed";
-            appointment.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-        }
+   
         public async Task<List<InquiryListItemDto>> GetCommingInquiriesAsync(Guid userId, InquiryFilterDto filters)
         {
             var specialist = await _context.specialists
