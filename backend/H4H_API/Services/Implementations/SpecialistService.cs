@@ -83,7 +83,7 @@ namespace H4H_API.Services.Implementations
             /// </summary>
             var query = _context.appointments
                 .Include(a => a.Client)
-                .Include(a => a.ServiceType) 
+                .Include(a => a.ServiceType)
                 .AsQueryable();
 
             query = query.Where(a =>
@@ -405,10 +405,10 @@ namespace H4H_API.Services.Implementations
                 .Select(c => c.UserId)
                 .FirstOrDefaultAsync();
 
-            var clientToken = await _context.device_tokens
+            var clientTokens = await _context.device_tokens
                 .Where(dt => dt.UserId == clientUserId)
                 .Select(dt => dt.FcmToken)
-                .FirstOrDefaultAsync();
+                .ToListAsync();
 
             var body = "";
 
@@ -427,10 +427,10 @@ namespace H4H_API.Services.Implementations
                 body = serviceTypeName != null ? $"Twoje ogłoszenie z kategorii {serviceTypeName} otrzymało nową ofertę!" :
                     $"Twoje ogłoszenie otrzymało nową ofertę!";
 
-            if (clientToken != null)
+            if (clientTokens.Count != 0)
             {
-                await _firebaseNotificationService.SendNotificationAsync(
-                    clientToken,
+                await _firebaseNotificationService.SendNotificationToManyAsync(
+                    clientTokens,
                     "Nowa oferta!",
                     body,
                     appointment.Id.ToString(),
@@ -440,7 +440,7 @@ namespace H4H_API.Services.Implementations
 
             await _context.SaveChangesAsync();
         }
-   
+
         public async Task<List<InquiryListItemDto>> GetCommingInquiriesAsync(Guid userId, InquiryFilterDto filters)
         {
             var specialist = await _context.specialists
