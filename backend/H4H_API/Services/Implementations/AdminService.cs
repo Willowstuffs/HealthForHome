@@ -83,10 +83,41 @@ namespace H4H_API.Services.Implementations
         {
             var specialist = await _context.specialists
                 .Include(s => s.User)
+                .Include(s => s.Appointments) //nowe, pobieramy wizyty specjalisty do admina
+                    .ThenInclude(a => a.Client)
+                        .ThenInclude(c => c.User)
+                .Include(s => s.Appointments)
+                    .ThenInclude(a => a.ServiceType)
                 .FirstOrDefaultAsync(s => s.Id == specialistId)
                 ?? throw new AppException ("Nie znaleziono specjalisty.", ErrorCodes.SpecialistNotFound);
+
             var qualifications = await _context.specialist_qualifications
                 .FirstOrDefaultAsync(q => q.SpecialistId == specialistId && q.IsActive);
+
+            // Unikalni zaakceptowani klienci
+            var acceptedClients = specialist.Appointments
+                .Where(a => a.AppointmentStatus != "cancelled" && a.AppointmentStatus != "open")
+                .Select(a => a.Client)
+                .DistinctBy(c => c.Id)
+                .Select(c => new AdminClientListItemDto
+                {
+                    ClientId = c.Id,
+                    FirstName = c.FirstName,
+                    LastName = c.LastName,
+                    Email = c?.User?.Email ?? "Brak",
+                    CreatedAt = c.CreatedAt
+                }).ToList();
+
+            // Generowanie activity w locie z dat dodania wizyt
+            var activities = specialist.Appointments
+                .OrderByDescending(a => a.CreatedAt) // Od najnowszych
+                .Select(a => new SpecialistActivityDto
+                {
+                    Id = a.Id,
+                    Type = "appointment_added",
+                    Description = $"Dodano nowe zamówienie: {a.ServiceType?.Name ?? "Wizyta"}",
+                    CreatedAt = a.CreatedAt 
+                }).ToList();
 
             return new AdminSpecialistDetailsDto
             {
@@ -103,9 +134,22 @@ namespace H4H_API.Services.Implementations
                 LicenseNumber = qualifications?.LicenseNumber,
                 LicensePhotoUrl = qualifications?.LicensePhotoUrl,
                 IdCardPhotoUrl = qualifications?.IdCardPhotoUrl,
-                VerificationNotes = qualifications?.VerificationNotes
+                VerificationNotes = qualifications?.VerificationNotes,
+
+                // Nowe pola zawierające liste wizyt specjalisty zmapowanych na AdminClientAppointmentDto
+                Appointments = specialist.Appointments.Select(a => new AdminClientAppointmentDto
+                {
+                    AppointmentId = a.Id,
+                    ScheduledStart = a.ScheduledStart,
+                    ServiceName = a.ServiceType?.Name ?? "Nieokreślona",
+                    Status = a.AppointmentStatus,
+                    Price = a.TotalPrice ?? 0
+                }).ToList(),
+                AcceptedClients = acceptedClients,
+                Activities = activities
             };
         }
+
         /// <summary>Zatwierdza specjaliste aktualizując status weryfikacji i logując akcje wykonaną przez admina</summary>
         public async Task ApproveSpecialistAsync(Guid specialistId, Guid adminId)
         {
@@ -318,5 +362,102 @@ namespace H4H_API.Services.Implementations
                 TotalCount = totalCount
             };
         }
+
+        /// <summary> Zapisuje datę ważności licencji specjalisty. </summary>
+        public async Task UpdateLicenseValidityAsync(Guid specialistId, DateTime validUntil)
+        {
+            // Szukamy aktywnej kwalifikacji specjalisty
+            var qualification = await _context.specialist_qualifications
+                .FirstOrDefaultAsync(q => q.SpecialistId == specialistId && q.IsActive)
+                ?? throw new AppException("Nie znaleziono aktywnych kwalifikacji dla tego specjalisty.", ErrorCodes.SpecialistQualificationNotFound);
+
+            qualification.LicenseValidUntil = validUntil;
+
+            await _context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Zawiesza konto specjalisty.
+        /// POST /api/Admin/specialists/{id}/suspend
+        /// </summary>
+        public async Task SuspendSpecialistAsync(Guid specialistId)
+        {
+            var specialist = await _context.specialists.FindAsync(specialistId)
+                ?? throw new AppException("Nie znaleziono specjalisty.", ErrorCodes.SpecialistNotFound);
+
+            if (specialist.IsSuspended)
+                throw new AppException("Specjalista jest już zawieszony.", ErrorCodes.ValidationError);
+
+            specialist.IsSuspended = true;
+            specialist.SuspendedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Odwiesza konto specjalisty.
+        /// POST /api/Admin/specialists/{id}/unsuspend
+        /// </summary>
+        public async Task UnsuspendSpecialistAsync(Guid specialistId)
+        {
+            var specialist = await _context.specialists.FindAsync(specialistId)
+                ?? throw new AppException("Nie znaleziono specjalisty.", ErrorCodes.SpecialistNotFound);
+
+            if (!specialist.IsSuspended)
+                throw new AppException("Specjalista nie jest zawieszony.", ErrorCodes.ValidationError);
+
+            specialist.IsSuspended = false;
+            specialist.SuspendedAt = null;
+
+            await _context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Pobiera szczegóły pojedynczego zamówienia (wizyty).
+        /// GET /api/Admin/appointments/{id}
+        /// </summary>
+        public async Task<AdminAppointmentDetailsDto> GetAppointmentDetailsAsync(Guid appointmentId)
+        {
+            var appointment = await _context.appointments
+                .Include(a => a.Client)
+                    .ThenInclude(c => c.User)
+                .Include(a => a.Specialist)
+                    .ThenInclude(s => s.User)
+                .Include(a => a.ServiceType)
+                .FirstOrDefaultAsync(a => a.Id == appointmentId)
+                ?? throw new AppException("Nie znaleziono wizyty.", ErrorCodes.AppointmentNotFound);
+
+            return new AdminAppointmentDetailsDto
+            {
+                AppointmentId = appointment.Id,
+                Status = appointment.AppointmentStatus,
+                ScheduledStart = appointment.ScheduledStart,
+                ScheduledEnd = appointment.ScheduledEnd,
+                CreatedAt = appointment.CreatedAt, // Frontend tego bardzo potrzebuje!
+                TotalPrice = appointment.TotalPrice,
+                ClientNotes = appointment.ClientNotes,
+                ContactName = appointment.ContactName,
+                ContactPhone = appointment.ContactPhoneNumber,
+
+                Client = new AdminClientListItemDto
+                {
+                    ClientId = appointment.Client.Id,
+                    FirstName = appointment.Client.FirstName,
+                    LastName = appointment.Client.LastName,
+                    Email = appointment.Client.User?.Email ?? string.Empty
+                },
+
+                Specialist = appointment.Specialist != null ? new AdminSpecialistListItemDto
+                {
+                    SpecialistId = appointment.Specialist.Id,
+                    FirstName = appointment.Specialist.FirstName,
+                    LastName = appointment.Specialist.LastName,
+                    Email = appointment.Specialist.User?.Email ?? string.Empty
+                } : null,
+
+                ServiceName = appointment.ServiceType?.Name ?? "Brak danych"
+            };
+        }
+
     }
 }

@@ -17,5 +17,10 @@ namespace H4H_API.Services.Interfaces
         Task<AdminClientDetailsDto> GetClientDetailsAsync(Guid clientId);
         Task<AdminDashboardStatsDto> GetDashboardStatsAsync();
         Task<PagedResponse<AdminAppointmentListItemDto>> GetAppointmentsAsync(AdminAppointmentFilterDto filter);
+        //nowe 29.04 do specjalistow
+        Task UpdateLicenseValidityAsync(Guid specialistId, DateTime validUntil);
+        Task SuspendSpecialistAsync(Guid specialistId);
+        Task UnsuspendSpecialistAsync(Guid specialistId);
+        Task<AdminAppointmentDetailsDto> GetAppointmentDetailsAsync(Guid appointmentId);
     }
 }

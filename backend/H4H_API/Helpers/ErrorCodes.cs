@@ -19,6 +19,7 @@ namespace H4H_API.Helpers
         // Specjalista
 
         public const string SpecialistNotFound = "SPEC_001";
+        public const string SpecialistQualificationNotFound = "SPEC_002";
 
         // Walidacja danych
         public const string ValidationError = "VAL_001";
