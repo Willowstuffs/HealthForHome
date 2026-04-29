@@ -635,3 +635,10 @@ ALTER TABLE appointments DROP COLUMN IF EXISTS "SpecialistServiceId";
 -- Aktualizacja 28.04.2026 - Dodanie do tabeli appointments kolumny is_rated
 ALTER TABLE appointments 
 ADD COLUMN IF NOT EXISTS is_rated BOOLEAN DEFAULT FALSE NOT NULL;
+
+-- Aktualizacja 29.04.2026 - Dodanie tabeli revoked_tokens do uniewaznianych tokenow
+CREATE TABLE IF NOT EXISTS revoked_tokens (
+    id UUID PRIMARY KEY,
+    token TEXT NOT NULL,
+    expires_at TIMESTAMP NOT NULL
+);
