@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:marketplace_app/widgets/screen_status_bar.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../models/appointment.dart';
+import '../../models/review.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/appointment_card.dart';
@@ -77,10 +78,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
           if (apptIndex != -1) {
             final appt = _allAppointments[apptIndex];
             setState(() {
+              final dateToUse = appt.finalDate ?? appt.scheduledStart;
               _selectedDay = DateTime(
-                appt.scheduledStart.year,
-                appt.scheduledStart.month,
-                appt.scheduledStart.day,
+                dateToUse.year,
+                dateToUse.month,
+                dateToUse.day,
               );
               _focusedDay = _selectedDay!;
             });
@@ -126,10 +128,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
       // if appointment is confirmed/completed, add it only for the final day
       if (appt.appointmentStatus == 'confirmed' ||
           appt.appointmentStatus == 'completed') {
-        if (finalDay != null && _appointmentsMap[finalDay] == null) {
-          _appointmentsMap[finalDay] = [];
+        if (finalDay != null) {
+          if (_appointmentsMap[finalDay] == null) {
+            _appointmentsMap[finalDay] = [];
+          }
+          _appointmentsMap[finalDay]!.add(appt);
+        } else {
+          for (
+            var d = start;
+            d.isBefore(end.add(const Duration(days: 1)));
+            d = d.add(const Duration(days: 1))
+          ) {
+            if (_appointmentsMap[d] == null) {
+              _appointmentsMap[d] = [];
+            }
+            _appointmentsMap[d]!.add(appt);
+          }
         }
-        _appointmentsMap[finalDay]!.add(appt);
       } else if (appt.appointmentStatus == 'cancelled') {
         if (_appointmentsMap[start] == null) {
           _appointmentsMap[start] = [];
@@ -467,18 +482,37 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
               ),
               SizedBox(height: 24),
-              _buildDetailRow(
-                Icons.person,
-                'Specjalista:',
-                appt.specialistName ?? 'Brak danych',
-              ),
-              _buildDetailRow(
-                Icons.medical_services,
-                'Usługa:',
-                appt.serviceNames?.isEmpty ?? true
-                    ? 'Brak danych'
-                    : appt.serviceNames!.join(', '),
-              ),
+              if (appt.appointmentStatus != 'cancelled' &&
+                  appt.appointmentStatus != 'open' &&
+                  appt.appointmentStatus != 'pending')
+                _buildDetailRow(
+                  Icons.person,
+                  'Specjalista:',
+                  appt.specialistName ?? 'Brak danych',
+                ),
+              if (appt.appointmentStatus != 'cancelled' &&
+                  appt.appointmentStatus != 'open')
+                _buildDetailRow(
+                  Icons.medical_services,
+                  'Usługa:',
+                  appt.serviceNames?.isEmpty ?? true
+                      ? 'Brak danych'
+                      : appt.serviceNames!.join(', '),
+                ),
+              if (appt.appointmentStatus == 'pending')
+                FutureBuilder<List<AppointmentOffer>>(
+                  future: ApiService().getAppointmentOffers(appt.id),
+                  builder: (context, snapshot) {
+                    final offersCount = snapshot.data?.length ?? 0;
+                    return _buildDetailRow(
+                      Icons.local_offer_rounded,
+                      'Otrzymane oferty:',
+                      snapshot.connectionState == ConnectionState.waiting
+                          ? 'Ładowanie...'
+                          : '$offersCount',
+                    );
+                  },
+                ),
               _buildDetailRow(
                 Icons.info_outline,
                 'Status:',
@@ -521,6 +555,50 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   isLongText: true,
                 ),
               SizedBox(height: 32),
+              if (appt.appointmentStatus == 'completed') ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      if (!appt.isRated) {
+                        _showRatingDialog(context, appt.id);
+                      } else {
+                        _showReviewDialog(context, appt.id);
+                      }
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: !appt.isRated
+                          ? AppColors.accent
+                          : AppColors.surfaceContainerHighest,
+                      foregroundColor: !appt.isRated
+                          ? Colors.white
+                          : AppColors.primary,
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: Text(
+                      !appt.isRated ? 'Oceń wizytę' : 'Wyświetl opinię',
+                      style: !appt.isRated
+                          ? TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: Colors.white,
+                            )
+                          : TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: AppColors.onSurface.withValues(
+                                alpha: 0.75,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 12),
+              ],
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
@@ -604,6 +682,256 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showRatingDialog(BuildContext context, String appointmentId) {
+    int rating = 0;
+    final TextEditingController commentController = TextEditingController();
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setLocalState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              backgroundColor: AppColors.surface,
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Oceń wizytę',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Jak oceniasz wykonaną usługę?',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (index) {
+                        return IconButton(
+                          onPressed: () {
+                            setLocalState(() {
+                              rating = index + 1;
+                            });
+                          },
+                          icon: Icon(
+                            index < rating ? Icons.star : Icons.star_border,
+                            color: Colors.amber,
+                            size: 36,
+                          ),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: commentController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        hintText: 'Dodaj komentarz (opcjonalnie)',
+                        filled: true,
+                        fillColor: AppColors.surfaceContainer,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: isSubmitting
+                              ? null
+                              : () => Navigator.pop(context),
+                          child: const Text(
+                            'Anuluj',
+                            style: TextStyle(color: AppColors.textSecondary),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton(
+                          onPressed: rating == 0 || isSubmitting
+                              ? null
+                              : () async {
+                                  setLocalState(() => isSubmitting = true);
+                                  try {
+                                    await ApiService().rateSpecialist(
+                                      appointmentId,
+                                      rating,
+                                      commentController.text,
+                                    );
+                                    if (context.mounted) {
+                                      Navigator.pop(context);
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Dziękujemy za opinię!',
+                                          ),
+                                        ),
+                                      );
+                                      _fetchAppointments();
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(content: Text('Błąd: $e')),
+                                      );
+                                      setLocalState(() => isSubmitting = false);
+                                    }
+                                  }
+                                },
+                          child: isSubmitting
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text('Oceń'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showReviewDialog(BuildContext context, String appointmentId) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          backgroundColor: AppColors.surface,
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: FutureBuilder<Review>(
+              future: ApiService().getReview(appointmentId),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SizedBox(
+                    height: 150,
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                if (snapshot.hasError) {
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Wystąpił błąd',
+                        style: TextStyle(
+                          color: AppColors.error,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Zamknij'),
+                      ),
+                    ],
+                  );
+                }
+
+                final review = snapshot.data!;
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Wystawiona opinia',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (index) {
+                        return Icon(
+                          index < review.rating
+                              ? Icons.star
+                              : Icons.star_border,
+                          color: Colors.amber,
+                          size: 36,
+                        );
+                      }),
+                    ),
+                    if (review.comment != null &&
+                        review.comment!.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          review.comment!,
+                          style: TextStyle(color: AppColors.onSurface),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Text(
+                          'Zamknij',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 }

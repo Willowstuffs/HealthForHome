@@ -114,6 +114,22 @@ class ServiceRequest {
       contactName: json['contactName'],
     );
   }
+
+  Appointment toAppointment() {
+    return Appointment(
+      id: id,
+      clientId: '',
+      specialistId: '',
+      appointmentStatus: status,
+      scheduledStart: dateFrom,
+      scheduledEnd: dateTo,
+      createdAt: createdAt,
+      updatedAt: createdAt,
+      clientNotes: description,
+      serviceNames: [serviceTypeName],
+      isRated: false,
+    );
+  }
 }
 
 class CreateServiceRequestDto {
