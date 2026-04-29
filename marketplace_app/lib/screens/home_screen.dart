@@ -77,9 +77,147 @@ class HomeScreenState extends State<HomeScreen> {
     await _checkLoginAndLoadProfile();
   }
 
+  void _showRatingDialog(BuildContext context, String appointmentId) {
+    int rating = 0;
+    final TextEditingController commentController = TextEditingController();
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setLocalState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              backgroundColor: AppColors.surface,
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Oceń wizytę',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Jak oceniasz wykonaną usługę?',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (index) {
+                        return IconButton(
+                          onPressed: () {
+                            setLocalState(() {
+                              rating = index + 1;
+                            });
+                          },
+                          icon: Icon(
+                            index < rating ? Icons.star : Icons.star_border,
+                            color: Colors.amber,
+                            size: 36,
+                          ),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: commentController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        hintText: 'Dodaj komentarz (opcjonalnie)',
+                        filled: true,
+                        fillColor: AppColors.surfaceContainer,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: isSubmitting
+                              ? null
+                              : () => Navigator.pop(context),
+                          child: const Text(
+                            'Anuluj',
+                            style: TextStyle(color: AppColors.textSecondary),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton(
+                          onPressed: rating == 0 || isSubmitting
+                              ? null
+                              : () async {
+                                  setLocalState(() => isSubmitting = true);
+                                  try {
+                                    await ApiService().rateSpecialist(
+                                      appointmentId,
+                                      rating,
+                                      commentController.text,
+                                    );
+                                    if (context.mounted) {
+                                      Navigator.pop(context);
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Dziękujemy za opinię!',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(content: Text('Błąd: $e')),
+                                      );
+                                      setLocalState(() => isSubmitting = false);
+                                    }
+                                  }
+                                },
+                          child: isSubmitting
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text('Oceń'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _handleNotificationAction(Map<String, dynamic> data) async {
-    if (data['screen'] == 'offer' && data['appointmentId'] != null) {
-      final appointmentId = data['appointmentId'];
+    final appointmentId = data['appointmentId'];
+    if (appointmentId == null) return;
+
+    if (data['screen'] == 'offer') {
       try {
         final requests = await ApiService().getMyServiceRequests();
         final request = requests.firstWhere((r) => r.id == appointmentId);
@@ -88,6 +226,10 @@ class HomeScreenState extends State<HomeScreen> {
         }
       } catch (e) {
         debugPrint('Error handling notification tap: $e');
+      }
+    } else if (data['screen'] == 'rating') {
+      if (mounted) {
+        _showRatingDialog(context, appointmentId);
       }
     }
   }
@@ -1393,7 +1535,10 @@ class HomeScreenState extends State<HomeScreen> {
                                     ),
                                   ),
                                 );
-                                // refresh dashboard
+                                // refresh dashboard after a small delay
+                                await Future.delayed(
+                                  const Duration(milliseconds: 500),
+                                );
                                 _refreshData();
                               }
                             } catch (e) {

@@ -482,6 +482,26 @@ class ApiService {
     }
   }
 
+  Future<void> rateSpecialist(
+    String appointmentId,
+    int rating,
+    String? comment,
+  ) async {
+    try {
+      await _dio.post(
+        '/api/Client/appointments/$appointmentId/rate',
+        data: {
+          'rating': rating,
+          if (comment != null && comment.isNotEmpty) 'comment': comment,
+        },
+      );
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (e) {
+      throw Exception('Nie udało się ocenić wizyty: $e');
+    }
+  }
+
   Future<List<NearbySpecialist>> getNearbySpecialistsByAddressText(
     String address,
   ) async {
