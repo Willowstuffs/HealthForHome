@@ -363,15 +363,40 @@ namespace H4H_API.Services.Implementations
             };
         }
 
-        /// <summary> Zapisuje datę ważności licencji specjalisty. </summary>
         public async Task UpdateLicenseValidityAsync(Guid specialistId, DateTime validUntil)
         {
-            // Szukamy aktywnej kwalifikacji specjalisty
-            var qualification = await _context.specialist_qualifications
-                .FirstOrDefaultAsync(q => q.SpecialistId == specialistId && q.IsActive)
-                ?? throw new AppException("Nie znaleziono aktywnych kwalifikacji dla tego specjalisty.", ErrorCodes.SpecialistQualificationNotFound);
+            var specialist = await _context.specialists.FindAsync(specialistId)
+                ?? throw new AppException("Nie znaleziono profilu specjalisty.", ErrorCodes.SpecialistNotFound);
 
-            qualification.LicenseValidUntil = validUntil;
+            //Szukanie kwalifikacji
+            var qualification = await _context.specialist_qualifications
+                .FirstOrDefaultAsync(q => q.SpecialistId == specialistId && q.IsActive);
+            //bugfixy by dobrze działało z niekompletnymi danymi
+            if (qualification != null)
+            {
+                // Jeśli istnieje, aktualizowanie daty
+                qualification.LicenseValidUntil = validUntil;
+            }
+            else
+            {
+                // Jeśli nie istnieje tworzymy nowy rekord startowy
+                // Uwaga: 'profession' jest wymagane w bazie (CHECK profession IN ('nurse', 'physiotherapist'))
+                // Pobieramy tytuł zawodowy z profilu lub ustawiamy domyślny
+                var profession = specialist.ProfessionalTitle?.ToLower().Contains("fizjo") == true
+                                 ? "physiotherapist"
+                                 : "nurse";
+
+                _context.specialist_qualifications.Add(new SpecialistQualification
+                {
+                    Id = Guid.NewGuid(),
+                    SpecialistId = specialistId,
+                    Profession = profession,
+                    LicenseNumber = "PENDING", // Wypełniamy tymczasowo, bo baza wymaga NOT NULL
+                    LicenseValidUntil = validUntil,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
 
             await _context.SaveChangesAsync();
         }

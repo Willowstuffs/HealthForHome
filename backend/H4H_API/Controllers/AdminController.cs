@@ -129,7 +129,7 @@ namespace H4H_API.Controllers
         public async Task<IActionResult> UpdateLicenseValidity(Guid id, [FromBody] UpdateLicenseDto dto)
         {
             await _adminService.UpdateLicenseValidityAsync(id, dto.ValidUntil);
-            return NoContent();
+            return Ok(ApiResponse<object?>.SuccessResponse(null, "Data ważności licencji została zaktualizowana."));
         }
 
         /// <summary>Zawieszenie konta specjalisty</summary>
@@ -137,7 +137,7 @@ namespace H4H_API.Controllers
         public async Task<IActionResult> SuspendSpecialist(Guid id)
         {
             await _adminService.SuspendSpecialistAsync(id);
-            return Ok(new { message = "Konto specjalisty zostało pomyślnie zawieszone." });
+            return Ok(ApiResponse<object?>.SuccessResponse(null, "Konto specjalisty zostało zawieszone."));
         }
 
         /// <summary>Odwieszenie konta specjalisty</summary>
@@ -145,7 +145,7 @@ namespace H4H_API.Controllers
         public async Task<IActionResult> UnsuspendSpecialist(Guid id)
         {
             await _adminService.UnsuspendSpecialistAsync(id);
-            return Ok(new { message = "Konto specjalisty zostało odwieszone." });
+            return Ok(ApiResponse<object?>.SuccessResponse(null, "Konto specjalisty zostało odwieszone."));
         }
 
         /// <summary>Pobiera szczegóły zamówienia/wizyty</summary>
