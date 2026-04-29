@@ -18,6 +18,7 @@ class Appointment {
   final String? specialistName;
   final String? clientName;
   final List<String>? serviceNames;
+  final bool isRated;
 
   Appointment({
     required this.id,
@@ -38,6 +39,7 @@ class Appointment {
     this.clientName,
     this.serviceNames,
     this.finalDate,
+    required this.isRated,
   });
 
   factory Appointment.fromJson(Map<String, dynamic> json) {
@@ -68,6 +70,7 @@ class Appointment {
       finalDate: json['finalDate'] != null
           ? DateTime.parse(json['finalDate'])
           : null,
+      isRated: json['isRated'],
     );
   }
 }

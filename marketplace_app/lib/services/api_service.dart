@@ -11,6 +11,7 @@ import '../models/nearby_specialist.dart';
 import '../models/specialist_profile_details.dart';
 import '../models/specialist_offer.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../models/review.dart';
 
 class ApiService {
   static const bool isDev = false;
@@ -490,15 +491,25 @@ class ApiService {
     try {
       await _dio.post(
         '/api/Client/appointments/$appointmentId/rate',
-        data: {
-          'rating': rating,
-          if (comment != null && comment.isNotEmpty) 'comment': comment,
-        },
+        data: Rating(rating: rating, comment: comment).toJson(),
       );
     } on DioException catch (e) {
       throw _handleDioError(e);
     } catch (e) {
       throw Exception('Nie udało się ocenić wizyty: $e');
+    }
+  }
+
+  Future<Review> getReview(String appointmentId) async {
+    try {
+      final response = await _dio.get(
+        '/api/Client/appointments/$appointmentId/review',
+      );
+      return Review.fromJson(response.data['data']);
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (e) {
+      throw Exception('Nie udało się pobrać oceny: $e');
     }
   }
 

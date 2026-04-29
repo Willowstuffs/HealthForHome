@@ -167,6 +167,7 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                       _buildTextField(
                         controller: nameController,
                         label: 'Imię i nazwisko osoby kontaktowej',
+                        readOnly: ApiService().isLoggedIn,
                         validator: (v) {
                           if (!ApiService().isLoggedIn &&
                               (v == null || v.isEmpty)) {
@@ -181,6 +182,7 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                         controller: phoneController,
                         label: 'Numer telefonu',
                         keyboardType: TextInputType.phone,
+                        readOnly: ApiService().isLoggedIn,
                         validator: (v) {
                           if (!ApiService().isLoggedIn &&
                               (v == null || v.isEmpty)) {
@@ -195,6 +197,7 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                         controller: emailController,
                         label: 'Email',
                         keyboardType: TextInputType.emailAddress,
+                        readOnly: ApiService().isLoggedIn,
                         validator: (v) {
                           if (!ApiService().isLoggedIn &&
                               (v == null || v.isEmpty)) {
@@ -352,13 +355,26 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
     int maxLines = 1,
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
+    bool readOnly = false,
   }) {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
       keyboardType: keyboardType,
       validator: validator,
-      decoration: InputDecoration(labelText: label, filled: true),
+      readOnly: readOnly,
+      style: TextStyle(
+        color: readOnly
+            ? AppColors.onSurface.withValues(alpha: 0.8)
+            : AppColors.onSurface,
+      ),
+      decoration: InputDecoration(
+        labelText: label,
+        filled: true,
+        fillColor: readOnly
+            ? AppColors.surfaceContainerHighest.withValues(alpha: 0.2)
+            : null,
+      ),
     );
   }
 
