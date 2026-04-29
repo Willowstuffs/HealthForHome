@@ -40,5 +40,6 @@ namespace H4H_API.Services.Interfaces
 
         // Oceny specjalistów
         Task RateSpecialistAsync(Guid userId, Guid appointmentId, RateSpecialistDto dto);
+        Task<AppointmentReviewDto> GetAppointmentReviewAsync(Guid userId, Guid appointmentId);
     }
 }

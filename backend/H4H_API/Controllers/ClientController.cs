@@ -294,5 +294,38 @@ namespace H4H_API.Controllers
                     ErrorCodes.ValidationError));
             }
         }
+
+        /// <summary>
+        /// Returns the authenticated client's review for the given appointment.
+        /// </summary>
+        /// <param name="appointmentId">Appointment identifier.</param>
+        [HttpGet("appointments/{appointmentId}/review")]
+        public async Task<ActionResult<ApiResponse<AppointmentReviewDto>>> GetAppointmentReview(Guid appointmentId)
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+                var review = await _clientService.GetAppointmentReviewAsync(userId, appointmentId);
+                return Ok(ApiResponse<AppointmentReviewDto>.SuccessResponse(review));
+            }
+            catch (AppException ex) when (ex.ErrorCode == ErrorCodes.ReviewNotFound)
+            {
+                return NotFound(ApiResponse<AppointmentReviewDto>.ErrorResponse(
+                    "Nie znaleziono opinii dla tej wizyty",
+                    ErrorCodes.ReviewNotFound));
+            }
+            catch (AppException ex) when (ex.ErrorCode == ErrorCodes.AppointmentNotFound)
+            {
+                return NotFound(ApiResponse<AppointmentReviewDto>.ErrorResponse(
+                    "Nie można znaleźć tej wizyty",
+                    ErrorCodes.AppointmentNotFound));
+            }
+            catch (AppException ex) when (ex.ErrorCode == ErrorCodes.ClientNotFound)
+            {
+                return NotFound(ApiResponse<AppointmentReviewDto>.ErrorResponse(
+                    "Nie znaleziono profilu klienta",
+                    ErrorCodes.ClientNotFound));
+            }
+        }
     }
 }

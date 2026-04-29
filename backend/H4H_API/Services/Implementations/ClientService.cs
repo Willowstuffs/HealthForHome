@@ -765,6 +765,50 @@ namespace H4H_API.Services.Implementations
         }
 
         /// <summary>
+        /// Asynchronously retrieves the review for a specified appointment belonging to the specified user.
+        /// </summary>
+        /// <param name="userId">The unique identifier of the user whose appointment review is to be retrieved.</param>
+        /// <param name="appointmentId">The unique identifier of the appointment for which the review is requested.</param>
+        /// <returns></returns>
+        /// <exception cref="AppException"></exception>
+        public async Task<AppointmentReviewDto> GetAppointmentReviewAsync(Guid userId, Guid appointmentId)
+        {
+            var client = await _context.clients.FirstOrDefaultAsync(c => c.UserId == userId) ??
+                throw new AppException("Nie znaleziono profilu klienta", ErrorCodes.ClientNotFound);
+
+            var appointmentExists = await _context.appointments
+                .AnyAsync(a => a.Id == appointmentId && a.ClientId == client.Id);
+
+            if (!appointmentExists)
+                throw new AppException("Nie znaleziono wizyty dla tego klienta", ErrorCodes.AppointmentNotFound);
+
+            var review = await _context.Set<Review>()
+                .FirstOrDefaultAsync(r => r.AppointmentId == appointmentId && r.ClientId == client.Id)
+                ?? throw new AppException("Nie znaleziono opinii dla tej wizyty", ErrorCodes.ReviewNotFound);
+
+            var appointmentIsRated = await _context.appointments
+                .Where(a => a.Id == appointmentId && a.ClientId == client.Id)
+                .Select(a => a.IsRated)
+                .FirstOrDefaultAsync();
+
+            if (!appointmentIsRated)
+                throw new AppException("Wizyta nie jest oznaczona jako oceniona, ale opinia istnieje. Proszę skontaktować się z supportem.", ErrorCodes.DataConflict);
+
+            return new AppointmentReviewDto
+            {
+                Id = review.Id,
+                AppointmentId = review.AppointmentId,
+                ClientId = review.ClientId,
+                SpecialistId = review.SpecialistId,
+                Rating = review.Rating,
+                Comment = review.Comment,
+                IsVerified = review.IsVerified,
+                CreatedAt = review.CreatedAt,
+                UpdatedAt = review.UpdatedAt
+            };
+        }
+
+        /// <summary>
         /// Asynchronously submits a rating for a specialist for a completed appointment.
         /// </summary>
         /// <param name="userId">The unique identifier of the client submitting the rating.</param>

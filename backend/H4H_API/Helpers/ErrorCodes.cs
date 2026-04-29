@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace H4H_API.Helpers
+﻿namespace H4H_API.Helpers
 {
     public static class ErrorCodes
     {
@@ -22,6 +16,7 @@ namespace H4H_API.Helpers
 
         // Walidacja danych
         public const string ValidationError = "VAL_001";
+        public const string DataConflict = "VAL_002";
         public const string ServiceAlreadyExists = "SERV_001";
         public const string ServiceNotFound = "SERV_002";
         public const string NoServiceAreaDefined = "SERV_003";
@@ -50,5 +45,8 @@ namespace H4H_API.Helpers
         // Zlecenia
         public const string ServiceRequestNotFound = "REQ_001";
         public const string ServiceRequestClosed = "REQ_002";
+
+        // Opinie
+        public const string ReviewNotFound = "REVIEW_001";
     }
 }
