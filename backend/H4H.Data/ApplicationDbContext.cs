@@ -33,6 +33,7 @@ namespace H4H.Data
         public DbSet<AppointmentSpecialist> appointments_specialists { get; set; }
         public DbSet<DeviceToken> device_tokens { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<RevokedToken> RevokedTokens { get; set; }
 
         // dla PostGIS i NetTopologySuite
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -72,6 +73,7 @@ namespace H4H.Data
             modelBuilder.Entity<Message>().ToTable("messages", t => t.ExcludeFromMigrations());
             modelBuilder.Entity<Notification>().ToTable("notifications", t => t.ExcludeFromMigrations());
             modelBuilder.Entity<VerificationCode>().ToTable("verification_codes", t => t.ExcludeFromMigrations());
+            modelBuilder.Entity<RevokedToken>().ToTable("revoked_tokens");
 
             // SKONFIGURUJEMY TYLKO NOWE KOLUMNY
             modelBuilder.Entity<Client>(entity =>

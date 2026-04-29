@@ -11,7 +11,7 @@ namespace H4H_API.Services.Interfaces
         Task<RegisterResponse> RegisterClientAsync(ClientRegisterDto request);
         Task<RegisterResponse> RegisterSpecialistAsync(SpecialistRegisterDto request); // Tymczasowe
         Task<LoginResponse> RefreshTokenAsync(RefreshTokenRequest request);
-        Task<bool> LogoutAsync(string accessToken);
+        Task LogoutAsync(string accessToken, string refreshToken);
         Task<bool> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword);
         Task<bool> RequestPasswordResetAsync(string email);
         Task<bool> ResetPasswordAsync(string token, string newPassword);

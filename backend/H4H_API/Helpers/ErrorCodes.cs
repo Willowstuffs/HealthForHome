@@ -9,6 +9,7 @@
         public const string InvalidToken = "AUTH_007";
         public const string RefreshTokenInvalidOrExpired = "AUTH_008";
         public const string UserInactive = "AUTH_009";
+        public const string LogoutFailed = "AUTH_010";
 
         // Specjalista
 
