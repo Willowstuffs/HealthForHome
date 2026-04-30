@@ -34,20 +34,25 @@ namespace H4H_API.Helpers
                 {
                     await lifecycle.CompleteAppointmentAsync(appointment);
                 }
+                var cancellableStatuses = new[]
+                {
+                    "pending",
+                    "in_progress"
+                };
+
+
 
                 appointments = await context.appointments
                     .Where(a =>
-                        a.AppointmentStatus != "confirmed" &&
-                        a.AppointmentStatus != "cancelled" &&
+                        cancellableStatuses.Contains(a.AppointmentStatus) &&
                         a.ScheduledEnd < now)
-                    .ToListAsync();
+                        .ToListAsync();
 
                 foreach (var appointment in appointments)
                 {
                     await lifecycle.CancelAppointmentAsync(appointment);
                 }
-
-                await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+                await Task.Delay(TimeSpan.FromDays(1), stoppingToken);
             }
         }
     }
