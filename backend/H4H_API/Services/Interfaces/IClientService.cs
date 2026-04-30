@@ -37,5 +37,8 @@ namespace H4H_API.Services.Interfaces
         // Zarządzanie odpowiedziami specjalistów na prośby o usługę
         Task<List<AppointmentOfferDto>> GetOffersForAppointmentAsync(Guid userId, Guid appointmentId);
         Task AcceptSpecialistOfferAsync(Guid userId, Guid appointmentId, Guid specialistId);
+
+        // Oceny specjalistów
+        Task RateSpecialistAsync(Guid userId, Guid appointmentId, RateSpecialistDto dto);
     }
 }

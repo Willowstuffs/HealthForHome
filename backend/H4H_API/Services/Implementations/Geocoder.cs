@@ -37,6 +37,12 @@ namespace H4H_API.Services.Implementations
             _geometryFactory = NtsGeometryServices.Instance.CreateGeometryFactory(4326);
         }
 
+        /// <summary>
+        /// Geokoduje adres na współrzędne geograficzne (latitude, longitude) oraz sformatowany adres.
+        /// </summary>
+        /// <param name="address"></param>
+        /// <returns></returns>
+        /// <exception cref="AppException"></exception>
         public async Task<GeocodingResultDto?> GeocodeAddressAsync(string address)
         {
             if (string.IsNullOrWhiteSpace(address))
@@ -86,6 +92,12 @@ namespace H4H_API.Services.Implementations
             }
         }
 
+        /// <summary>
+        /// Odwrotne geokodowanie - zamienia współrzędne geograficzne na czytelny adres
+        /// </summary>
+        /// <param name="latitude"></param>
+        /// <param name="longitude"></param>
+        /// <returns></returns>
         public async Task<string?> ReverseGeocodeAsync(double latitude, double longitude)
         {
             try
@@ -98,7 +110,7 @@ namespace H4H_API.Services.Implementations
                 var url = $"https://nominatim.openstreetmap.org/reverse?format=json" +
                          $"&lat={latitude.ToString(_invariantCulture)}" +
                          $"&lon={longitude.ToString(_invariantCulture)}" +
-                         $"&zoom=18&addressdetails=1";
+                         $"&zoom=18&addressdetails=1&limit=1&countrycodes=pl"; // ogranicz do Polski, żeby uniknąć dziwnych wyników z innych krajów
 
                 // Rate limiting
                 await Task.Delay(1000);
@@ -112,16 +124,71 @@ namespace H4H_API.Services.Implementations
                     return null;
                 }
 
-                var displayName = json.RootElement.GetProperty("display_name").GetString();
-                _logger.LogInformation($"Reverse geocoding result: {displayName}");
+                //var displayName = json.RootElement.GetProperty("display_name").GetString();
+                //_logger.LogInformation($"Reverse geocoding result: {displayName}");
 
-                return displayName;
+                //return displayName;
+
+                // NOWE Formatowanie adresu z części "address" dla lepszej czytelności
+                var addressObj = json.RootElement.GetProperty("address");
+                return FormatAddress(addressObj);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Reverse geocoding error for coordinates: {latitude}, {longitude}");
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Formatuje adres zwrócony przez Nominatim do bardziej czytelnej formy, np. "Warszawa, ul. Marszałkowska 10, 00-001, Mazowieckie"
+        /// </summary>
+        /// <param name="addressElement"></param>
+        /// <returns></returns>
+        private string FormatAddress(JsonElement addressElement)
+        {
+            // 1. Wyciąganie danych z priorytetem na miasto
+            string? city = addressElement.TryGetProperty("city", out var c) ? c.GetString() :
+                           addressElement.TryGetProperty("town", out var t) ? t.GetString() :
+                           addressElement.TryGetProperty("village", out var v) ? v.GetString() :
+                           addressElement.TryGetProperty("municipality", out var m) ? m.GetString() : null;
+
+            string? road = addressElement.TryGetProperty("road", out var r) ? r.GetString() : null;
+            string? houseNumber = addressElement.TryGetProperty("house_number", out var hn) ? hn.GetString() : null;
+            string? postcode = addressElement.TryGetProperty("postcode", out var pc) ? pc.GetString() : null;
+            string? state = addressElement.TryGetProperty("state", out var s) ? s.GetString() : null;
+
+            // 2. NAJWAŻNIEJSZA BLOKADA: 
+            // Jeśli nie ma numeru domu LUB nie ma miasta -> odrzucamy.
+            if (string.IsNullOrEmpty(city) || string.IsNullOrEmpty(houseNumber))
+            {
+                return string.Empty;
+            }
+
+            // 3. Budowanie formatu: Miasto, Ulica Numer, Województwo, Kod
+            var parts = new List<string>();
+
+            // Miasto
+            parts.Add(city);
+
+            // Ulica + Numer
+            if (!string.IsNullOrEmpty(road))
+                parts.Add($"{road} {houseNumber}");
+            else
+                parts.Add(houseNumber); // Dla miejscowości bez nazw ulic
+
+            // Województwo
+            if (!string.IsNullOrEmpty(state))
+            {
+                string statePrefix = state.ToLower().Contains("województwo") ? "" : "województwo ";
+                parts.Add($"{statePrefix}{state.ToLower()}");
+            }
+
+            // Kod pocztowy
+            if (!string.IsNullOrEmpty(postcode))
+                parts.Add(postcode);
+
+            return string.Join(", ", parts);
         }
 
         public Point CreatePoint(double longitude, double latitude)
@@ -185,8 +252,7 @@ namespace H4H_API.Services.Implementations
             {
                 var httpClient = _httpClientFactory.CreateClient("Nominatim");
                 var encodedAddress = Uri.EscapeDataString(address);
-                var url = $"https://nominatim.openstreetmap.org/search?format=json&q={encodedAddress}&limit=1&addressdetails=1";
-
+                var url = $"https://nominatim.openstreetmap.org/search?format=json&q={Uri.EscapeDataString(address)}&addressdetails=1&limit=1&countrycodes=pl"; // ogranicz do Polski, żeby uniknąć dziwnych wyników z innych krajów
                 // Rate limiting dla Nominatim (1 request na sekundę)
                 await Task.Delay(1000);
 
@@ -210,23 +276,42 @@ namespace H4H_API.Services.Implementations
 
                 var firstResult = json.RootElement[0];
 
-                // PARSOWANIE Z KULTURĄ INVARIANT (kropka zamiast przecinka!)
-                var latString = firstResult.GetProperty("lat").GetString();
-                var lonString = firstResult.GetProperty("lon").GetString();
-
-                if (!double.TryParse(latString, _invariantCulture, out double latitude) ||
-                    !double.TryParse(lonString, _invariantCulture, out double longitude))
+                // WYCINKA ŚMIECI PO KLASIE
+                // Interesują nas głównie budynki i miejsca adresowe. 
+                // Jeśli coś jest "atrakcją" (tourism) albo "sklepem" (shop) bez konkretnego adresu budynku - ignorujemy.
+                string resultClass = firstResult.GetProperty("class").GetString() ?? "";
+                if (resultClass == "tourism" || resultClass == "leisure" || resultClass == "shop")
                 {
-                    _logger.LogError($"Failed to parse coordinates: lat={latString}, lon={lonString}");
+                    // Sprawdźmy czy mimo bycia np. sklepem, ma numer domu. 
+                    // Jeśli nie ma - to jest to nazwa punktu, a nie adres zamieszkania.
+                    if (!firstResult.GetProperty("address").TryGetProperty("house_number", out _))
+                    {
+                        _logger.LogWarning($"Zablokowano wynik niebędący budynkiem mieszkalnym: {address} ({resultClass})");
+                        return null;
+                    }
+                }
+
+                string prettyAddress = FormatAddress(firstResult.GetProperty("address"));
+
+                if (string.IsNullOrEmpty(prettyAddress))
+                {
+                    _logger.LogWarning($"Adres odrzucony (brak numeru domu lub miasta): {address}");
                     return null;
                 }
+
+                var latStr = firstResult.GetProperty("lat").GetString();
+                var lonStr = firstResult.GetProperty("lon").GetString();
+
+                if (!double.TryParse(latStr, _invariantCulture, out var latitude) ||
+                    !double.TryParse(lonStr, _invariantCulture, out var longitude))
+                    return null;
 
                 return new GeocodingResultDto
                 {
                     Address = address,
                     Latitude = latitude,
                     Longitude = longitude,
-                    FormattedAddress = firstResult.GetProperty("display_name").GetString(),
+                    FormattedAddress = prettyAddress,
                     FromCache = false
                 };
             }
@@ -236,7 +321,6 @@ namespace H4H_API.Services.Implementations
                 return null;
             }
         }
-
         private async Task CacheGeocodingResultAsync(string address, GeocodingResultDto result)
         {
             try
