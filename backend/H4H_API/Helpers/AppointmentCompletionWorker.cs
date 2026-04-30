@@ -35,7 +35,7 @@ namespace H4H_API.Helpers
                     await lifecycle.CompleteAppointmentAsync(appointment);
                 }
 
-                await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+                await Task.Delay(TimeSpan.FromDays(1), stoppingToken);
             }
         }
     }
