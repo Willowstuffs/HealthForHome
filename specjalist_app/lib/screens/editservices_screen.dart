@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../services/specjalist_service.dart';
 import 'main_screens/maintoolbar_screen.dart';
+import '../services/user_profile.dart';
 
 class EditServicesScreen extends StatefulWidget {
   const EditServicesScreen({super.key});
@@ -56,6 +57,7 @@ class _EditServicesScreenState extends State<EditServicesScreen> {
 
     try {
       await _apiService.deleteService(id);
+      UserSession.services = services;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Usługa została usunięta')),
       );
@@ -88,7 +90,8 @@ class _EditServicesScreenState extends State<EditServicesScreen> {
       const SnackBar(content: Text('Zapisano zmiany')),
     );
 
-    await _loadServices(); // Odświeżenie listy
+    await _loadServices(); 
+    UserSession.services = services;
   } catch (e) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Błąd zapisywania zmian: $e')),

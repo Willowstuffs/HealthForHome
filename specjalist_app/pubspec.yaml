@@ -22,6 +22,7 @@ dependencies:
   geocoding: ^2.1.0
   shared_preferences: ^2.5.5
   http: ^1.2.0
+  google_maps_flutter: ^2.17.0
 
 
 dev_dependencies:

@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:specjalist_app/screens/main_screens/maintoolbar_screen.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 class UpcomingScreen extends StatefulWidget {
-  final Function(String inquiryId)? onOpenMap;
+  final Function(Map<String, dynamic> appointment)? onOpenMap;
  const UpcomingScreen({
     super.key,
     this.onOpenMap,
@@ -16,13 +15,6 @@ class UpcomingScreen extends StatefulWidget {
   State<UpcomingScreen> createState() => _UpcomingScreenState();
 }
 
-enum CalendarViewType {
-  all,
-  upcoming,
-  archive,
-}
-
-CalendarViewType _calendarView = CalendarViewType.upcoming;
 
 class _UpcomingScreenState extends State<UpcomingScreen> {
   List<Map<String, dynamic>> upcoming = [];
@@ -34,13 +26,11 @@ class _UpcomingScreenState extends State<UpcomingScreen> {
   DateTime? _selectedDay;
   final List<String> _availableStatuses = [
   'confirmed',
-  'cancelled',
   'completed'
 ];
 
 final Set<String> _selectedStatuses = {
   'confirmed',
-  'cancelled',
   'completed'
 };
   Map<DateTime, List<Map<String, dynamic>>> _upcomingMap = {};
@@ -75,15 +65,8 @@ final Set<String> _selectedStatuses = {
     }
   }
   List<Map<String, dynamic>> get _currentSource {
-    switch (_calendarView) {
-      case CalendarViewType.archive:
-        return archive;
-      case CalendarViewType.upcoming:
-        return upcoming;
-      case CalendarViewType.all:
-        return [...upcoming, ...archive];
-    }
-  }
+  return [...upcoming, ...archive];
+}
   List<Map<String, dynamic>> _mapInquiries(List<dynamic> data) {
     return data.map((i) {
       final id = i['appointmentId'] ?? i['AppointmentId'];
@@ -94,7 +77,6 @@ final Set<String> _selectedStatuses = {
         'id': id?.toString() ?? '',
         'name': i['patientName'] ?? i['PatientName'] ?? 'Nieznany pacjent',
 
-        // 🔥 TRZYMAMY PRAWDZIWE DATY
         'start': start,
         'end': end,
 
@@ -110,7 +92,6 @@ final Set<String> _selectedStatuses = {
     case 'open': return 'Otwarte';
     case 'confirmed': return 'Potwierdzone';
     case 'cancelled': return 'Anulowane';
-    case 'completed': return 'Zakończone';
     case 'pending': return 'Oczekujące';
     default: return status;
   }
@@ -158,8 +139,6 @@ final Set<String> _selectedStatuses = {
                     ),
                     const SizedBox(height: 24),
                     _buildSectionHeader('Nadchodzące', Icons.calendar_today_rounded),
-                    const SizedBox(height: 16),
-                    _buildCalendarTypeFilters(),
                     const SizedBox(height: 16),
                     _buildStatusFilters(),
                     const SizedBox(height: 16),
@@ -295,6 +274,22 @@ final Set<String> _selectedStatuses = {
                   ),
               ],
             ),
+            Container(
+  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+  decoration: BoxDecoration(
+    color: AppColors.getStatusColor(item['status'])
+        .withValues(alpha: 0.15),
+    borderRadius: BorderRadius.circular(20),
+  ),
+  child: Text(
+    _formatStatusLabel(item['status']),
+    style: TextStyle(
+      color: AppColors.getStatusColor(item['status']),
+      fontWeight: FontWeight.w600,
+      fontSize: 12,
+    ),
+  ),
+),
             const Divider(height: 24),
             _buildInfoRow(Icons.access_time_rounded, '${item['start']} - ${item['end']}'),
             const SizedBox(height: 8),
@@ -324,15 +319,7 @@ final Set<String> _selectedStatuses = {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => MainScreen(
-                            startIndex: 2,
-                            highlightAppointmentId: item['id'],
-                          ),
-                        ),
-                      );
+                      widget.onOpenMap?.call(item);
                     },
                     icon: const Icon(Icons.location_on_outlined),
                     label: const Text('Mapa'),
@@ -350,17 +337,27 @@ final Set<String> _selectedStatuses = {
   return SizedBox(
     height: 50,
     child: ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
       scrollDirection: Axis.horizontal,
       itemCount: _availableStatuses.length,
       separatorBuilder: (_, __) => const SizedBox(width: 8),
       itemBuilder: (context, index) {
         final status = _availableStatuses[index];
         final isSelected = _selectedStatuses.contains(status);
+        final statusColor = AppColors.getStatusColor(status);
 
         return FilterChip(
-          label: Text(_formatStatusLabel(status)),
+          label: Text(
+            _formatStatusLabel(status),
+            style: TextStyle(
+              color: isSelected
+                  ? Colors.white
+                  : statusColor,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+
           selected: isSelected,
+
           onSelected: (_) {
             setState(() {
               if (isSelected) {
@@ -371,51 +368,26 @@ final Set<String> _selectedStatuses = {
               _updateUpcomingMap();
             });
           },
-          selectedColor: AppColors.primary.withValues(alpha: 0.15),
-          backgroundColor: AppColors.surfaceContainerHighest,
+
+          backgroundColor: statusColor.withValues(alpha: 0.12),
+
+          selectedColor: statusColor,
+
+          checkmarkColor: Colors.white,
+
+          side: BorderSide(
+            color: statusColor.withValues(alpha: 0.4),
+          ),
+
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+          ),
         );
       },
     ),
   );
 }
-Widget _buildCalendarTypeFilters() {
-  return Row(
-    children: [
-      ChoiceChip(
-        label: const Text("Wszystkie"),
-        selected: _calendarView == CalendarViewType.all,
-        onSelected: (_) {
-          setState(() {
-            _calendarView = CalendarViewType.all;
-            _updateUpcomingMap();
-          });
-        },
-      ),
-      const SizedBox(width: 8),
-      ChoiceChip(
-        label: const Text("Nadchodzące"),
-        selected: _calendarView == CalendarViewType.upcoming,
-        onSelected: (_) {
-          setState(() {
-            _calendarView = CalendarViewType.upcoming;
-            _updateUpcomingMap();
-          });
-        },
-      ),
-      const SizedBox(width: 8),
-      ChoiceChip(
-        label: const Text("Archiwum"),
-        selected: _calendarView == CalendarViewType.archive,
-        onSelected: (_) {
-          setState(() {
-            _calendarView = CalendarViewType.archive;
-            _updateUpcomingMap();
-          });
-        },
-      ),
-    ],
-  );
-}
+
   Widget _buildInfoRow(IconData icon, String text) {
     return Row(
       children: [

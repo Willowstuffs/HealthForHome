@@ -7,6 +7,7 @@ import '../offer_from_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/notification_services.dart';
 import '../../services/app_refresh_service.dart';
+import '../../services/address_formatter.dart';
 import 'package:specjalist_app/screens/main_screens/maintoolbar_screen.dart';
 
 class StartScreen extends StatefulWidget {
@@ -32,6 +33,11 @@ class _StartScreenState extends State<StartScreen> {
   void initState() {
     super.initState();
     _initializeData(); 
+  }
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadServices(); // zawsze sprawdzaj usługi
   }
 
   Future<void> _initializeData() async {
@@ -104,6 +110,13 @@ Future<void> _loadProfile() async {
     await NotificationService().uploadTokenToServer();
   }
    Future<void> _fetchData() async {
+    if (!_hasValidProfile) {
+      setState(() {
+        inquiries = [];
+        isLoading = false;
+      });
+      return;
+    }
     try {
       final fetchedInquiries = await ApiService().getInquiries(
         patientName: "",
@@ -132,23 +145,11 @@ Future<void> _loadProfile() async {
                 ? DateTime.tryParse(i['ScheduledEnd'])
                 : null);
 
-       String originalAddress = i['patientAddress'] ?? i['PatientAddress'] ?? '';
-        String streetAndCity = '';
+       final originalAddress =
+          i['patientAddress'] ?? i['PatientAddress'] ?? '';
 
-        final parts = originalAddress.split(',');
-
-
-        
-        if (parts.length >= 2) {
-          String street = parts[0].trim();
-          String city = parts[1].trim();
-
-          street = street.replaceAll(RegExp(r'[\d-]'), '');
-
-          streetAndCity = '$street, $city';
-        } else {
-          streetAndCity = originalAddress.replaceAll(RegExp(r'[\d-]'), '');
-        }
+         final streetAndCity =
+          AddressFormatter.short(originalAddress);
         bool apiIsRead = i['isRead'] == true || i['IsRead'] == true;
         bool isNew = !apiIsRead && !_readIds.contains(id);
 

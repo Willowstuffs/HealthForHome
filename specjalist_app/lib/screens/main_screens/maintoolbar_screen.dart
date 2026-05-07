@@ -1,171 +1,147 @@
 import 'package:flutter/material.dart';
 import 'package:specjalist_app/screens/main_screens/profil_screen.dart';
 import 'package:specjalist_app/screens/main_screens/upcoming_screen.dart';
-import 'start_screen.dart';
-import 'work_screen.dart';
+import 'package:specjalist_app/screens/main_screens/start_screen.dart';
+import 'package:specjalist_app/screens/main_screens/work_screen.dart';
 import 'package:specjalist_app/screens/main_screens/map_screen.dart';
 import '../../theme/app_theme.dart';
-// import kolejne ekrany gdy będą gotowe
 
 class MainScreen extends StatefulWidget {
   final int startIndex;
   final String? highlightAppointmentId;
+  final MapMode mapPrecision;
 
   const MainScreen({
     super.key,
     this.startIndex = 0,
     this.highlightAppointmentId,
+    this.mapPrecision = MapMode.toolbar,
   });
 
   @override
   State<MainScreen> createState() => _MainScreenState();
 }
+
 class _MainScreenState extends State<MainScreen> {
   late int _selectedIndex;
-  List<Map<String, dynamic>> inquiries = [];
-  List<Widget> get _screens => [
-        StartScreen(
-          highlightAppointmentId: widget.highlightAppointmentId,
-        ),
-        const WorkScreen(),
-        MapScreen(
-          key: ValueKey(widget.highlightAppointmentId),
-          inquiries: inquiries,
-          highlightId: widget.highlightAppointmentId,
-        ),
-        const UpcomingScreen(),
-        const ProfilScreen(),
-      ];
+
+  String? _highlightAppointmentId;
+
+  /// 🔥 temporary upcoming marker
+  Map<String, dynamic>? _upcomingOverride;
 
   @override
   void initState() {
     super.initState();
+
     _selectedIndex = widget.startIndex;
+    _highlightAppointmentId = widget.highlightAppointmentId;
   }
 
-
+  /// ===============================
+  /// NAVIGATION
+  /// ===============================
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+
+      /// 🔥 reset map when leaving map tab
+      if (index != 2) {
+        _upcomingOverride = null;
+      }
     });
   }
-  
+
+  /// ===============================
+  /// UPCOMING → MAP
+  /// ===============================
+  void _openUpcomingOnMap(Map<String, dynamic> appointment) {
+    setState(() {
+      _selectedIndex = 2;
+      _highlightAppointmentId = appointment['id'];
+      _upcomingOverride = appointment;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Owinięcie całego Scaffold w PopScope
     return PopScope(
-      canPop: false, // Blokuje natywne zamknięcie aplikacji/powrót
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
 
-        // Logika przycisku wstecz:
         if (_selectedIndex != 0) {
-          // Jeśli nie jesteśmy na Home (index 0), wróć do Home
-          setState(() {
-            _selectedIndex = 0;
-          });
-        } else {
-          // Jeśli jesteśmy już na Home, wyświetlamy informację
-          // (Użytkownik musi użyć przycisku systemowego Home/Gesture, by wyjść)
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Jesteś na ekranie głównym. Użyj przycisku Home, aby wyjść.'),
-              duration: Duration(seconds: 2),
-            ),
-          );
+          setState(() => _selectedIndex = 0);
         }
       },
       child: Scaffold(
         body: IndexedStack(
           index: _selectedIndex,
-          children: _screens,
+          children: [
+            /// HOME
+            StartScreen(
+              highlightAppointmentId: _highlightAppointmentId,
+            ),
+
+            /// WORK
+            const WorkScreen(),
+
+            /// MAP
+            MapScreen(
+              inquiries: const [],
+              highlightId: _highlightAppointmentId,
+              mode: _upcomingOverride != null
+                  ? MapMode.upcoming
+                  : widget.mapPrecision,
+
+              /// 🔥 magic line
+              overrideInquiries: _upcomingOverride != null
+                  ? [_upcomingOverride!]
+                  : null,
+            ),
+
+            /// UPCOMING
+            UpcomingScreen(
+              onOpenMap: (appointment) {
+                _openUpcomingOnMap(appointment);
+              },
+            ),
+
+            /// PROFILE
+            const ProfilScreen(),
+          ],
         ),
+
         bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        backgroundColor: AppColors.primary,
-        selectedItemColor: AppColors.outline,
-        unselectedItemColor: Colors.white70,
-        items: [
-          BottomNavigationBarItem(
-            icon: Image.asset(
-              'lib/images/ikona1.png',
-              width: 24,
-              height: 24,
-              color: Colors.white70,
+          type: BottomNavigationBarType.fixed,
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
+          backgroundColor: AppColors.primary,
+          selectedItemColor: AppColors.outline,
+          unselectedItemColor: Colors.white70,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home),
+              label: 'Home',
             ),
-            activeIcon: Image.asset(
-              'lib/images/ikona1.png',
-              width: 24,
-              height: 24,
-              color: AppColors.outline,
+            BottomNavigationBarItem(
+              icon: Icon(Icons.work),
+              label: 'Usługi',
             ),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Image.asset(
-              'lib/images/ikona2.png',
-              width: 24,
-              height: 24,
-              color: Colors.white70,
+            BottomNavigationBarItem(
+              icon: Icon(Icons.map),
+              label: 'Mapy',
             ),
-            activeIcon: Image.asset(
-              'lib/images/ikona2.png',
-              width: 24,
-              height: 24,
-              color: AppColors.outline,
+            BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_today),
+              label: 'Nadchodzące',
             ),
-            label: 'Usługi',
-          ),
-          BottomNavigationBarItem(
-            icon: Image.asset(
-              'lib/images/ikona3.png',
-              width: 24,
-              height: 24,
-              color: Colors.white70,
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person),
+              label: 'Profil',
             ),
-            activeIcon: Image.asset(
-              'lib/images/ikona3.png',
-              width: 24,
-              height: 24,
-              color: AppColors.outline,
-            ),
-            label: 'Mapy',
-          ),
-          BottomNavigationBarItem(
-            icon: Image.asset(
-              'lib/images/ikona4.png',
-              width: 24,
-              height: 24,
-              color: Colors.white70,
-            ),
-            activeIcon: Image.asset(
-              'lib/images/ikona4.png',
-              width: 24,
-              height: 24,
-              color: AppColors.outline,
-            ),
-            label: 'Nadchodzące',
-          ),
-          BottomNavigationBarItem(
-            icon: Image.asset(
-              'lib/images/ikona5.png',
-              width: 24,
-              height: 24,
-              color: Colors.white70,
-            ),
-            activeIcon: Image.asset(
-              'lib/images/ikona5.png',
-              width: 24,
-              height: 24,
-              color: AppColors.outline,
-            ),
-            label: 'Profil',
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
