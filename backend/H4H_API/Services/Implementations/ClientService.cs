@@ -878,5 +878,27 @@ namespace H4H_API.Services.Implementations
             _context.Set<Review>().Add(review);
             await _context.SaveChangesAsync();
         }
+
+
+        /// <summary>
+        /// Pobiera statystyki ocen klienta na podstawie wizyt, które zostały ocenione przez specjalistów. Zwraca liczbę ocen "good", "neutral" i "bad" dla danego klienta.
+        /// </summary>
+        /// <param name="clientId"></param>
+        /// <returns></returns>
+        public async Task<ClientStatsDto> GetClientStatsAsync(Guid clientId)
+        {
+            var ratings = await _context.appointments
+                .Where(a => a.ClientId == clientId && a.ClientRating != null)
+                .GroupBy(a => a.ClientRating)
+                .Select(g => new { Rating = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            return new ClientStatsDto
+            {
+                GoodCount = ratings.FirstOrDefault(r => r.Rating == "good")?.Count ?? 0,
+                NeutralCount = ratings.FirstOrDefault(r => r.Rating == "neutral")?.Count ?? 0,
+                BadCount = ratings.FirstOrDefault(r => r.Rating == "bad")?.Count ?? 0
+            };
+        }
     }
 }

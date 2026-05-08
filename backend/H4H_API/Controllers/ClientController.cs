@@ -7,6 +7,7 @@ using H4H_API.Helpers;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 
@@ -326,6 +327,18 @@ namespace H4H_API.Controllers
                     "Nie znaleziono profilu klienta",
                     ErrorCodes.ClientNotFound));
             }
+        }
+
+        /// <summary>
+        /// Pobiera statystyki klienta, takie jak liczba wizyt, oceny otrzymane od specjalistów, itp. 
+        /// </summary>
+        /// <param name="clientId"></param>
+        /// <returns></returns>
+        [HttpGet("{clientId}/stats")]
+        public async Task<ActionResult<ApiResponse<ClientStatsDto>>> GetClientStats(Guid clientId)
+        {
+            var stats = await _clientService.GetClientStatsAsync(clientId);
+            return Ok(ApiResponse<ClientStatsDto>.SuccessResponse(stats));
         }
     }
 }

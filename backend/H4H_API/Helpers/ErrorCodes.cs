@@ -30,6 +30,7 @@
         public const string AppointmentNotFound = "APPT_001";
         public const string AppointmentStatusNotPending = "APPT_002";
         public const string AppointmentAlreadyRated = "APPT_003";
+        public const string AppointmentStatusNotCompleted = "APPT_004";
 
         // Geokodowanie
         public const string GeocodingFailed = "GEO_001";
