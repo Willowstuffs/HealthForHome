@@ -78,7 +78,6 @@ namespace H4H_API.Services.Interfaces
         Task<SpecialistProfileDto?> GetPublicProfileAsync(Guid id);
         Task<List<SpecialistOfferDto>> GetPublicServicesAsync(Guid id);
         Task<List<NearbySpecialistDto>> GetNearbySpecialistsAsync(double lat, double lng);
-
-
+        Task ResignFromAppointmentAsync(Guid userId, Guid appointmentId);
     }
 }

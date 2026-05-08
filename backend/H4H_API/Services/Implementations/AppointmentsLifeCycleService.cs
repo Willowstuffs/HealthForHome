@@ -33,12 +33,38 @@ namespace H4H_API.Services.Implementations
 
         public async Task CancelAppointmentAsync(Appointment appointment)
         {
-            if (appointment.AppointmentStatus == "confirmed")
-                return;
-            else if (appointment.AppointmentStatus == "cancelled")
+            // Jeśli już jest anulowana lub zakończona, nic nie rób
+            if (appointment.AppointmentStatus == "cancelled" || appointment.AppointmentStatus == "completed")
                 return;
 
             appointment.AppointmentStatus = "cancelled";
+            appointment.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task RemoveSpecialistOfferAsync(Guid appointmentId, Guid specialistId)
+        {
+            // Usuwanie oferty specjalisty z wizyty
+            var offer = await _context.Set<AppointmentSpecialist>()
+                .FirstOrDefaultAsync(os => os.AppointmentId == appointmentId && os.SpecialistId == specialistId);
+
+            if (offer != null)
+            {
+                _context.Set<AppointmentSpecialist>().Remove(offer);
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        // Wycofanie oferty specjalisty, przywraca wizyte na rynek
+        public async Task ResetAppointmentToOpenAsync(Appointment appointment)
+        {
+            //Czyszczenie danych przypisanych przez poprzedniego specjalistę
+            appointment.SpecialistId = null;
+            appointment.AppointmentStatus = "open";
+            appointment.TotalPrice = null;
+            appointment.FinalDate = null;
+            appointment.SpecialistServiceIds = Array.Empty<Guid>();
             appointment.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();

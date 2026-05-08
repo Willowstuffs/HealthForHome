@@ -565,5 +565,6 @@ namespace H4H_API.Services.Implementations
             else
                 throw new AppException("Nieprawidłowy kod weryfikacyjny.", ErrorCodes.WrongVerificationCode);
         }
+
     }
 }
