@@ -82,6 +82,9 @@ namespace H4H.Core.Models
         [Column("client_rating_comment")] 
         public string? ClientRatingComment { get; set; } // Opcjonalny komentarz przy "bad"
 
+        [Column("service_names_snapshot")] // dodanie pola do przechowywania nazw usług w momencie tworzenia wizyty (na wypadek zmian lub usunięcia w przyszłości)
+        public string? ServiceNamesSnapshot { get; set; }
+
 
         public virtual Client Client { get; set; } = null!;
         public virtual Specialist? Specialist { get; set; } 

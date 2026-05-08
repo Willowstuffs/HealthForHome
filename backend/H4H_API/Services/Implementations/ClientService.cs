@@ -380,9 +380,16 @@ namespace H4H_API.Services.Implementations
 
             var dto = _mapper.Map<AppointmentDto>(appointment);
 
-            // Pobierz nazwy usług specjalisty, jeśli są przypisane do wizyty
-            if (appointment.SpecialistServiceIds != null && appointment.SpecialistServiceIds.Any())
+            // LOGIKA ODPORNA NA USUWANIE USŁUG:
+            // 1. Jeśli mamy snapshot (nowe wizyty), używamy go
+            if (!string.IsNullOrEmpty(appointment.ServiceNamesSnapshot))
             {
+                dto.ServiceNames = appointment.ServiceNamesSnapshot.Split(", ").ToList();
+            }
+            // 2. Jeśli nie ma snapshota (stare wizyty), pobieramy "na żywo" (uwaga: tutaj mogą znikać przy usunięciu)
+            else if (appointment.SpecialistServiceIds != null && appointment.SpecialistServiceIds.Any())
+            {
+                // Pobieramy nazwy usług z tablicy specialist_services, ale tylko dla tych ID, które są powiązane z tą wizytą
                 dto.ServiceNames = await _context.specialist_services
                     .Include(ss => ss.ServiceType)
                     .Where(ss => appointment.SpecialistServiceIds.Contains(ss.Id))
@@ -743,22 +750,33 @@ namespace H4H_API.Services.Implementations
 
             // 1. Pobieramy ofertę (od razu całość, żeby nie robić AnyAsync i potem FirstAsync osobno - tylko jedno zapytanie do bazy wiec będzie szybciej) 
             var finalOffer = await _context.Set<AppointmentSpecialist>()
-                .FirstOrDefaultAsync(os => os.AppointmentId == appointmentId && os.SpecialistId == specialistId);
+         .FirstOrDefaultAsync(os => os.AppointmentId == appointmentId && os.SpecialistId == specialistId);
 
             if (finalOffer == null)
                 throw new AppException("Ten specjalista nie złożył oferty.", ErrorCodes.ValidationError);
 
+            // --- POPRAWIONA LOGIKA SNAPSHOTA: Pobieramy nazwy bezpośrednio z service_types ---
+            if (finalOffer.ServiceTypeIds != null && finalOffer.ServiceTypeIds.Any())
+            {
+                var serviceNames = await _context.Set<ServiceType>() // Set<ServiceType> bo to tabela słownikowa
+                    .Where(st => finalOffer.ServiceTypeIds.Contains(st.Id))
+                    .Select(st => st.Name)
+                    .ToListAsync();
+
+                appointment.ServiceNamesSnapshot = string.Join(", ", serviceNames);
+            }
+            // ------------------------------------------------------------------------------
+
             // 2. Przypisujemy dane ze złożonej oferty do wizyty
             appointment.SpecialistId = specialistId;
             appointment.AppointmentStatus = "confirmed";
-            appointment.TotalPrice = finalOffer.Price;      // Cena proponowana przez specjalistę w ofercie staje się ceną finalną wizyty
-            appointment.FinalDate = finalOffer.ProposedDate; // Data propozycji specjalisty staje się datą finalną wizyty (można to później zmienić, jeśli chcemy dać klientowi możliwość negocjacji terminu)
+            appointment.TotalPrice = finalOffer.Price;
+            appointment.FinalDate = finalOffer.ProposedDate;
 
-            // Poprawka: przypisujemy wszystkie usługi, które specjalista zadeklarował w ofercie (może być ich kilka, oddzielone przecinkami)
+            // Przypisujemy ID usług do tablicy w wizycie
             appointment.SpecialistServiceIds = finalOffer.ServiceTypeIds?.ToArray() ?? Array.Empty<Guid>();
 
-
-            // 3. Zapisujemy zmiany w bazie danych wraz z aktualizacją daty modyfikacji wizyty
+            // 3. Zapisujemy zmiany
             appointment.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
 
             await _context.SaveChangesAsync();

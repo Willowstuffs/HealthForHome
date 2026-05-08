@@ -482,3 +482,16 @@ CREATE TABLE IF NOT EXISTS revoked_tokens (
     token TEXT NOT NULL,
     expires_at TIMESTAMP NOT NULL
 );
+
+-- Aktualizacja 08.05.2026 - Dodanie możliwosci oceniania dla specjalistów oraz zapisywanie na stałe nazw usług do wizyt (naprawa błędu ze znikającymi usługami)
+
+-- Dodanie kolumn do tabeli appointments
+ALTER TABLE appointments 
+ADD COLUMN IF NOT EXISTS client_rating VARCHAR(20) DEFAULT 'none',
+ADD COLUMN IF NOT EXISTS client_rating_comment TEXT;
+
+-- Dodanie indeksu, aby statystyki liczyły się błyskawicznie
+CREATE INDEX IF NOT EXISTS idx_appointments_client_rating ON appointments(client_id, client_rating);
+
+-- Dodania kolumny do przechowywania nazw usług
+ALTER TABLE appointments ADD COLUMN service_names_snapshot TEXT;
