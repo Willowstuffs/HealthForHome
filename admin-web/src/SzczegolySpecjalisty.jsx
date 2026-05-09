@@ -106,6 +106,21 @@ function SzczegolySpecjalisty() {
   const canReject = accountStatus === "PENDING";
 
   const verify = verifyLinkForSpecialization(data.specialization);
+  function normalizeSpecialization(spec) {
+  const s = String(spec || "").toLowerCase();
+
+  if (s.includes("nurse") || s.includes("piel")) return "nurse";
+  if (s.includes("physio") || s.includes("fizjo")) return "physio";
+
+  return "other";
+}
+
+const specializationRaw = data.specialization || data.professionalTitle;
+const specialization = normalizeSpecialization(specializationRaw);
+
+const isNurse = specialization === "nurse";
+const isPhysio = specialization === "physio";
+  
 
   async function handleApprove() {
     if (!canApprove) return;
@@ -250,25 +265,25 @@ async function handleUnsuspend() {
           </>
         )}
 
-        {data?.isActive ? (
-          <button
-            className="btn"
-            onClick={handleSuspend}
-            disabled={actionLoading}
-            type="button"
-          >
-            Zawieś
-          </button>
-        ) : (
-          <button
-            className="btn"
-            onClick={handleUnsuspend}
-            disabled={actionLoading}
-            type="button"
-          >
-            Odwieś
-          </button>
-        )}
+        {data?.isActive !== false ? (
+  <button
+    className="btn"
+    onClick={handleSuspend}
+    disabled={actionLoading}
+    type="button"
+  >
+    Zawieś
+  </button>
+) : (
+  <button
+    className="btn"
+    onClick={handleUnsuspend}
+    disabled={actionLoading}
+    type="button"
+  >
+    Odwieś
+  </button>
+)}
       </div>
       </div>
 
@@ -282,32 +297,46 @@ async function handleUnsuspend() {
               <div className="kv">
                 <div className="kv-row">
                   <div className="kv-key">Specjalizacja</div>
-                  <div className="kv-val">{data.specialization || data.professionalTitle || "-"}</div>
-                </div>
-
-                <div className="kv-row">
-                  <div className="kv-key">NIP</div>
-                  <div className="kv-val">{data.nip}</div>
-                </div>
-
-                <div className="kv-row">
-                  <div className="kv-key">Numer księgi rejestrowej</div>
-                  <div className="kv-val">{data.registryBookNumber}</div>
-                </div>
-
-                <div className="kv-row">
-                  <div className="kv-key">Numer prawa wykonywania</div>
                   <div className="kv-val">
-                    {data.licenseNumber}
-                    {verify && (
-                      <div className="kv-sub">
-                        <a className="verify-link" href={verify.href} target="_blank" rel="noreferrer">
-                          {verify.label}
-                        </a>
-                      </div>
-                    )}
-                  </div>
+  {isNurse
+    ? "Pielęgniarstwo"
+    : isPhysio
+    ? "Fizjoterapia"
+    : specializationRaw || "-"}
+</div>
                 </div>
+
+{isPhysio && (
+  <>
+    <div className="kv-row">
+      <div className="kv-key">NIP</div>
+      <div className="kv-val">{data.nip || "-"}</div>
+    </div>
+
+    <div className="kv-row">
+      <div className="kv-key">Numer księgi rejestrowej</div>
+     <div className="kv-val">{data.registryBookNumber || data.licenseNumber || "-"}</div>
+    </div>
+  </>
+)}
+
+{isNurse && (
+  <div className="kv-row">
+    <div className="kv-key">Numer prawa wykonywania zawodu</div>
+    <div className="kv-val">
+      {data.licenseNumber && data.licenseNumber !== "PENDING"
+  ? data.licenseNumber
+  : "-"}
+      {verify && (
+        <div className="kv-sub">
+          <a className="verify-link" href={verify.href} target="_blank" rel="noreferrer">
+            {verify.label}
+          </a>
+        </div>
+      )}
+    </div>
+  </div>
+)}
               </div>
             </div>
 
@@ -320,7 +349,11 @@ async function handleUnsuspend() {
                 <div className="license-cell">
                   <div className="license-label">Status licencji</div>
                   <div className="license-value">
-                    <LicenseBadge status={licenseStatus} />
+                    {licenseStatus !== "UNKNOWN" ? (
+                      <LicenseBadge status={licenseStatus} />
+                    ) : (
+                      <span>-</span>
+                    )}
                   </div>
                 </div>
 
@@ -354,7 +387,7 @@ async function handleUnsuspend() {
                 <div className="license-address">
                   <div className="license-label">Adres:</div>
                   <div className="license-address-value">
-                    {data.address}, {data.city}, {data.voivodeship}
+                    {[data.address, data.city, data.voivodeship].filter(Boolean).join(", ") || "-"}
                   </div>
                 </div>
               </div>
@@ -378,7 +411,7 @@ async function handleUnsuspend() {
                   <tbody>
                     <tr>
                       <td colSpan={2} className="activity-empty">
-                        Użytkownik nie wykonał jeszcze żadnej aktywności w systemie.
+                        Dane aktywności specjalisty nie są jeszcze dostępne.
                       </td>
                     </tr>
                   </tbody>

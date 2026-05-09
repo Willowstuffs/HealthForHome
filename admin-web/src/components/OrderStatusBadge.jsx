@@ -1,23 +1,41 @@
-function label(status){
-  switch(status){
-    case "NEW": return "Nowe";
-    case "IN_PROGRESS": return "W trakcie";
-    case "DONE": return "Zrealizowane";
-    case "CANCELLED": return "Anulowane";
-    default: return status || "-";
+function normalize(status) {
+  return String(status || "").toLowerCase();
+}
+
+function label(status) {
+  switch (normalize(status)) {
+    case "pending":
+      return "Oczekujące";
+    case "open":
+      return "Otwarte";
+    case "confirmed":
+      return "Potwierdzone";
+    case "completed":
+      return "Zakończone";
+    case "cancelled":
+      return "Anulowane";
+    default:
+      return status || "-";
   }
 }
 
-function variant(status){
-  switch(status){
-    case "NEW": return "badge--primary";
-    case "IN_PROGRESS": return "badge--muted";
-    case "DONE": return "badge--success";
-    case "CANCELLED": return "badge--danger";
-    default: return "badge--muted";
+function variant(status) {
+  switch (normalize(status)) {
+    case "pending":
+      return "badge--primary";
+    case "open":
+      return "badge--muted";
+    case "confirmed":
+      return "badge--success";
+    case "completed":
+      return "badge--success";
+    case "cancelled":
+      return "badge--danger";
+    default:
+      return "badge--muted";
   }
 }
 
-export default function OrderStatusBadge({ status }){
+export default function OrderStatusBadge({ status }) {
   return <span className={`badge ${variant(status)}`}>{label(status)}</span>;
 }

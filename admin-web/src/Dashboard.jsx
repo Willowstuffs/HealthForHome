@@ -37,12 +37,38 @@ function orderDayKey(o) {
 function timeAgoPL(value) {
   if (!value) return "—";
 
-  const d = new Date(value);
+  const raw = String(value).trim();
+
+  const match = raw.match(
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/
+  );
+
+  let d;
+
+  if (match) {
+    const [, year, month, day, hour, minute, second] = match;
+
+    d = new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hour),
+      Number(minute),
+      Number(second)
+    );
+  } else {
+    d = new Date(raw);
+  }
+
   if (Number.isNaN(d.getTime())) return "—";
 
   const diffMs = Date.now() - d.getTime();
-  const diffMin = Math.max(0, Math.floor(diffMs / 60000));
 
+  if (diffMs < 0) return "przed chwilą";
+
+  const diffMin = Math.floor(diffMs / 60000);
+
+  if (diffMin < 1) return "przed chwilą";
   if (diffMin < 60) return `${diffMin} min temu`;
 
   const diffH = Math.floor(diffMin / 60);
@@ -51,7 +77,6 @@ function timeAgoPL(value) {
   const diffD = Math.floor(diffH / 24);
   return `${diffD} dni temu`;
 }
-
 /** ---------- small components ---------- */
 function StatCard({ title, value, hint, to, className = "" }) {
   const content = (
@@ -473,14 +498,12 @@ export default function Dashboard() {
         const sumByDay = new Map();
         let total = 0;
         let newCount = 0;
-        let doneCount = 0;
 
         for (const o of orders) {
           const v = Number(o.totalPrice ?? 0);
           total += v;
 
           if (o.status === "pending") newCount += 1;
-          if (o.status === "completed") doneCount += 1;
 
           const key = orderDayKey(o);
           if (!key) continue;
@@ -501,9 +524,17 @@ export default function Dashboard() {
           });
         }
 
-        const successRate = orders.length
-          ? Math.round((doneCount / orders.length) * 100)
-          : 0;
+        const finishedOrders = orders.filter((o) =>
+  ["completed", "cancelled", "no_show"].includes(String(o.status).toLowerCase())
+);
+
+const completedCount = finishedOrders.filter(
+  (o) => String(o.status).toLowerCase() === "completed"
+).length;
+
+const successRate = finishedOrders.length
+  ? Math.round((completedCount / finishedOrders.length) * 100)
+  : 0;
 
         if (!cancelled) {
           setChart({
@@ -534,55 +565,35 @@ export default function Dashboard() {
     let cancelled = false;
 
     async function loadActivity() {
-      setLoadingActivity(true);
+  setLoadingActivity(true);
 
-      try {
-        const [usersRes, specialistsRes, ordersRes] = await Promise.all([
-          listUsers({ page: 1, pageSize: 5, sort: "CREATED_DESC" }),
-          listSpecialists({ page: 1, pageSize: 5, sort: "CREATED_DESC" }),
-          listOrders({ page: 1, pageSize: 5 }),
-        ]);
+  try {
+    const ordersRes = await listOrders({ page: 1, pageSize: 10 });
+    const orders = ordersRes?.items ?? [];
+    console.log("ACTIVITY ORDERS:", orders);
+    
+    
+const orderItems = orders.map((o) => ({
+  id: o.appointmentId,
+  type: "order",
+  name: o.contactName || "Klient",
+  subtitle: o.serviceName || "—",
+  text: "Dodano nowe zamówienie",
+  date: o.createdAt || o.scheduledStart,
+}));
+    const merged = orderItems
+      .filter((x) => x.date)
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 5);
 
-        const userItems = (usersRes?.items ?? []).map((u) => ({
-          id: u.id,
-          type: "user",
-          name: `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.email || "Użytkownik",
-          subtitle: u.email || "—",
-          text: "Zarejestrował się jako klient.",
-          date: u.createdAt,
-        }));
-
-        const specialistItems = (specialistsRes?.items ?? []).map((s) => ({
-          id: s.id,
-          type: "specialist",
-          name: `${s.firstName || ""} ${s.lastName || ""}`.trim() || s.email || "Specjalista",
-          subtitle: s.email || "—",
-          text: "Zarejestrował się jako specjalista.",
-          date: s.createdAt,
-        }));
-
-        const orderItems = (ordersRes?.items ?? []).map((o) => ({
-          id: o.appointmentId,
-          type: "order",
-          name: o.contactName || "Klient",
-          subtitle: o.clientAddress || "—",
-          text: "Dodał nowe zamówienie.",
-          date: o.scheduledStart,
-        }));
-
-        const merged = [...userItems, ...specialistItems, ...orderItems]
-          .filter((x) => x.date)
-          .sort((a, b) => new Date(b.date) - new Date(a.date))
-          .slice(0, 5);
-
-        if (!cancelled) setActivityItems(merged);
-      } catch (e) {
-        console.error("Błąd pobierania aktywności:", e);
-        if (!cancelled) setActivityItems([]);
-      } finally {
-        if (!cancelled) setLoadingActivity(false);
-      }
-    }
+    if (!cancelled) setActivityItems(merged);
+  } catch (e) {
+    console.error("Błąd pobierania aktywności:", e);
+    if (!cancelled) setActivityItems([]);
+  } finally {
+    if (!cancelled) setLoadingActivity(false);
+  }
+}
 
     loadActivity();
 

@@ -78,13 +78,6 @@ function SzczegolyUzytkownika() {
                 <div className="user-email">{data.email}</div>
               </div>
             </div>
-
-            {/* Bez Zablokuj i Usuń */}
-            <div className="user-actions">
-              <button className="btn" onClick={() => alert("TODO: edycja")} type="button">
-                Edytuj
-              </button>
-            </div>
           </div>
 
           {/* Cards grid */}

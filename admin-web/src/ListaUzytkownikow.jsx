@@ -123,7 +123,7 @@ function ListaUzytkownikow() {
                 <tr>
                   <th>Imię i nazwisko</th>
                   <th>Email</th>
-                  <th>Telefon</th>
+                  
                   <th>Data rejestracji</th>
                   <th></th>
                 </tr>
@@ -143,7 +143,6 @@ function ListaUzytkownikow() {
                         {`${u.firstName || ""} ${u.lastName || ""}`.trim() || "—"}
                       </td>
                       <td>{u.email || "—"}</td>
-                      <td>{u.phoneNumber || u.phone || "—"}</td>
                       <td>{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}</td>
                       <td className="cell-right">
                         <Link className="table-link" to={`/users/${u.id}`}>

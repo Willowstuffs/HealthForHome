@@ -72,10 +72,11 @@ function ListaZamowien() {
               onChange={(e) => setQuery((q) => ({ ...q, status: e.target.value, page: 1 }))}
             >
               <option value="">Wszystkie</option>
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="cancelled">Cancelled</option>
-              <option value="completed">Completed</option>
+<option value="pending">Oczekujące</option>
+<option value="confirmed">Potwierdzone</option>
+<option value="open">Otwarte</option>
+<option value="cancelled">Anulowane</option>
+<option value="completed">Zakończone</option>
             </select>
           </label>
 
@@ -129,7 +130,7 @@ function ListaZamowien() {
                 <tr>
                   <th>ID</th>
                   <th>Zamawiający</th>
-                  <th>Kontakt</th>
+                  <th>Adres</th>
                   <th>Specjalista</th>
                   <th>Wartość</th>
                   <th>Status</th>

@@ -57,7 +57,6 @@ const createdAtLabel = useMemo(() => {
   return `${day}.${month}.${year}, ${hour}:${minute}:${second}`;
 }, [data]);
 
-  <div className="order-value order-date">{createdAtLabel}</div>
   if (loading) return <p style={{ padding: 24 }}>Ładowanie...</p>;
   if (error) return <p style={{ padding: 24, color: "tomato" }}>{error}</p>;
   if (!data) return null;
@@ -110,6 +109,10 @@ const createdAtLabel = useMemo(() => {
                   <div className="order-label">Data zamówienia</div>
                   <div className="order-value order-date">{createdAtLabel}</div>
                 </div>
+                <div className="order-section">
+  <div className="order-label">Usługa</div>
+  <div className="order-value">{data.serviceName || "—"}</div>
+</div>
 
                 <div className="order-section">
                   <div className="order-label">Zamawiający</div>

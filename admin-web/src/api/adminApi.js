@@ -60,6 +60,7 @@ export async function listSpecialists(query) {
 export async function getSpecialist(id) {
   const res = await apiFetch(`/api/Admin/specialists/${id}`);
   const payload = res?.data ?? res;
+  console.log("PHYSIO RAW:", payload);
   return normalizeSpecialist(payload);
 }
 
@@ -167,7 +168,8 @@ export async function listOrders(query) {
       ...item,
       id: item?.id ?? item?.appointmentId,
       appointmentId: item?.appointmentId ?? item?.id,
-      createdAt: item?.createdAt ?? null,
+      createdAt:
+        item?.createdAt ?? item?.createdDate ?? item?.created_at ?? null,
       status: item?.status ?? "",
       totalPrice: item?.totalPrice ?? item?.price ?? 0,
       contactName: item?.contactName ?? "",
@@ -183,20 +185,67 @@ export async function getOrder(id) {
   const res = await apiFetch(`/api/Admin/appointments/${id}`);
   const payload = res?.data?.data ?? res?.data ?? res;
 
+  console.log("ORDER DETAILS RAW:", payload);
+
   return {
+    ...payload,
+
     id: payload?.appointmentId ?? payload?.id,
     appointmentId: payload?.appointmentId ?? payload?.id,
-    contactName: payload?.contactName ?? "—",
-    serviceName: payload?.serviceName ?? "—",
-    scheduledStart: payload?.scheduledStart,
-    status: payload?.status,
-    totalPrice: payload?.totalPrice,
-    clientAddress: payload?.clientAddress ?? "—",
-    specialistName: payload?.specialistName ?? "—",
-    contactEmail: payload?.contactEmail ?? "—",
-    contactPhoneNumber: payload?.contactPhoneNumber ?? "—",
-    clientNotes: payload?.clientNotes ?? "",
-    createdAt: payload?.createdAt ?? null,
+
+    contactName:
+      payload?.contactName ??
+      payload?.clientName ??
+      payload?.customerName ??
+      payload?.fullName ??
+      "—",
+
+    contactEmail:
+      payload?.contactEmail ??
+      payload?.clientEmail ??
+      payload?.customerEmail ??
+      payload?.email ??
+      payload?.client?.email ??
+      payload?.client?.user?.email ??
+      "—",
+
+    serviceName:
+      payload?.serviceName ??
+      payload?.serviceTypeName ??
+      payload?.service?.name ??
+      "—",
+    contactPhoneNumber:
+      payload?.contactPhoneNumber ??
+      payload?.contactPhone ??
+      payload?.phoneNumber ??
+      payload?.phone ??
+      "—",
+
+    specialistId:
+      payload?.specialistId ??
+      payload?.specialist?.specialistId ??
+      payload?.specialist?.id ??
+      null,
+
+    specialistName:
+      payload?.specialistName && payload.specialistName !== "-"
+        ? payload.specialistName
+        : payload?.specialistFullName && payload.specialistFullName !== "-"
+          ? payload.specialistFullName
+          : payload?.specialist?.firstName || payload?.specialist?.lastName
+            ? `${payload?.specialist?.firstName ?? ""} ${payload?.specialist?.lastName ?? ""}`.trim()
+            : (payload?.specialist?.name ??
+              payload?.specialist?.fullName ??
+              "—"),
+
+    totalPrice:
+      payload?.totalPrice ?? payload?.price ?? payload?.totalAmount ?? null,
+
+    clientNotes:
+      payload?.clientNotes ?? payload?.description ?? payload?.notes ?? "",
+    createdAt: item?.createdAt ?? item?.createdDate ?? null,
+
+    status: payload?.status ?? payload?.appointmentStatus ?? "",
   };
 }
 

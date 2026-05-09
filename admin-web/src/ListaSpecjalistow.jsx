@@ -114,11 +114,16 @@ function ListaSpecjalistow() {
     return `Strona ${data.page} z ${Math.max(1, Math.ceil(data.total / data.pageSize))} • Wyświetlono ${data.items.length} wyników`;
   }, [loading, error, data]);
     const specializationLabels = {
-      physiotherapist: "Fizjoterapeuta",
-      nurse: "Pielęgniarz",
-      doctor: "Lekarz",
-      caregiver: "Opiekun medyczny"
-    };
+  physiotherapist: "Fizjoterapeuta",
+  fizjoterapia: "Fizjoterapeuta",
+  FIZJOTERAPEUTA: "Fizjoterapeuta",
+
+  nurse: "Pielęgniarz",
+  pielegniarstwo: "Pielęgniarz",
+  pielęgniarstwo: "Pielęgniarz",
+  PIELEGNIARKA: "Pielęgniarz",
+
+};
 
   return (
     <div className="page">
@@ -206,9 +211,7 @@ function ListaSpecjalistow() {
                     <th>Specjalizacja</th>
                     <th>Email</th>
                     <th>Status</th>
-                    <th>Lokalizacja</th>
-                    <th>Licencja</th>
-                    <th>Akcje</th>
+
                     <th></th>
                   </tr>
                 </thead>
@@ -226,19 +229,17 @@ function ListaSpecjalistow() {
                         <td className="cell-strong">
                           {s.firstName} {s.lastName}
                         </td>
-                        <td>{specializationLabels[s.professionalTitle] || s.professionalTitle}</td>
+                        <td>
+  {specializationLabels[s.professionalTitle] ||
+    specializationLabels[s.specialization] ||
+    s.professionalTitle ||
+    s.specialization ||
+    "-"}
+</td>
                         <td>{s.email}</td>
                         <td>
                           <StatusBadge status={s.status || s.verificationStatus} />
                         </td>
-                        <td>{s.city || "-"}</td>
-                        <td>
-                          <LicenseBadge
-                            status={computeLicenseStatus(s.licenseStatus, s.licenseValidUntil)}
-                          />
-                        </td>
-
-
                         <td>
                           {(s.status || s.verificationStatus)?.toUpperCase() === "PENDING" && (
                             <div style={{ display: "flex", gap: "8px" }}>

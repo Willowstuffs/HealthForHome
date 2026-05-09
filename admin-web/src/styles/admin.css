@@ -18,8 +18,8 @@
   overflow: hidden;
 
   background:
-    radial-gradient(900px 500px at 30% 10%, rgba(255,255,255,0.12), transparent 60%),
-    linear-gradient(180deg, #0b3f3f 0%, #0a4a4a 40%, #0f766e 100%);
+  radial-gradient(900px 500px at 30% 10%, rgba(255,255,255,0.10), transparent 60%),
+  linear-gradient(180deg, #2E4438 0%, #435B4D 100%);
 
   color: rgba(255,255,255,0.92);
   box-shadow: 20px 0 60px rgba(2,24,24,0.25);
@@ -95,10 +95,24 @@
 
 
 
-.sidebar-footer{
-  margin-top:auto;
-  padding-top:18px;
-  border-top:1px solid rgba(255,255,255,0.15);
+.sidebar {
+  width: 280px;
+  padding: 24px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+
+  background:
+    radial-gradient(900px 500px at 30% 10%, rgba(255,255,255,0.10), transparent 60%),
+    linear-gradient(180deg, #2E4438 0%, #435B4D 100%);
+
+  color: rgba(255,255,255,0.92);
+  box-shadow: 20px 0 60px rgba(2,24,24,0.25);
 }
 
 .btn-logout{
@@ -322,8 +336,8 @@
 .page input:focus,
 .page select:focus{
   outline: none;
-  border-color: rgba(30,166,154,0.75);
-  box-shadow: 0 0 0 4px rgba(30,166,154,0.14);
+  border-color: rgba(119,143,129,0.75);
+  box-shadow: 0 0 0 4px rgba(119,143,129,0.18);
 }
 
 .filters-actions{
@@ -421,7 +435,7 @@
 .stat-card:hover{
   transform: translateY(-2px);
   box-shadow: 0 22px 60px rgba(15,23,42,0.14);
-  border-color: rgba(30,166,154,0.22);
+  border-color: rgba(119,143,129,0.26);
 }
 
 .card-title{
@@ -496,8 +510,8 @@
   place-items: center;
   font-weight: 900;
   color: rgba(15,23,42,0.75);
-  background: rgba(30,166,154,0.10);
-  border: 1px solid rgba(30,166,154,0.22);
+  background: rgba(119,143,129,0.12);
+border: 1px solid rgba(119,143,129,0.26);
 }
 
 .activity-main{ min-width: 0; }
