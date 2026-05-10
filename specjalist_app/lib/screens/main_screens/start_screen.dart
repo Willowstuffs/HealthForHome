@@ -57,6 +57,31 @@ class _StartScreenState extends State<StartScreen> {
     debugPrint("Services load error: $e");
   }
 }
+void _goToProfileFix() {
+  final hasCity = UserSession.profile?.serviceAreas?.any(
+        (a) => a.city.trim().isNotEmpty,
+      ) ??
+      false;
+
+  final hasService = UserSession.services.isNotEmpty;
+
+  int targetIndex;
+
+  if (!hasService) {
+    targetIndex = 1; // 👉 zakładka USŁUGI
+  } else if (!hasCity) {
+    targetIndex = 4; // 👉 PROFIL / LOKALIZACJA
+  } else {
+    return;
+  }
+
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(
+      builder: (_) => MainScreen(startIndex: targetIndex),
+    ),
+  );
+}
  bool get _hasValidProfile {
   final hasCity = UserSession.profile?.serviceAreas?.any(
         (a) => a.city.trim().isNotEmpty,
@@ -278,14 +303,7 @@ Future<void> _loadProfile() async {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const MainScreen(startIndex: 4),
-                    ),
-                  );
-                },
+                onPressed: _goToProfileFix,
                 child: const Text("Uzupełnij profil"),
               ),
             ),

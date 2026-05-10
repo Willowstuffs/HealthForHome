@@ -1,49 +1,49 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
-//import 'package:dio/io.dart';
+import 'package:dio/io.dart';
 import '../services/login_response.dart';
 import '../services/token_storage.dart';
 import '../services/specjalist_service.dart';
 import 'package:http_parser/http_parser.dart';
 
-class ApiService {
-  static const String _baseUrl = 'https://h4h.makolino.com';
-  late final Dio _dio;
-
-  ApiService() {
-    _dio = Dio(
-      BaseOptions(
-        baseUrl: _baseUrl,
-        connectTimeout: const Duration(seconds: 600), // 10 minut
-        receiveTimeout: const Duration(seconds: 600),
-        headers: {'Content-Type': 'application/json'},
-      ),
-    );
 // class ApiService {
-//   static const bool isEmulator = true;
-//   static const String _baseUrl = isEmulator
-//       ? 'https://192.168.100.24:7026'
-//       : 'https://10.0.2.2:7026';
+//   static const String _baseUrl = 'https://h4h.makolino.com';
 //   late final Dio _dio;
+
 //   ApiService() {
 //     _dio = Dio(
 //       BaseOptions(
 //         baseUrl: _baseUrl,
-//         connectTimeout: const Duration(seconds: 10),
-//         receiveTimeout: const Duration(seconds: 10),
+//         connectTimeout: const Duration(seconds: 600), // 10 minut
+//         receiveTimeout: const Duration(seconds: 600),
 //         headers: {'Content-Type': 'application/json'},
 //       ),
 //     );
+class ApiService {
+  static const bool isEmulator = true;
+  static const String _baseUrl = isEmulator
+      ? 'https://192.168.100.24:7026'
+      : 'https://10.0.2.2:7026';
+  late final Dio _dio;
+  ApiService() {
+    _dio = Dio(
+      BaseOptions(
+        baseUrl: _baseUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        headers: {'Content-Type': 'application/json'},
+      ),
+    );
 
-//     // TODO: usunac w produkcji (samo podpisany certyfikat)
-//     _dio.httpClientAdapter = IOHttpClientAdapter(
-//       createHttpClient: () {
-//         final client = HttpClient();
-//         client.badCertificateCallback =
-//             (X509Certificate cert, String host, int port) => true;
-//         return client;
-//       },
-//     );
+    // TODO: usunac w produkcji (samo podpisany certyfikat)
+    _dio.httpClientAdapter = IOHttpClientAdapter(
+      createHttpClient: () {
+        final client = HttpClient();
+        client.badCertificateCallback =
+            (X509Certificate cert, String host, int port) => true;
+        return client;
+      },
+    );
 
     _dio.interceptors.add(
       InterceptorsWrapper(
@@ -67,7 +67,7 @@ class ApiService {
     );
   }
 
-  // register
+  // rejestracja uzytkownika
 
   Future<void> registerSpecialist({
     required String specialization,
@@ -105,7 +105,7 @@ class ApiService {
     }
   }
 
-  //logowanie
+  //logowanie uzytkownika
   Future<LoginResponse> login({
     required String email,
     required String password,
@@ -131,31 +131,12 @@ class ApiService {
     print("📦 Backend zwrócił profile: ${response.data}");
     return Map<String, dynamic>.from(data);
   }
-
-  Future<List<Map<String, dynamic>>> getAvailableOffers() async {
-    try {
-      print("➡️ CALLING /available-offers");
-
-      final response = await _dio.get('/api/specialist/available-offers');
-
-      print("✅ RESPONSE STATUS: ${response.statusCode}");
-      print("✅ RESPONSE DATA: ${response.data}");
-
-      final data = response.data as List<dynamic>;
-
-      return data.map((item) => Map<String, dynamic>.from(item)).toList();
-    } on DioException catch (e) {
-      print("❌ DIO ERROR: ${e.response?.statusCode}");
-      print(e.response?.data);
-      throw _handleDioError(e);
-    }
-  }
-
+  
+  //pobieranie wszystkich usług z tabeli service-types (nie są przypisane do specjalisty)
   Future<List<ServiceType>> getServiceTypes() async {
     try {
       final response = await _dio.get('/api/specialist/service-types');
       final data = response.data['data'];
-      print("📦 Backend zwrócił typyusług: $data");
       if (data == null || data.isEmpty) return [];
       return (data as List)
           .map((e) => ServiceType.fromJson(Map<String, dynamic>.from(e)))
@@ -174,7 +155,7 @@ class ApiService {
       throw _handleDioError(e);
     }
   }
-
+  //GET: pobieranie listy usług specjalisty
   Future<List<SpecialistService>> getServices() async {
     try {
       final response = await _dio.get('/api/specialist/services');
@@ -189,7 +170,6 @@ class ApiService {
     } on DioException catch (e) {
       throw _handleDioError(e);
     } catch (e) {
-      print('Błąd krytyczny: $e');
       return [];
     }
   }
@@ -217,8 +197,6 @@ class ApiService {
         "durationMinutes": durationMinutes,
         "description": description,
       };
-
-      /// usuń null-e (BARDZO WAŻNE)
       payload.removeWhere((key, value) => value == null);
 
       await _dio.post('/api/specialist/services', data: payload);
@@ -233,7 +211,7 @@ class ApiService {
       }
     }
   }
-
+ //GET:pobieranie offert
   Future<List<Map<String, dynamic>>> getInquiries({
     String? appointmentId,
     String? patientName,
@@ -267,7 +245,7 @@ final data = raw as List<dynamic>;
       throw _handleDioError(e);
     }
   }
-
+  //GET:pobieranie nadchodzących wizyt
   Future<List<Map<String, dynamic>>> getCommingInquiries({
     String? appointmentId,
     String? patientName,
@@ -281,12 +259,10 @@ final data = raw as List<dynamic>;
       final queryParams = <String, dynamic>{};
       if (appointmentId != null) queryParams['appointmentId'] = appointmentId;
       if (patientName != null) queryParams['patientName'] = patientName;
-      if (dateFrom != null)
-        queryParams['dateFrom'] = dateFrom.toIso8601String();
+      if (dateFrom != null) queryParams['dateFrom'] = dateFrom.toIso8601String();
       if (dateTo != null) queryParams['dateTo'] = dateTo.toIso8601String();
       if (serviceName != null) queryParams['serviceName'] = serviceName;
-      if (patientAddress != null)
-        queryParams['patientAddress'] = patientAddress;
+      if (patientAddress != null) queryParams['patientAddress'] = patientAddress;
       if (price != null) queryParams['price'] = price;
 
       final response = await _dio.get(
@@ -299,20 +275,20 @@ final data = raw as List<dynamic>;
       throw _handleDioError(e);
     }
   }
-
+  //GET:pobieranie zakończonych wizyt
   Future<List<Map<String, dynamic>>> getArchiveInquiries({
     String? appointmentId,
     String? patientName,
     DateTime? dateFrom,
     DateTime? dateTo,
     String? serviceName,
+    
   }) async {
     try {
       final queryParams = <String, dynamic>{};
       if (appointmentId != null) queryParams['appointmentId'] = appointmentId;
       if (patientName != null) queryParams['patientName'] = patientName;
-      if (dateFrom != null)
-        queryParams['dateFrom'] = dateFrom.toIso8601String();
+      if (dateFrom != null) queryParams['dateFrom'] = dateFrom.toIso8601String();
       if (dateTo != null) queryParams['dateTo'] = dateTo.toIso8601String();
       if (serviceName != null) queryParams['serviceName'] = serviceName;
       final response = await _dio.get(
@@ -472,6 +448,23 @@ final data = raw as List<dynamic>;
   }
 
   return null;
+}
+Future<void> rateClient(
+  String appointmentId,
+  String rating,
+  String comment,
+) async {
+  try {
+    await _dio.post(
+      '/api/specialist/appointments/$appointmentId/rate-client',
+      data: {
+        "rating": rating,
+        "comment": comment,
+      },
+    );
+  } on DioException catch (e) {
+    throw _handleDioError(e);
+  }
 }
 
   // POST: weryfikacja kodu

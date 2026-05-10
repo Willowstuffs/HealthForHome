@@ -56,7 +56,7 @@ final Set<String> _selectedStatuses = {
         archive = _mapInquiries(fetchedArchive);
 
         _updateUpcomingMap();
-
+        _checkForUnratedVisit();
         isLoading = false;
       });
     } catch (e) {
@@ -70,20 +70,19 @@ final Set<String> _selectedStatuses = {
   List<Map<String, dynamic>> _mapInquiries(List<dynamic> data) {
     return data.map((i) {
       final id = i['appointmentId'] ?? i['AppointmentId'];
-      DateTime? start = DateTime.tryParse(i['scheduledStart'] ?? i['ScheduledStart'] ?? '');
-      DateTime? end = DateTime.tryParse(i['scheduledEnd'] ?? i['ScheduledEnd'] ?? '');
+      DateTime? finalDate = DateTime.tryParse(i['finalDate'] ?? i['FinalDate'] ?? '');
 
       return {
         'id': id?.toString() ?? '',
         'name': i['patientName'] ?? i['PatientName'] ?? 'Nieznany pacjent',
 
-        'start': start,
-        'end': end,
+        'finalDate': finalDate,
 
         'service': i['serviceName'] ?? i['ServiceName'] ?? 'Brak usługi',
         'distance': i['patientAddress'] ?? i['PatientAddress'] ?? '',
         'price': i['price'] ?? i['Price'] ?? '0.00',
         'status': i['status'] ?? i['Status'] ?? 'confirmed',
+        'clientRating': i['clientRating'] ?? i['ClientRating'],
       };
     }).toList();
   }
@@ -96,16 +95,46 @@ final Set<String> _selectedStatuses = {
     default: return status;
   }
 }
+void _checkForUnratedVisit() {
+  final unrated = archive.cast<Map<String, dynamic>?>().firstWhere(
+    (e) => e?['clientRating'] == 'none',
+    orElse: () => null,
+  );
+
+  if (unrated != null) {
+    Future.delayed(const Duration(milliseconds: 400), () {
+      _showRatingPopup(unrated);
+    });
+  }
+}
+Future<void> _rateClient(
+  String appointmentId,
+  String rating,
+  String comment,
+) async {
+  try {
+    await ApiService().rateClient(
+      appointmentId,
+      rating,
+      comment,
+    );
+
+    await _fetchData(); // refresh listy
+
+  } catch (e) {
+    debugPrint(e.toString());
+  }
+}
   void _updateUpcomingMap() {
   _upcomingMap.clear();
 
   for (var item in _currentSource) {
     final status = item['status'];
-    final start = item['start'] as DateTime?;
+    final finalDate = item['finalDate'] as DateTime?;
 
-    if (start == null) continue;
+    if (finalDate == null) continue;
 
-    final day = DateTime(start.year, start.month, start.day);
+    final day = DateTime(finalDate.year, finalDate.month, finalDate.day);
 
     if (!_selectedStatuses.contains(status)) continue;
 
@@ -291,7 +320,7 @@ final Set<String> _selectedStatuses = {
   ),
 ),
             const Divider(height: 24),
-            _buildInfoRow(Icons.access_time_rounded, '${item['start']} - ${item['end']}'),
+            _buildInfoRow(Icons.access_time_rounded, '${item['finalDate']}'),
             const SizedBox(height: 8),
             _buildInfoRow(Icons.medical_services_outlined, item['service']),
             if (isUpcoming && item['distance'].isNotEmpty) ...[
@@ -387,7 +416,110 @@ final Set<String> _selectedStatuses = {
     ),
   );
 }
+  void _showRatingPopup(Map<String, dynamic> visit) {
+  String selectedRating = '';
+  final commentController = TextEditingController();
 
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text("Oceń klienta"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+
+                /// 👍 😐 👎
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _ratingButton(
+                      icon: Icons.thumb_up,
+                      value: 'good',
+                      selected: selectedRating,
+                      onTap: (v) => setState(() => selectedRating = v),
+                    ),
+                    _ratingButton(
+                      icon: Icons.thumbs_up_down,
+                      value: 'neutral',
+                      selected: selectedRating,
+                      onTap: (v) => setState(() => selectedRating = v),
+                    ),
+                    _ratingButton(
+                      icon: Icons.thumb_down,
+                      value: 'bad',
+                      selected: selectedRating,
+                      onTap: (v) => setState(() => selectedRating = v),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
+
+                /// komentarz
+                TextField(
+                  controller: commentController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: "Komentarz (opcjonalny)",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: selectedRating.isEmpty
+                    ? null
+                    : () async {
+                        await _rateClient(
+                          visit['id'],
+                          selectedRating,
+                          commentController.text,
+                        );
+
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                        }
+                      },
+                child: const Text("Zapisz ocenę"),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+Widget _ratingButton({
+  required IconData icon,
+  required String value,
+  required String selected,
+  required Function(String) onTap,
+}) {
+  final isSelected = selected == value;
+
+  return GestureDetector(
+    onTap: () => onTap(value),
+    child: Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isSelected
+            ? Colors.green.withValues(alpha: 0.2)
+            : Colors.grey.withValues(alpha: 0.1),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        icon,
+        size: 32,
+        color: isSelected ? Colors.green : Colors.grey,
+      ),
+    ),
+  );
+}
   Widget _buildInfoRow(IconData icon, String text) {
     return Row(
       children: [
