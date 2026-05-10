@@ -10,6 +10,7 @@ using H4H_API.Exceptions;
 using H4H_API.Helpers;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace H4H_API.Services.Implementations
 {
@@ -733,55 +734,76 @@ namespace H4H_API.Services.Implementations
         /// <exception cref="AppException"></exception>
         public async Task AcceptSpecialistOfferAsync(Guid userId, Guid appointmentId, Guid specialistId)
         {
-            // Pobieramy klienta i sprawdzamy, czy ogłoszenie należy do niego
-            var client = await _context.clients.FirstOrDefaultAsync(c => c.UserId == userId);
+            var client = await _context.clients
+                .FirstOrDefaultAsync(c => c.UserId == userId);
 
             if (client == null)
-            {
                 throw new AppException("Nie znaleziono profilu klienta.", ErrorCodes.ClientNotFound);
-            }
 
             var appointment = await _context.appointments
-                .Include(a => a.AppointmentSpecialists)
                 .FirstOrDefaultAsync(a => a.Id == appointmentId && a.ClientId == client.Id);
 
             if (appointment == null)
                 throw new AppException("Ogłoszenie nie istnieje.", ErrorCodes.AppointmentNotFound);
 
-            // 1. Pobieramy ofertę (od razu całość, żeby nie robić AnyAsync i potem FirstAsync osobno - tylko jedno zapytanie do bazy wiec będzie szybciej) 
-            var finalOffer = await _context.Set<AppointmentSpecialist>()
-         .FirstOrDefaultAsync(os => os.AppointmentId == appointmentId && os.SpecialistId == specialistId);
+            var offer = await _context.appointments_specialists
+                .FirstOrDefaultAsync(o =>
+                    o.AppointmentId == appointmentId &&
+                    o.SpecialistId == specialistId);
 
-            if (finalOffer == null)
+            if (offer == null)
                 throw new AppException("Ten specjalista nie złożył oferty.", ErrorCodes.ValidationError);
 
-            // --- POPRAWIONA LOGIKA SNAPSHOTA: Pobieramy nazwy bezpośrednio z service_types ---
-            if (finalOffer.ServiceTypeIds != null && finalOffer.ServiceTypeIds.Any())
+            var specialistServiceIds = offer.ServiceTypeIds ?? new List<Guid>(); ;
+
+            // 5. MAP TO specialist_services
+            var specialistServices = await _context.specialist_services
+                .Where(ss => specialistServiceIds.Contains(ss.Id))
+                .ToListAsync();
+
+            if (!specialistServices.Any())
             {
-                var serviceNames = await _context.Set<ServiceType>() // Set<ServiceType> bo to tabela słownikowa
-                    .Where(st => finalOffer.ServiceTypeIds.Contains(st.Id))
-                    .Select(st => st.Name)
-                    .ToListAsync();
-
-                appointment.ServiceNamesSnapshot = string.Join(", ", serviceNames);
+                throw new AppException("Ten specjalista nie złożył oferty.", ErrorCodes.ValidationError);
             }
-            // ------------------------------------------------------------------------------
 
-            // 2. Przypisujemy dane ze złożonej oferty do wizyty
+            // 6. EXTRACT service_type_id
+            var serviceTypeIds = specialistServices
+                .Select(ss => ss.ServiceTypeId)
+                .Distinct()
+                .ToList();
+
+            // 7. GET service_types (snapshot source)
+            var serviceTypes = await _context.service_types
+                .Where(st => serviceTypeIds.Contains(st.Id))
+                .ToListAsync();
+
+            var serviceNames = serviceTypes
+                .Select(st => st.Name)
+                .ToList();
+
+
+            // 8. SNAPSHOT
+            var snapshot = serviceNames.Any()
+                ? string.Join(", ", serviceNames)
+                : null;
+
+            // 9. UPDATE APPOINTMENT
             appointment.SpecialistId = specialistId;
             appointment.AppointmentStatus = "confirmed";
-            appointment.TotalPrice = finalOffer.Price;
-            appointment.FinalDate = finalOffer.ProposedDate;
+            appointment.TotalPrice = offer.Price;
+            appointment.FinalDate = offer.ProposedDate;
 
-            // Przypisujemy ID usług do tablicy w wizycie
-            appointment.SpecialistServiceIds = finalOffer.ServiceTypeIds?.ToArray() ?? Array.Empty<Guid>();
+            appointment.SpecialistServiceIds = specialistServices
+                .Select(ss => ss.ServiceTypeId)
+                .ToArray();
 
-            // 3. Zapisujemy zmiany
-            appointment.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
+            appointment.ServiceNamesSnapshot = snapshot;
+
+            appointment.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
         }
-
+        
         /// <summary>
         /// Asynchronously retrieves the review for a specified appointment belonging to the specified user.
         /// </summary>

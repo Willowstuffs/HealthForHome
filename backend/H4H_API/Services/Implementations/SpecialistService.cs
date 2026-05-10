@@ -489,12 +489,9 @@ namespace H4H_API.Services.Implementations
             return appointments.Select(a => new InquiryListItemDto
             {
                 AppointmentId = a.Id,
-                ScheduledStart = a.ScheduledStart,
-                ScheduledEnd = a.ScheduledEnd,
+                FinalDate = a.FinalDate,
                 PatientName = a.Client.FirstName + " " + a.Client.LastName,
-                ServiceName = string.Join(", ", a.SpecialistServiceIds
-                                .Where(id => serviceNamesMap.ContainsKey(id))
-                                .Select(id => serviceNamesMap[id])),
+                ServiceName = a.?? "Brak usługi",
                 Status = a.AppointmentStatus,
                 PatientAddress = a.ClientAddress ?? a.Client.Address ?? "Brak adresu",
                 Price = a.TotalPrice ?? 0
@@ -544,17 +541,16 @@ namespace H4H_API.Services.Implementations
             var result = appointments.Select(a => new InquiryListItemDto
             {
                 AppointmentId = a.Id,
-                ScheduledStart = a.ScheduledStart,
-                ScheduledEnd = a.ScheduledEnd,
+                FinalDate = a.FinalDate,
                 PatientName = a.Client.FirstName + " " + a.Client.LastName,
                 // Pobieramy nazwy z mapy na podstawie tablicy ID
-                ServiceName = string.Join(", ", a.SpecialistServiceIds
-                                .Where(id => serviceNamesMap.ContainsKey(id))
-                                .Select(id => serviceNamesMap[id])),
+                ServiceName = a.ServiceNamesSnapshot ?? "Brak usługi",
+
                 Status = a.AppointmentStatus,
-                PatientAddress = a.ClientAddress ?? a.Client.Address ?? "Brak adresu",
-                Price = a.TotalPrice ?? 0
+                Price = a.TotalPrice ?? 0,
+                ClientRating = a.ClientRating
             }).ToList();
+            
 
             return result;
         }
