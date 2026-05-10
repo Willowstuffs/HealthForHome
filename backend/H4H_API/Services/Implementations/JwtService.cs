@@ -4,6 +4,7 @@ using System.Text;
 using H4H.Core.Models;
 using H4H.Data;
 using H4H_API.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
@@ -93,13 +94,22 @@ namespace H4H_API.Services.Implementations
         public async Task<bool> IsTokenRevoked(string token)
         {
             // Sprawdzanie czy token jest na czarnej liście
-            return await Task.FromResult(false); // Na razie prosty przykład
+            return await _context.Set<RevokedToken>().AnyAsync(t => t.Token == token);
         }
 
         public async Task RevokeToken(string token)
         {
-            // Dodawanie tokena do czarnej listy
-            await Task.CompletedTask;
+            var handler = new JwtSecurityTokenHandler();
+            var jwtToken = handler.ReadJwtToken(token);
+
+            _context.Set<RevokedToken>().Add(new RevokedToken
+            {
+                Id = Guid.NewGuid(),
+                Token = token,
+                ExpiresAt = jwtToken.ValidTo // Do kiedy musimy przechowywać token na czarnej liście (do momentu wygaśnięcia)
+            });
+
+            await _context.SaveChangesAsync();
         }
     }
 }

@@ -157,10 +157,11 @@ app.UseSwaggerUI(c =>
 
 // Middleware 
 app.UseMiddleware<ErrorHandlingMiddleware>();
+app.UseMiddleware<JwtMiddleware>();
 /*
 app.UseHttpsRedirection();
 RENDER MA WLASNA BRAMKE HTTPS, redirect sprawia tylko problemy.
-*/ 
+*/
 app.UseCors("AllowFlutter");
 app.UseStaticFiles();
 app.UseAuthentication();

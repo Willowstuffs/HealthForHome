@@ -1,4 +1,5 @@
 using H4H_API.DTOs.Appointments;
+using H4H_API.DTOs.Client;
 using H4H_API.DTOs.Common;
 using H4H_API.DTOs.Specialist;
 using H4H_API.Services.Interfaces;
@@ -14,10 +15,12 @@ namespace H4H_API.Controllers
     public class SpecialistController : ControllerBase
     {
         private readonly ISpecialistService _specialistService;
+        private readonly IClientService _clientService; // dodany serwis klienta do pobierania statystyk klienta
 
-        public SpecialistController(ISpecialistService specialistService)
+        public SpecialistController(ISpecialistService specialistService, IClientService clientService)
         {
             _specialistService = specialistService;
+            _clientService = clientService;
         }
 
         /// <summary>
@@ -207,6 +210,32 @@ namespace H4H_API.Controllers
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             await _specialistService.ResignFromAppointmentAsync(userId, id);
             return Ok(ApiResponse<object?>.SuccessResponse(null, "Pomyślnie wycofano się z wizyty."));
+        }
+
+        /// <summary>
+        /// Pozwala specjaliście ocenić klienta po zakończonej wizycie. Ocena jest anonimowa i służy do budowania reputacji klienta w systemie.
+        /// </summary>
+        /// <param name="appointmentId"></param>
+        /// <param name="dto"></param>
+        /// <returns></returns>
+        [HttpPost("appointments/{appointmentId}/rate-client")]
+        public async Task<ActionResult<ApiResponse>> RateClient(Guid appointmentId, [FromBody] RateClientDto dto)
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            await _specialistService.RateClientAsync(userId, appointmentId, dto);
+            return Ok(ApiResponse.SuccessResponse("Ocena klienta została zapisana."));
+        }
+
+        /// <summary>
+        /// Pobiera statystyki klienta, takie jak liczba wizyt, oceny otrzymane od specjalistów, itp. 
+        /// </summary>
+        /// <param name="clientId"></param>
+        /// <returns></returns>
+        [HttpGet("{clientId}/stats")]
+        public async Task<ActionResult<ApiResponse<ClientStatsDto>>> GetClientStats(Guid clientId)
+        {
+            var stats = await _clientService.GetClientStatsAsync(clientId);
+            return Ok(ApiResponse<ClientStatsDto>.SuccessResponse(stats));
         }
 
     }

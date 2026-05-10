@@ -180,8 +180,8 @@ namespace H4H_API.Services.Implementations
             // Województwo
             if (!string.IsNullOrEmpty(state))
             {
-                string statePrefix = state.ToLower().Contains("województwo") ? "" : "województwo ";
-                parts.Add($"{statePrefix}{state.ToLower()}");
+                string cleanState = state.Replace("województwo", "", StringComparison.OrdinalIgnoreCase).Trim(); // usuwamy słowo "województwo"
+                parts.Add(cleanState.ToLower());
             }
 
             // Kod pocztowy
