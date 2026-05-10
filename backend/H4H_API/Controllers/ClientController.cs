@@ -7,6 +7,7 @@ using H4H_API.Helpers;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 
@@ -293,6 +294,51 @@ namespace H4H_API.Controllers
                     "Błąd walidacji danych",
                     ErrorCodes.ValidationError));
             }
+        }
+
+        /// <summary>
+        /// Returns the authenticated client's review for the given appointment.
+        /// </summary>
+        /// <param name="appointmentId">Appointment identifier.</param>
+        [HttpGet("appointments/{appointmentId}/review")]
+        public async Task<ActionResult<ApiResponse<AppointmentReviewDto>>> GetAppointmentReview(Guid appointmentId)
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+                var review = await _clientService.GetAppointmentReviewAsync(userId, appointmentId);
+                return Ok(ApiResponse<AppointmentReviewDto>.SuccessResponse(review));
+            }
+            catch (AppException ex) when (ex.ErrorCode == ErrorCodes.ReviewNotFound)
+            {
+                return NotFound(ApiResponse<AppointmentReviewDto>.ErrorResponse(
+                    "Nie znaleziono opinii dla tej wizyty",
+                    ErrorCodes.ReviewNotFound));
+            }
+            catch (AppException ex) when (ex.ErrorCode == ErrorCodes.AppointmentNotFound)
+            {
+                return NotFound(ApiResponse<AppointmentReviewDto>.ErrorResponse(
+                    "Nie można znaleźć tej wizyty",
+                    ErrorCodes.AppointmentNotFound));
+            }
+            catch (AppException ex) when (ex.ErrorCode == ErrorCodes.ClientNotFound)
+            {
+                return NotFound(ApiResponse<AppointmentReviewDto>.ErrorResponse(
+                    "Nie znaleziono profilu klienta",
+                    ErrorCodes.ClientNotFound));
+            }
+        }
+
+        /// <summary>
+        /// Pobiera statystyki klienta, takie jak liczba wizyt, oceny otrzymane od specjalistów, itp. 
+        /// </summary>
+        /// <param name="clientId"></param>
+        /// <returns></returns>
+        [HttpGet("{clientId}/stats")]
+        public async Task<ActionResult<ApiResponse<ClientStatsDto>>> GetClientStats(Guid clientId)
+        {
+            var stats = await _clientService.GetClientStatsAsync(clientId);
+            return Ok(ApiResponse<ClientStatsDto>.SuccessResponse(stats));
         }
     }
 }

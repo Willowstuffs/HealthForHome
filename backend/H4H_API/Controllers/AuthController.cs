@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Mvc;
 using H4H.Core.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using H4H_API.Helpers;
+
 
 namespace H4H_API.Controllers
 {
@@ -127,12 +129,26 @@ namespace H4H_API.Controllers
         /// response if the user was logged out successfully.</returns>
         [HttpPost("logout")]
         [Authorize] // Wymaga zalogowanego użytkownika
-        public async Task<ActionResult<ApiResponse>> Logout()
+        public async Task<ActionResult<ApiResponse>> Logout([FromBody] LogoutDto request)
         {
-            // Pobierz token z nagłówka Authorization
-            var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
-            await _authService.LogoutAsync(token);
-            return Ok(ApiResponse.SuccessResponse("Wylogowano pomyślnie"));
+            try
+            {
+                // Pobieramy token dostępu z nagłówka Authorization
+                var accessToken = Request.Headers["Authorization"].ToString();
+
+                if (string.IsNullOrEmpty(accessToken))
+                {
+                    return BadRequest(ApiResponse.ErrorResponse("Brak tokenu dostępu.", ErrorCodes.InvalidToken));
+                }
+
+                await _authService.LogoutAsync(accessToken, request.RefreshToken);
+
+                return Ok(ApiResponse.SuccessResponse("Wylogowano pomyślnie."));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse.ErrorResponse(ex.Message, ErrorCodes.LogoutFailed));
+            }
         }
         /// <summary>
         /// Aktualizuje token urządzenia dla zalogowanego użytkownika, umożliwiając otrzymywanie powiadomień push

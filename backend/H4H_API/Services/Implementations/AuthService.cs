@@ -367,15 +367,36 @@ namespace H4H_API.Services.Implementations
         }
 
         /// <summary>
-        /// Revokes the specified access token, logging the user out asynchronously.
+        /// Wylogowuje użytkownika poprzez unieważnienie jego Access Tokena (dodanie do czarnej listy) oraz unieważnienie sesji
         /// </summary>
-        /// <param name="accessToken">The access token to revoke. Cannot be null or empty.</param>
-        /// <returns>A task that represents the asynchronous operation. The task result is <see langword="true"/> if the logout
-        /// operation was initiated successfully.</returns>
-        public async Task<bool> LogoutAsync(string accessToken)
+        /// <param name="accessToken"></param>
+        /// <param name="refreshToken"></param>
+        /// <returns></returns>
+        public async Task LogoutAsync(string accessToken, string refreshToken)
         {
-            await _jwtService.RevokeToken(accessToken);
-            return true;
+            // 1. Access Token na czarną listę
+            if (!string.IsNullOrEmpty(accessToken))
+            {
+                var cleanToken = accessToken.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+                    ? accessToken.Substring(7)
+                    : accessToken;
+                await _jwtService.RevokeToken(cleanToken);
+            }
+
+            // 2. Unieważnienie Refresh Tokena w bazie (ustawienie revoked_at w tabeli refresh_tokens)
+            if (!string.IsNullOrEmpty(refreshToken))
+            {
+                var dbToken = await _context.Set<RefreshToken>()
+                    .FirstOrDefaultAsync(t => t.Token == refreshToken);
+
+                if (dbToken == null)
+                {
+                    throw new AppException("Nie znaleziono podanego tokenu odświeżania.", ErrorCodes.RefreshTokenInvalidOrExpired);
+                }
+
+                dbToken.RevokedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+            }
         }
 
         /// <summary>

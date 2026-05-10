@@ -76,6 +76,15 @@ namespace H4H.Core.Models
         [Column("is_rated")] // dodanie pola do oznaczania, czy wizyta została oceniona (po wystawieniu opinii przez klienta)
         public bool IsRated { get; set; } = false;
 
+        [Column("client_rating")] // dodanie pola do oceny klienta przez specjalistę (po wizycie) - może być null, jeśli specjalista jeszcze nie ocenił klienta
+        public string? ClientRating { get; set; } // Wartości: "good", "neutral", "bad"
+
+        [Column("client_rating_comment")] 
+        public string? ClientRatingComment { get; set; } // Opcjonalny komentarz przy "bad"
+
+        [Column("service_names_snapshot")] // dodanie pola do przechowywania nazw usług w momencie tworzenia wizyty (na wypadek zmian lub usunięcia w przyszłości)
+        public string? ServiceNamesSnapshot { get; set; }
+
 
         public virtual Client Client { get; set; } = null!;
         public virtual Specialist? Specialist { get; set; } 

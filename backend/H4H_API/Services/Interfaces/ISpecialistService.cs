@@ -1,3 +1,4 @@
+using H4H_API.DTOs.Appointments;
 using H4H_API.DTOs.Client;
 using H4H_API.DTOs.Specialist;
 
@@ -79,6 +80,16 @@ namespace H4H_API.Services.Interfaces
         Task<List<SpecialistOfferDto>> GetPublicServicesAsync(Guid id);
         Task<List<NearbySpecialistDto>> GetNearbySpecialistsAsync(double lat, double lng);
 
-
+        /// <summary>
+        /// Pozwala specjaliście ocenić klienta po zakończonej wizycie. Specjalista może wystawić ocenę i opcjonalny komentarz, 
+        /// które będą widoczne dla klienta i innych specjalistów. Ta funkcjonalność ma na celu promowanie odpowiedzialności i jakości usług wśród klientów, 
+        /// a także umożliwienie specjalistom dzielenia się opiniami na temat współpracy z danym klientem. Oceny te mogą być brane pod uwagę przez innych 
+        /// specjalistów przy podejmowaniu decyzji o przyjęciu zapytań od tego klienta w przyszłości.
+        /// </summary>
+        /// <param name="specialistUserId"></param>
+        /// <param name="appointmentId"></param>
+        /// <param name="dto"></param>
+        /// <returns></returns>
+        Task RateClientAsync(Guid specialistUserId, Guid appointmentId, RateClientDto dto);
     }
 }

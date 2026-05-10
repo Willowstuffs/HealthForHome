@@ -1,5 +1,6 @@
 using H4H.Core.Models;
 using H4H.Data;
+using H4H_API.DTOs.Appointments;
 using H4H_API.DTOs.Client;
 using H4H_API.DTOs.Specialist;
 using H4H_API.Exceptions;
@@ -488,12 +489,9 @@ namespace H4H_API.Services.Implementations
             return appointments.Select(a => new InquiryListItemDto
             {
                 AppointmentId = a.Id,
-                ScheduledStart = a.ScheduledStart,
-                ScheduledEnd = a.ScheduledEnd,
+                FinalDate = a.FinalDate,
                 PatientName = a.Client.FirstName + " " + a.Client.LastName,
-                ServiceName = string.Join(", ", a.SpecialistServiceIds
-                                .Where(id => serviceNamesMap.ContainsKey(id))
-                                .Select(id => serviceNamesMap[id])),
+                ServiceName = a.ServiceNamesSnapshot?? "Brak usługi",
                 Status = a.AppointmentStatus,
                 PatientAddress = a.ClientAddress ?? a.Client.Address ?? "Brak adresu",
                 Price = a.TotalPrice ?? 0
@@ -543,17 +541,16 @@ namespace H4H_API.Services.Implementations
             var result = appointments.Select(a => new InquiryListItemDto
             {
                 AppointmentId = a.Id,
-                ScheduledStart = a.ScheduledStart,
-                ScheduledEnd = a.ScheduledEnd,
+                FinalDate = a.FinalDate,
                 PatientName = a.Client.FirstName + " " + a.Client.LastName,
                 // Pobieramy nazwy z mapy na podstawie tablicy ID
-                ServiceName = string.Join(", ", a.SpecialistServiceIds
-                                .Where(id => serviceNamesMap.ContainsKey(id))
-                                .Select(id => serviceNamesMap[id])),
+                ServiceName = a.ServiceNamesSnapshot ?? "Brak usługi",
+
                 Status = a.AppointmentStatus,
-                PatientAddress = a.ClientAddress ?? a.Client.Address ?? "Brak adresu",
-                Price = a.TotalPrice ?? 0
+                Price = a.TotalPrice ?? 0,
+                ClientRating = a.ClientRating
             }).ToList();
+            
 
             return result;
         }
@@ -704,6 +701,43 @@ namespace H4H_API.Services.Implementations
                 })
                 .OrderBy(s => s.DistanceKm)
                 .ToListAsync();
+        }
+
+
+        /// <summary>
+        /// Pozwala specjaliście ocenić klienta po zakończeniu wizyty, przypisując ocenę ("good", "neutral", "bad") oraz opcjonalny komentarz. 
+        /// Metoda sprawdza, czy wizyta istnieje, należy do danego specjalisty i ma status "completed", zanim zaktualizuje dane oceny klienta w bazie. 
+        /// Ocena klienta może być wykorzystana do budowania reputacji klienta w systemie oraz do ewentualnych działań moderacyjnych w przypadku negatywnych opinii.
+        /// </summary>
+        /// <param name="specialistUserId"></param>
+        /// <param name="appointmentId"></param>
+        /// <param name="dto"></param>
+        /// <returns></returns>
+        /// <exception cref="AppException"></exception>
+        public async Task RateClientAsync(Guid specialistUserId, Guid appointmentId, RateClientDto dto)
+        {
+            // 1. Pobieramy wizytę
+            var appointment = await _context.appointments
+                .Include(a => a.Specialist)
+                .FirstOrDefaultAsync(a => a.Id == appointmentId);
+
+            // 2. Sprawdzamy czy wizyta istnieje I czy specjalista do niej przypisany to ten, który wysłał żądanie
+            if (appointment == null || appointment.Specialist?.UserId != specialistUserId)
+            {
+                throw new AppException("Wizyta nie istnieje lub nie należy do Ciebie.", ErrorCodes.AppointmentNotFound);
+            }
+
+            // 3. Sprawdzamy status
+            if (appointment.AppointmentStatus != "completed")
+            {
+                throw new AppException("Można oceniać tylko zakończone wizyty.", ErrorCodes.AppointmentStatusNotCompleted);
+            }
+
+            // 4. Zapisujemy ocenę
+            appointment.ClientRating = dto.Rating.ToLower();
+            appointment.ClientRatingComment = dto.Comment; // Zapisujemy komentarz niezależnie od tego czy to 'good' czy 'bad'
+                                                           // Ale wyswietlamy pole tekstowe raczej dla bad, a dla good/neutral mozna dac opcjonalne pole komentarza 
+            await _context.SaveChangesAsync();
         }
 
     }

@@ -10,6 +10,7 @@ using H4H_API.Exceptions;
 using H4H_API.Helpers;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace H4H_API.Services.Implementations
 {
@@ -380,9 +381,16 @@ namespace H4H_API.Services.Implementations
 
             var dto = _mapper.Map<AppointmentDto>(appointment);
 
-            // Pobierz nazwy usług specjalisty, jeśli są przypisane do wizyty
-            if (appointment.SpecialistServiceIds != null && appointment.SpecialistServiceIds.Any())
+            // LOGIKA ODPORNA NA USUWANIE USŁUG:
+            // 1. Jeśli mamy snapshot (nowe wizyty), używamy go
+            if (!string.IsNullOrEmpty(appointment.ServiceNamesSnapshot))
             {
+                dto.ServiceNames = appointment.ServiceNamesSnapshot.Split(", ").ToList();
+            }
+            // 2. Jeśli nie ma snapshota (stare wizyty), pobieramy "na żywo" (uwaga: tutaj mogą znikać przy usunięciu)
+            else if (appointment.SpecialistServiceIds != null && appointment.SpecialistServiceIds.Any())
+            {
+                // Pobieramy nazwy usług z tablicy specialist_services, ale tylko dla tych ID, które są powiązane z tą wizytą
                 dto.ServiceNames = await _context.specialist_services
                     .Include(ss => ss.ServiceType)
                     .Where(ss => appointment.SpecialistServiceIds.Contains(ss.Id))
@@ -726,42 +734,118 @@ namespace H4H_API.Services.Implementations
         /// <exception cref="AppException"></exception>
         public async Task AcceptSpecialistOfferAsync(Guid userId, Guid appointmentId, Guid specialistId)
         {
-            // Pobieramy klienta i sprawdzamy, czy ogłoszenie należy do niego
-            var client = await _context.clients.FirstOrDefaultAsync(c => c.UserId == userId);
+            var client = await _context.clients
+                .FirstOrDefaultAsync(c => c.UserId == userId);
 
             if (client == null)
-            {
                 throw new AppException("Nie znaleziono profilu klienta.", ErrorCodes.ClientNotFound);
-            }
 
             var appointment = await _context.appointments
-                .Include(a => a.AppointmentSpecialists)
                 .FirstOrDefaultAsync(a => a.Id == appointmentId && a.ClientId == client.Id);
 
             if (appointment == null)
                 throw new AppException("Ogłoszenie nie istnieje.", ErrorCodes.AppointmentNotFound);
 
-            // 1. Pobieramy ofertę (od razu całość, żeby nie robić AnyAsync i potem FirstAsync osobno - tylko jedno zapytanie do bazy wiec będzie szybciej) 
-            var finalOffer = await _context.Set<AppointmentSpecialist>()
-                .FirstOrDefaultAsync(os => os.AppointmentId == appointmentId && os.SpecialistId == specialistId);
+            var offer = await _context.appointments_specialists
+                .FirstOrDefaultAsync(o =>
+                    o.AppointmentId == appointmentId &&
+                    o.SpecialistId == specialistId);
 
-            if (finalOffer == null)
+            if (offer == null)
                 throw new AppException("Ten specjalista nie złożył oferty.", ErrorCodes.ValidationError);
 
-            // 2. Przypisujemy dane ze złożonej oferty do wizyty
+            var specialistServiceIds = offer.ServiceTypeIds ?? new List<Guid>(); ;
+
+            // 5. MAP TO specialist_services
+            var specialistServices = await _context.specialist_services
+                .Where(ss => specialistServiceIds.Contains(ss.Id))
+                .ToListAsync();
+
+            if (!specialistServices.Any())
+            {
+                throw new AppException("Ten specjalista nie złożył oferty.", ErrorCodes.ValidationError);
+            }
+
+            // 6. EXTRACT service_type_id
+            var serviceTypeIds = specialistServices
+                .Select(ss => ss.ServiceTypeId)
+                .Distinct()
+                .ToList();
+
+            // 7. GET service_types (snapshot source)
+            var serviceTypes = await _context.service_types
+                .Where(st => serviceTypeIds.Contains(st.Id))
+                .ToListAsync();
+
+            var serviceNames = serviceTypes
+                .Select(st => st.Name)
+                .ToList();
+
+
+            // 8. SNAPSHOT
+            var snapshot = serviceNames.Any()
+                ? string.Join(", ", serviceNames)
+                : null;
+
+            // 9. UPDATE APPOINTMENT
             appointment.SpecialistId = specialistId;
             appointment.AppointmentStatus = "confirmed";
-            appointment.TotalPrice = finalOffer.Price;      // Cena proponowana przez specjalistę w ofercie staje się ceną finalną wizyty
-            appointment.FinalDate = finalOffer.ProposedDate; // Data propozycji specjalisty staje się datą finalną wizyty (można to później zmienić, jeśli chcemy dać klientowi możliwość negocjacji terminu)
+            appointment.TotalPrice = offer.Price;
+            appointment.FinalDate = offer.ProposedDate;
 
-            // Poprawka: przypisujemy wszystkie usługi, które specjalista zadeklarował w ofercie (może być ich kilka, oddzielone przecinkami)
-            appointment.SpecialistServiceIds = finalOffer.ServiceTypeIds?.ToArray() ?? Array.Empty<Guid>();
+            appointment.SpecialistServiceIds = specialistServices
+                .Select(ss => ss.ServiceTypeId)
+                .ToArray();
 
+            appointment.ServiceNamesSnapshot = snapshot;
 
-            // 3. Zapisujemy zmiany w bazie danych wraz z aktualizacją daty modyfikacji wizyty
-            appointment.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
+            appointment.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+        }
+        
+        /// <summary>
+        /// Asynchronously retrieves the review for a specified appointment belonging to the specified user.
+        /// </summary>
+        /// <param name="userId">The unique identifier of the user whose appointment review is to be retrieved.</param>
+        /// <param name="appointmentId">The unique identifier of the appointment for which the review is requested.</param>
+        /// <returns></returns>
+        /// <exception cref="AppException"></exception>
+        public async Task<AppointmentReviewDto> GetAppointmentReviewAsync(Guid userId, Guid appointmentId)
+        {
+            var client = await _context.clients.FirstOrDefaultAsync(c => c.UserId == userId) ??
+                throw new AppException("Nie znaleziono profilu klienta", ErrorCodes.ClientNotFound);
+
+            var appointmentExists = await _context.appointments
+                .AnyAsync(a => a.Id == appointmentId && a.ClientId == client.Id);
+
+            if (!appointmentExists)
+                throw new AppException("Nie znaleziono wizyty dla tego klienta", ErrorCodes.AppointmentNotFound);
+
+            var review = await _context.Set<Review>()
+                .FirstOrDefaultAsync(r => r.AppointmentId == appointmentId && r.ClientId == client.Id)
+                ?? throw new AppException("Nie znaleziono opinii dla tej wizyty", ErrorCodes.ReviewNotFound);
+
+            var appointmentIsRated = await _context.appointments
+                .Where(a => a.Id == appointmentId && a.ClientId == client.Id)
+                .Select(a => a.IsRated)
+                .FirstOrDefaultAsync();
+
+            if (!appointmentIsRated)
+                throw new AppException("Wizyta nie jest oznaczona jako oceniona, ale opinia istnieje. Proszę skontaktować się z supportem.", ErrorCodes.DataConflict);
+
+            return new AppointmentReviewDto
+            {
+                Id = review.Id,
+                AppointmentId = review.AppointmentId,
+                ClientId = review.ClientId,
+                SpecialistId = review.SpecialistId,
+                Rating = review.Rating,
+                Comment = review.Comment,
+                IsVerified = review.IsVerified,
+                CreatedAt = review.CreatedAt,
+                UpdatedAt = review.UpdatedAt
+            };
         }
 
         /// <summary>
@@ -833,6 +917,28 @@ namespace H4H_API.Services.Implementations
             // save all changes
             _context.Set<Review>().Add(review);
             await _context.SaveChangesAsync();
+        }
+
+
+        /// <summary>
+        /// Pobiera statystyki ocen klienta na podstawie wizyt, które zostały ocenione przez specjalistów. Zwraca liczbę ocen "good", "neutral" i "bad" dla danego klienta.
+        /// </summary>
+        /// <param name="clientId"></param>
+        /// <returns></returns>
+        public async Task<ClientStatsDto> GetClientStatsAsync(Guid clientId)
+        {
+            var ratings = await _context.appointments
+                .Where(a => a.ClientId == clientId && a.ClientRating != null)
+                .GroupBy(a => a.ClientRating)
+                .Select(g => new { Rating = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            return new ClientStatsDto
+            {
+                GoodCount = ratings.FirstOrDefault(r => r.Rating == "good")?.Count ?? 0,
+                NeutralCount = ratings.FirstOrDefault(r => r.Rating == "neutral")?.Count ?? 0,
+                BadCount = ratings.FirstOrDefault(r => r.Rating == "bad")?.Count ?? 0
+            };
         }
     }
 }
