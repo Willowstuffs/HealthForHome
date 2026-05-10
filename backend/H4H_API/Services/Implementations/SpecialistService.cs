@@ -491,7 +491,7 @@ namespace H4H_API.Services.Implementations
                 AppointmentId = a.Id,
                 FinalDate = a.FinalDate,
                 PatientName = a.Client.FirstName + " " + a.Client.LastName,
-                ServiceName = a.?? "Brak usługi",
+                ServiceName = a.ServiceNamesSnapshot?? "Brak usługi",
                 Status = a.AppointmentStatus,
                 PatientAddress = a.ClientAddress ?? a.Client.Address ?? "Brak adresu",
                 Price = a.TotalPrice ?? 0
