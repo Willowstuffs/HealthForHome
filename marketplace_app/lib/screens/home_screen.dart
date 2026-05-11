@@ -900,14 +900,7 @@ class HomeScreenState extends State<HomeScreen> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
-          Text(
-            'Profesjonalna opieka zdrowotna\nw zaciszu Twojego domu',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppColors.textSecondary,
-              height: 1.4,
-            ),
-            textAlign: TextAlign.center,
-          ),
+          const _RotatingOneLiners(),
         ],
       ),
     );
@@ -1537,6 +1530,87 @@ class HomeScreenState extends State<HomeScreen> {
           ],
         );
       },
+    );
+  }
+}
+
+class _RotatingOneLiners extends StatefulWidget {
+  const _RotatingOneLiners();
+
+  @override
+  State<_RotatingOneLiners> createState() => _RotatingOneLinersState();
+}
+
+class _RotatingOneLinersState extends State<_RotatingOneLiners> {
+  static const _oneLiners = [
+    'Twoje zdrowie. Twój dom. Twoje zasady.',
+    'Zdrowie zaczyna się w domu.',
+    'Najlepsza opieka tam, gdzie czujesz się najlepiej.',
+    'Zarządzaj swoim zdrowiem z ulubionego fotela.',
+    'Cieszymy się, że jesteś.',
+    'Dołącz i zadbaj o siebie.',
+    'Twoje zdrowie w bezpiecznych rękach.',
+  ];
+
+  int _currentIndex = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 6), (timer) {
+      if (mounted) {
+        setState(() {
+          _currentIndex = (_currentIndex + 1) % _oneLiners.length;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 800),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (Widget child, Animation<double> animation) {
+        final isEntering = child.key == ValueKey<int>(_currentIndex);
+
+        // Entering child slides from top to center
+        final inAnimation = Tween<Offset>(
+          begin: const Offset(0.0, -1.0),
+          end: Offset.zero,
+        ).animate(animation);
+
+        // Exiting child slides from center to bottom
+        final outAnimation = Tween<Offset>(
+          begin: const Offset(0.0, 1.0),
+          end: Offset.zero,
+        ).animate(animation);
+
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: isEntering ? inAnimation : outAnimation,
+            child: child,
+          ),
+        );
+      },
+      child: Text(
+        _oneLiners[_currentIndex],
+        key: ValueKey<int>(_currentIndex),
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: AppColors.textSecondary,
+          height: 1.4,
+        ),
+        textAlign: TextAlign.center,
+      ),
     );
   }
 }
