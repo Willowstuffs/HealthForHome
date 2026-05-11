@@ -25,9 +25,15 @@ function LoginPage() {
       setLoading(true);
       await loginAdmin(email, password);
       navigate("/dashboard");
-    } catch (e) {
-      setError(e.message || "Błąd logowania");
-    } finally {
+   } catch (e) {
+  const message = String(e?.message || "");
+
+  if (message.includes("Nieprawidłowy email lub hasło")) {
+    setError("Nieprawidłowy email lub hasło.");
+  } else {
+    setError("Nie udało się zalogować. Spróbuj ponownie.");
+  }
+} finally {
       setLoading(false);
     }
   }
