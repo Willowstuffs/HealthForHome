@@ -256,54 +256,72 @@ class _AccountScreenState extends State<AccountScreen> {
                   textEditingController: _addressController,
                   focusNode: _addressFocusNode,
                   optionsBuilder: (TextEditingValue textEditingValue) async {
-                    if (textEditingValue.text.length < 3) {
+                    if (textEditingValue.text.length < 4) {
                       return const Iterable<String>.empty();
                     }
-                    return await GooglePlacesService().getAutocompleteSuggestions(textEditingValue.text);
+                    return await GooglePlacesService()
+                        .getAutocompleteSuggestions(textEditingValue.text);
                   },
                   onSelected: (String selection) {
                     _addressController.text = selection;
                   },
-                  fieldViewBuilder: (BuildContext context, TextEditingController fieldTextEditingController, FocusNode fieldFocusNode, VoidCallback onFieldSubmitted) {
-                    return TextFormField(
-                      controller: fieldTextEditingController,
-                      focusNode: fieldFocusNode,
-                      maxLines: 2,
-                      decoration: const InputDecoration(
-                        labelText: 'Adres zamieszkania',
-                        alignLabelWithHint: true,
-                      ),
-                    );
-                  },
-                  optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
-                    return Align(
-                      alignment: Alignment.topLeft,
-                      child: Material(
-                        elevation: 4.0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(maxHeight: 200, maxWidth: MediaQuery.of(context).size.width - 32),
-                          child: ListView.builder(
-                            padding: EdgeInsets.zero,
-                            shrinkWrap: true,
-                            itemCount: options.length,
-                            itemBuilder: (BuildContext context, int index) {
-                              final String option = options.elementAt(index);
-                              return InkWell(
-                                onTap: () => onSelected(option),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Text(option),
-                                ),
-                              );
-                            },
+                  fieldViewBuilder:
+                      (
+                        BuildContext context,
+                        TextEditingController fieldTextEditingController,
+                        FocusNode fieldFocusNode,
+                        VoidCallback onFieldSubmitted,
+                      ) {
+                        return TextFormField(
+                          controller: fieldTextEditingController,
+                          focusNode: fieldFocusNode,
+                          maxLines: 2,
+                          decoration: const InputDecoration(
+                            labelText: 'Adres zamieszkania',
+                            alignLabelWithHint: true,
                           ),
-                        ),
-                      ),
-                    );
-                  },
+                        );
+                      },
+                  optionsViewBuilder:
+                      (
+                        BuildContext context,
+                        AutocompleteOnSelected<String> onSelected,
+                        Iterable<String> options,
+                      ) {
+                        return Align(
+                          alignment: Alignment.topLeft,
+                          child: Material(
+                            elevation: 4.0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxHeight: 200,
+                                maxWidth:
+                                    MediaQuery.of(context).size.width - 32,
+                              ),
+                              child: ListView.builder(
+                                padding: EdgeInsets.zero,
+                                shrinkWrap: true,
+                                itemCount: options.length,
+                                itemBuilder: (BuildContext context, int index) {
+                                  final String option = options.elementAt(
+                                    index,
+                                  );
+                                  return InkWell(
+                                    onTap: () => onSelected(option),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16.0),
+                                      child: Text(option),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                 ),
                 const SizedBox(height: 12),
 

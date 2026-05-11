@@ -259,7 +259,7 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                         focusNode: _addressFocusNode,
                         optionsBuilder:
                             (TextEditingValue textEditingValue) async {
-                              if (textEditingValue.text.length < 3) {
+                              if (textEditingValue.text.length < 4) {
                                 return const Iterable<String>.empty();
                               }
                               return await GooglePlacesService()
