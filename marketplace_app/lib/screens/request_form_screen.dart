@@ -6,6 +6,7 @@ import '../../screens/request_success_screen.dart';
 import '../../theme/app_theme.dart';
 import '../data/data.dart';
 import '../../models/appointment.dart';
+import '../../services/google_places_service.dart';
 
 class RequestFormScreen extends StatefulWidget {
   final String categoryName;
@@ -26,6 +27,7 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
 
   final TextEditingController addressController = TextEditingController();
   final TextEditingController notesController = TextEditingController();
+  late FocusNode _addressFocusNode;
 
   DateTime? selectedDateFrom;
   DateTime? selectedDateTo;
@@ -40,8 +42,20 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
     selectedCategory = widget.categoryName;
     selectedDateFrom = DateTime.now().add(const Duration(days: 1));
     selectedDateTo = DateTime.now().add(const Duration(days: 1, hours: 2));
+    _addressFocusNode = FocusNode();
 
     _loadUserProfile();
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    phoneController.dispose();
+    emailController.dispose();
+    addressController.dispose();
+    notesController.dispose();
+    _addressFocusNode.dispose();
+    super.dispose();
   }
 
   Future<void> _loadUserProfile() async {
@@ -240,11 +254,84 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                       ),
                       const SizedBox(height: 12),
 
-                      _buildTextField(
-                        controller: addressController,
-                        label: 'Adres',
-                        validator: (v) =>
-                            v == null || v.isEmpty ? 'Podaj adres' : null,
+                      RawAutocomplete<String>(
+                        textEditingController: addressController,
+                        focusNode: _addressFocusNode,
+                        optionsBuilder:
+                            (TextEditingValue textEditingValue) async {
+                              if (textEditingValue.text.length < 3) {
+                                return const Iterable<String>.empty();
+                              }
+                              return await GooglePlacesService()
+                                  .getAutocompleteSuggestions(
+                                    textEditingValue.text,
+                                  );
+                            },
+                        onSelected: (String selection) {
+                          addressController.text = selection;
+                        },
+                        fieldViewBuilder:
+                            (
+                              BuildContext context,
+                              TextEditingController fieldTextEditingController,
+                              FocusNode fieldFocusNode,
+                              VoidCallback onFieldSubmitted,
+                            ) {
+                              return TextFormField(
+                                controller: fieldTextEditingController,
+                                focusNode: fieldFocusNode,
+                                validator: (v) => v == null || v.isEmpty
+                                    ? 'Podaj adres'
+                                    : null,
+                                decoration: const InputDecoration(
+                                  labelText: 'Adres',
+                                  filled: true,
+                                ),
+                              );
+                            },
+                        optionsViewBuilder:
+                            (
+                              BuildContext context,
+                              AutocompleteOnSelected<String> onSelected,
+                              Iterable<String> options,
+                            ) {
+                              return Align(
+                                alignment: Alignment.topLeft,
+                                child: Material(
+                                  elevation: 4.0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      maxHeight: 200,
+                                      maxWidth:
+                                          MediaQuery.of(context).size.width -
+                                          32,
+                                    ),
+                                    child: ListView.builder(
+                                      padding: EdgeInsets.zero,
+                                      shrinkWrap: true,
+                                      itemCount: options.length,
+                                      itemBuilder:
+                                          (BuildContext context, int index) {
+                                            final String option = options
+                                                .elementAt(index);
+                                            return InkWell(
+                                              onTap: () => onSelected(option),
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(
+                                                  16.0,
+                                                ),
+                                                child: Text(option),
+                                              ),
+                                            );
+                                          },
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                       ),
                       const SizedBox(height: 12),
 

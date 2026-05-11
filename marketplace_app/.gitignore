@@ -53,3 +53,5 @@ app.*.map.json
 *.jks
 local.properties
 **/.cxx/
+# Environment Variables
+.env

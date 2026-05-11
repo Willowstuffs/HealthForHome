@@ -5,6 +5,7 @@ import '../services/api_service.dart';
 import '../models/client_profile.dart';
 import '../models/client_update_dto.dart';
 import '../theme/app_theme.dart';
+import '../services/google_places_service.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
@@ -24,6 +25,7 @@ class _AccountScreenState extends State<AccountScreen> {
   late TextEditingController _phoneController;
   late TextEditingController _addressController;
   late TextEditingController _emergencyContactController;
+  late FocusNode _addressFocusNode;
   DateTime? _dateOfBirth;
 
   @override
@@ -34,6 +36,7 @@ class _AccountScreenState extends State<AccountScreen> {
     _phoneController = TextEditingController();
     _addressController = TextEditingController();
     _emergencyContactController = TextEditingController();
+    _addressFocusNode = FocusNode();
     _loadProfile();
   }
 
@@ -44,6 +47,7 @@ class _AccountScreenState extends State<AccountScreen> {
     _phoneController.dispose();
     _addressController.dispose();
     _emergencyContactController.dispose();
+    _addressFocusNode.dispose();
     super.dispose();
   }
 
@@ -248,10 +252,58 @@ class _AccountScreenState extends State<AccountScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                _buildTextField(
-                  controller: _addressController,
-                  label: 'Adres zamieszkania',
-                  maxLines: 2,
+                RawAutocomplete<String>(
+                  textEditingController: _addressController,
+                  focusNode: _addressFocusNode,
+                  optionsBuilder: (TextEditingValue textEditingValue) async {
+                    if (textEditingValue.text.length < 3) {
+                      return const Iterable<String>.empty();
+                    }
+                    return await GooglePlacesService().getAutocompleteSuggestions(textEditingValue.text);
+                  },
+                  onSelected: (String selection) {
+                    _addressController.text = selection;
+                  },
+                  fieldViewBuilder: (BuildContext context, TextEditingController fieldTextEditingController, FocusNode fieldFocusNode, VoidCallback onFieldSubmitted) {
+                    return TextFormField(
+                      controller: fieldTextEditingController,
+                      focusNode: fieldFocusNode,
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        labelText: 'Adres zamieszkania',
+                        alignLabelWithHint: true,
+                      ),
+                    );
+                  },
+                  optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
+                    return Align(
+                      alignment: Alignment.topLeft,
+                      child: Material(
+                        elevation: 4.0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(maxHeight: 200, maxWidth: MediaQuery.of(context).size.width - 32),
+                          child: ListView.builder(
+                            padding: EdgeInsets.zero,
+                            shrinkWrap: true,
+                            itemCount: options.length,
+                            itemBuilder: (BuildContext context, int index) {
+                              final String option = options.elementAt(index);
+                              return InkWell(
+                                onTap: () => onSelected(option),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Text(option),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 12),
 
