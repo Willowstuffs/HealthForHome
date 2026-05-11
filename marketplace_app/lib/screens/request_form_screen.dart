@@ -54,7 +54,11 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
           phoneController.text = profile.phoneNumber ?? '';
           emailController.text = profile.email;
           if (profile.address != null && addressController.text.isEmpty) {
-            addressController.text = profile.address!;
+            final addressParts = profile.address!.split(',');
+            final city = addressParts[0].trim();
+            final streetNameWithNumber = addressParts[1].trim();
+
+            addressController.text = '$city, $streetNameWithNumber';
           }
         });
       } catch (e) {
