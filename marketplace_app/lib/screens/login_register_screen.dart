@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:marketplace_app/screens/login_screen.dart';
 import 'package:marketplace_app/screens/register_account_screen.dart';
@@ -6,6 +7,16 @@ import '../../theme/app_theme.dart';
 
 class LoginRegisterScreen extends StatelessWidget {
   const LoginRegisterScreen({super.key});
+
+  static const _oneLiners = [
+    'Twoje zdrowie. Twój dom. Twoje zasady.',
+    'Zdrowie zaczyna się w domu.',
+    'Najlepsza opieka tam, gdzie czujesz się najlepiej.',
+    'Zarządzaj swoim zdrowiem z ulubionego fotela.',
+    'Cieszymy się, że jesteś. Kontynuujmy Twoją drogę po zdrowie.',
+    'Dołącz i zadbaj o siebie.',
+    'Twoje zdrowie w bezpiecznych rękach.',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -127,14 +138,17 @@ class LoginRegisterScreen extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           SizedBox(height: 16),
-          Text(
-            'Konto użytkownika',
-            style: Theme.of(context).textTheme.headlineLarge!.copyWith(
-              fontSize: 24,
-              color: AppColors.onSurface,
-              fontWeight: FontWeight.bold,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Text(
+              _oneLiners[math.Random().nextInt(_oneLiners.length)],
+              style: Theme.of(context).textTheme.headlineLarge!.copyWith(
+                fontSize: 20,
+                color: AppColors.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 64),
         ],

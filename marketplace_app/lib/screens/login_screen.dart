@@ -92,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Witaj ponownie!',
+                        'Witaj!',
                         style: Theme.of(context).textTheme.headlineLarge
                             ?.copyWith(
                               color: AppColors.onSurface,
