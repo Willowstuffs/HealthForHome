@@ -10,7 +10,6 @@ using H4H_API.Exceptions;
 using H4H_API.Helpers;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
 
 namespace H4H_API.Services.Implementations
 {
@@ -341,10 +340,7 @@ namespace H4H_API.Services.Implementations
                 foreach (var item in items)
                 {
                     var original = appointments.First(a => a.Id == item.Id);
-                    item.ServiceNames = original.SpecialistServiceIds
-                        .Where(id => serviceNamesMap.ContainsKey(id))
-                        .Select(id => serviceNamesMap[id])
-                        .ToList();
+                    item.ServiceNames = original.ServiceNamesSnapshot?.Split(", ").ToList() ?? new List<string>();
                 }
             }
 
@@ -803,7 +799,7 @@ namespace H4H_API.Services.Implementations
 
             await _context.SaveChangesAsync();
         }
-        
+
         /// <summary>
         /// Asynchronously retrieves the review for a specified appointment belonging to the specified user.
         /// </summary>
