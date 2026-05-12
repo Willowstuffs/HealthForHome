@@ -37,6 +37,20 @@ function initials(firstName, lastName) {
   const b = (lastName || "").trim().charAt(0).toUpperCase();
   return (a + b) || "??";
 }
+function formatDateTimePL(value) {
+  if (!value) return "-";
+
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "-";
+
+  return d.toLocaleString("pl-PL", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 function verifyLinkForSpecialization(spec) {
   if (spec === "PIELEGNIARKA" || spec === "POLOZNA") {
@@ -101,7 +115,16 @@ function SzczegolySpecjalisty() {
   if (error) return <p style={{ padding: 24, color: "tomato" }}>{error}</p>;
   if (!data) return null;
 
-  const accountStatus = data.status || data.verificationStatus;
+ const localSuspended =
+  sessionStorage.getItem(`specialist_${id}_suspended`) === "true";
+
+const accountStatus =
+  localSuspended ||
+  data?.isSuspended === true ||
+  data?.isActive === false ||
+  String(data?.status).toUpperCase() === "SUSPENDED"
+    ? "SUSPENDED"
+    : String(data.status || data.verificationStatus || "").toUpperCase();
   const canApprove = accountStatus === "PENDING";
   const canReject = accountStatus === "PENDING";
 
@@ -120,7 +143,42 @@ const specialization = normalizeSpecialization(specializationRaw);
 
 const isNurse = specialization === "nurse";
 const isPhysio = specialization === "physio";
-  
+console.log("SPECIALIST APPOINTMENTS:", data.appointments);
+
+console.log("SPECIALIST ACCEPTED CLIENTS:", data.acceptedClients);
+function translateAppointmentStatus(status) {
+  switch (String(status || "").toLowerCase()) {
+    case "completed":
+      return "Zakończona";
+
+    case "confirmed":
+      return "Potwierdzona";
+
+    case "cancelled":
+      return "Anulowana";
+
+    case "pending":
+      return "Oczekująca";
+
+    case "in_progress":
+      return "W trakcie";
+
+    default:
+      return status || "-";
+  }
+}
+
+const specialistActivities = (data.acceptedClients ?? [])
+  .map((c) => ({
+    date: c.acceptedAt ?? c.createdAt ?? null,
+    text: `Zaakceptowano klienta: ${
+      [c.firstName, c.lastName].filter(Boolean).join(" ") ||
+      c.email ||
+      "klient"
+    }`,
+  }))
+  .filter((x) => x.text)
+  .slice(0, 10);
 
   async function handleApprove() {
     if (!canApprove) return;
@@ -157,12 +215,16 @@ const isPhysio = specialization === "physio";
     }
   }
   async function handleSaveLicenseValidity() {
-    try {
-      setActionLoading(true);
-      await updateLicenseValidity(id, {
-        licenseValidUntil: licenseValidUntil || null,
-      });
-      alert("Data ważności licencji została zapisana");
+  try {
+    setActionLoading(true);
+
+    await updateLicenseValidity(id, {
+      licenseValidUntil: licenseValidUntil
+        ? new Date(`${licenseValidUntil}T00:00:00`).toISOString()
+        : null,
+    });
+
+    alert("Data ważności licencji została zapisana");
 
       const refreshed = await getSpecialist(id);
       const payload = refreshed?.data ?? refreshed;
@@ -185,8 +247,16 @@ async function handleSuspend() {
   try {
     setActionLoading(true);
     await suspendSpecialist(id);
-    alert("Specjalista został zawieszony");
-    location.reload();
+sessionStorage.setItem(`specialist_${id}_suspended`, "true");
+alert("Specjalista został zawieszony");
+
+setData((prev) => ({
+  ...prev,
+  isSuspended: true,
+  isActive: false,
+  status: "SUSPENDED",
+  verificationStatus: "SUSPENDED",
+}));
   } catch (e) {
     alert("Błąd zawieszania");
   } finally {
@@ -200,8 +270,16 @@ async function handleUnsuspend() {
   try {
     setActionLoading(true);
     await unsuspendSpecialist(id);
-    alert("Specjalista został odwieszony");
-    location.reload();
+sessionStorage.removeItem(`specialist_${id}_suspended`);
+alert("Specjalista został odwieszony");
+
+setData((prev) => ({
+  ...prev,
+  isSuspended: false,
+  isActive: true,
+  status: "APPROVED",
+  verificationStatus: "APPROVED",
+}));
   } catch (e) {
     alert("Błąd przywracania");
   } finally {
@@ -230,8 +308,8 @@ async function handleUnsuspend() {
 
                   <div>
                     <span className="profile-email">{data.email}</span>
-                    <span className={`status-pill status-pill--${String(data.status || data.verificationStatus).toLowerCase()}`}>
-                      <StatusBadge status={data.status || data.verificationStatus} />
+                    <span className={`status-pill status-pill--${String(accountStatus).toLowerCase()}`}>
+                      <StatusBadge status={accountStatus} />
                     </span>
 
                   </div>
@@ -265,7 +343,7 @@ async function handleUnsuspend() {
           </>
         )}
 
-        {data?.isActive !== false ? (
+       {accountStatus !== "SUSPENDED" ? (
   <button
     className="btn"
     onClick={handleSuspend}
@@ -409,12 +487,24 @@ async function handleUnsuspend() {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td colSpan={2} className="activity-empty">
-                        Dane aktywności specjalisty nie są jeszcze dostępne.
-                      </td>
-                    </tr>
-                  </tbody>
+  {specialistActivities.length > 0 ? (
+    specialistActivities.map((a, index) => (
+      <tr key={index}>
+        <td>
+          {formatDateTimePL(a.date)}
+        </td>
+
+        <td>{a.text}</td>
+      </tr>
+    ))
+  ) : (
+    <tr>
+      <td colSpan={2} className="activity-empty">
+        Dane aktywności specjalisty nie są jeszcze dostępne.
+      </td>
+    </tr>
+  )}
+</tbody>
                 </table>
 
                 <div className="back-row">

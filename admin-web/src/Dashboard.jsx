@@ -7,7 +7,6 @@ import {
   listSpecialists,
 } from "./api/adminApi";
 
-/** ---------- helpers (daty / etykiety) ---------- */
 function pad2(n) {
   return String(n).padStart(2, "0");
 }
@@ -20,7 +19,20 @@ function dayLabelPL(d) {
   const days = ["Nd", "Pn", "Wt", "Śr", "Cz", "Pt", "Sb"];
   return days[d.getDay()];
 }
+function formatDateTimePL(value) {
+  if (!value) return "—";
 
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+
+  return d.toLocaleString("pl-PL", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 function orderDayKey(o) {
   const value = o?.createdAt || o?.scheduledStart;
   if (!value) return null;
@@ -64,7 +76,7 @@ function timeAgoPL(value) {
 
   const diffMs = Date.now() - d.getTime();
 
-  if (diffMs < 0) return "przed chwilą";
+  if (diffMs < 0) return "zaplanowano";
 
   const diffMin = Math.floor(diffMs / 60000);
 
@@ -349,7 +361,9 @@ function ActivityList({ items, loading }) {
               <div className="muted">{x.text}</div>
             </div>
 
-            <div className="muted">{timeAgoPL(x.date)}</div>
+            <div className="muted">
+  {x.createdAt ? timeAgoPL(x.createdAt) : ""}
+</div>
           </div>
         ))}
       </div>
@@ -359,11 +373,38 @@ function ActivityList({ items, loading }) {
 
 function OrdersTable({ rows, loading }) {
   const badge = (s) => {
-    if (s === "pending") return <span className="badge badge-new">Pending</span>;
-    if (s === "completed") return <span className="badge badge-done">Zakończone</span>;
-    if (s === "cancelled") return <span className="badge badge-progress">Anulowane</span>;
-    return <span className="badge badge-progress">{s || "—"}</span>;
-  };
+  const status = String(s || "").toLowerCase();
+
+  if (status === "pending") {
+    return <span className="badge badge-new">Oczekuje</span>;
+  }
+
+  if (status === "confirmed") {
+    return <span className="badge badge-progress">Potwierdzone</span>;
+  }
+
+  if (status === "completed") {
+    return <span className="badge badge-done">Zakończone</span>;
+  }
+
+  if (status === "cancelled") {
+    return <span className="badge badge-danger">Anulowane</span>;
+  }
+
+  if (status === "open") {
+    return <span className="badge badge-primary">Otwarte</span>;
+  }
+
+  if (status === "in_progress") {
+    return <span className="badge badge-progress">W trakcie</span>;
+  }
+
+  if (status === "no_show") {
+    return <span className="badge badge-muted">Nie odbyła się</span>;
+  }
+
+  return <span className="badge badge-muted">{s || "—"}</span>;
+};
 
   return (
     <div className="card dashboard-table">
@@ -380,7 +421,7 @@ function OrdersTable({ rows, loading }) {
               <th>ID</th>
               <th>Klient</th>
               <th>Usługa</th>
-              <th>Data</th>
+              <th>Data wizyty</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -406,7 +447,7 @@ function OrdersTable({ rows, loading }) {
                   <td>{r.serviceName || "—"}</td>
                   <td>
                     {r.scheduledStart
-                      ? new Date(r.scheduledStart).toLocaleString("pl-PL")
+                      ? formatDateTimePL(r.scheduledStart)
                       : "—"}
                   </td>
                   <td>{badge(r.status)}</td>
@@ -500,16 +541,25 @@ export default function Dashboard() {
         let newCount = 0;
 
         for (const o of orders) {
-          const v = Number(o.totalPrice ?? 0);
-          total += v;
+  const status = String(o.status || "").toLowerCase();
 
-          if (o.status === "pending") newCount += 1;
+  if (status === "pending") {
+    newCount += 1;
+  }
 
-          const key = orderDayKey(o);
-          if (!key) continue;
+  // TYLKO zakończone wizyty liczą się do przychodu
+  if (status !== "completed") {
+    continue;
+  }
 
-          sumByDay.set(key, (sumByDay.get(key) ?? 0) + v);
-        }
+  const v = Number(o.totalPrice ?? 0);
+  total += v;
+
+  const key = orderDayKey(o);
+  if (!key) continue;
+
+  sumByDay.set(key, (sumByDay.get(key) ?? 0) + v);
+}
 
         const series = [];
         for (let i = 0; i < 7; i++) {
@@ -573,14 +623,27 @@ const successRate = finishedOrders.length
     console.log("ACTIVITY ORDERS:", orders);
     
     
-const orderItems = orders.map((o) => ({
+const orderItems = orders.map((o) => {
+  const hasCreatedAt = !!o.createdAt;
+
+  return {
   id: o.appointmentId,
   type: "order",
   name: o.contactName || "Klient",
   subtitle: o.serviceName || "—",
-  text: "Dodano nowe zamówienie",
-  date: o.createdAt || o.scheduledStart,
-}));
+
+  text: hasCreatedAt
+    ? "Dodano nowe zamówienie"
+    : `Termin wizyty: ${
+        o.scheduledStart
+          ? formatDateTimePL(o.scheduledStart)
+          : "—"
+      }`,
+
+  date: hasCreatedAt ? o.createdAt : o.scheduledStart,
+  createdAt: o.createdAt,
+};
+});
     const merged = orderItems
       .filter((x) => x.date)
       .sort((a, b) => new Date(b.date) - new Date(a.date))

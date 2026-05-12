@@ -124,6 +124,21 @@ function ListaSpecjalistow() {
   PIELEGNIARKA: "Pielęgniarz",
 
 };
+const filteredItems = data.items.filter((s) => {
+  if (!query.specialization) return true;
+
+  const raw = String(s.professionalTitle || s.specialization || "").toLowerCase();
+
+  if (query.specialization === "physiotherapist") {
+    return raw.includes("physio") || raw.includes("fizjo");
+  }
+
+  if (query.specialization === "nurse") {
+    return raw.includes("nurse") || raw.includes("piel");
+  }
+
+  return true;
+});
 
   return (
     <div className="page">
@@ -217,14 +232,14 @@ function ListaSpecjalistow() {
                 </thead>
 
                 <tbody>
-                  {data.items.length === 0 ? (
+                  {filteredItems.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="muted">
                         Brak wyników
                       </td>
                     </tr>
                   ) : (
-                    data.items.map((s) => (
+                    filteredItems.map((s) => (
                       <tr key={s.specialistId}>
                         <td className="cell-strong">
                           {s.firstName} {s.lastName}

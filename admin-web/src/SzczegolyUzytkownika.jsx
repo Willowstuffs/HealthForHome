@@ -10,6 +10,26 @@ function initials(firstName, lastName) {
   return (a + b) || "??";
 }
 
+function translateStatus(status) {
+  switch (String(status || "").toLowerCase()) {
+    case "open":
+      return "Otwarte";
+    case "pending":
+      return "Oczekujące";
+    case "confirmed":
+      return "Potwierdzone";
+    case "in_progress":
+      return "W trakcie";
+    case "completed":
+      return "Zakończone";
+    case "cancelled":
+      return "Anulowane";
+    case "no_show":
+      return "Nieobecność";
+    default:
+      return status || "-";
+  }
+}
 function SzczegolyUzytkownika() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -42,7 +62,13 @@ function SzczegolyUzytkownika() {
   const createdAtLabel = useMemo(() => {
     if (!data?.createdAt) return "-";
     const d = new Date(data.createdAt);
-    return Number.isNaN(d.getTime()) ? "-" : d.toLocaleString();
+    return Number.isNaN(d.getTime()) ? "-" : d.toLocaleString("pl-PL", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
   }, [data]);
 
   if (loading) return <p style={{ padding: 24 }}>Ładowanie...</p>;
@@ -148,10 +174,16 @@ function SzczegolyUzytkownika() {
                           <td>#{appointment.appointmentId}</td>
                           <td>
                             {appointment.scheduledStart
-                              ? new Date(appointment.scheduledStart).toLocaleString("pl-PL")
+                              ? new Date(appointment.scheduledStart).toLocaleString("pl-PL", {
+                                  year: "numeric",
+                                  month: "2-digit",
+                                  day: "2-digit",
+                                  hour: "2-digit",
+                                  minute: "2-digit"
+                                })
                               : "-"}
                           </td>
-                          <td>{appointment.status || "-"}</td>
+                          <td>{translateStatus(appointment.status)}</td>
                           <td>
                             {typeof appointment.price === "number"
                               ? `${appointment.price} PLN`

@@ -243,7 +243,13 @@ export async function getOrder(id) {
 
     clientNotes:
       payload?.clientNotes ?? payload?.description ?? payload?.notes ?? "",
-    createdAt: item?.createdAt ?? item?.createdDate ?? null,
+
+    createdAt:
+      payload?.createdAt ??
+      payload?.createdDate ??
+      payload?.created_at ??
+      payload?.scheduledStart ??
+      null,
 
     status: payload?.status ?? payload?.appointmentStatus ?? "",
   };
@@ -361,11 +367,31 @@ function normalizeSpecialist(item) {
 
   const rawStatus = item.status ?? item.verificationStatus;
 
+  const isSuspended =
+    item.isSuspended === true ||
+    item.is_suspended === true ||
+    item.isActive === false ||
+    item.is_active === false ||
+    String(rawStatus).toUpperCase() === "SUSPENDED";
+
   return {
     ...item,
     id: item.id ?? item.specialistId,
-    status: rawStatus ? String(rawStatus).toUpperCase() : undefined,
+    status: isSuspended
+      ? "SUSPENDED"
+      : rawStatus
+        ? String(rawStatus).toUpperCase()
+        : undefined,
+    verificationStatus: isSuspended ? "SUSPENDED" : item.verificationStatus,
+    isSuspended,
+    isActive: isSuspended ? false : item.isActive,
     specialization: item.specialization ?? item.professionalTitle,
+    licenseValidUntil:
+      item.licenseValidUntil ??
+      item.license_valid_until ??
+      item.qualification?.licenseValidUntil ??
+      item.qualification?.license_valid_until ??
+      null,
   };
 }
 function normalizeUser(item) {

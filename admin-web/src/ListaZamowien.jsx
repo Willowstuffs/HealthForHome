@@ -11,7 +11,20 @@ const DEFAULT_QUERY = {
   page: 1,
   pageSize: 20,
 };
+function formatDateTimePL(value) {
+  if (!value) return "—";
 
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+
+  return d.toLocaleString("pl-PL", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 function ListaZamowien() {
   const [query, setQuery] = useState(DEFAULT_QUERY);
 
@@ -134,7 +147,7 @@ function ListaZamowien() {
                   <th>Specjalista</th>
                   <th>Wartość</th>
                   <th>Status</th>
-                  <th>Data</th>
+                  <th>Data wizyty</th>
                   <th></th>
                 </tr>
               </thead>
@@ -170,7 +183,7 @@ function ListaZamowien() {
                       </td>
 
                       <td>
-                        {o.scheduledStart ? new Date(o.scheduledStart).toLocaleString() : "—"}
+                        {formatDateTimePL(o.scheduledStart)}
                       </td>
 
                       <td className="cell-right">
