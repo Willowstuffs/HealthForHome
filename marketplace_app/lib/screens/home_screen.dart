@@ -1298,7 +1298,7 @@ class HomeScreenState extends State<HomeScreen> {
                     backgroundColor: AppColors.surfaceContainerHighest,
                     foregroundColor: AppColors.onSurface,
                   ),
-                  child: const Text('Anuluj', style: TextStyle(fontSize: 14)),
+                  child: const Text('Zamknij', style: TextStyle(fontSize: 14)),
                 ),
               ),
               const SizedBox(height: 12),
@@ -1351,8 +1351,12 @@ class HomeScreenState extends State<HomeScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (offer.specialistRating > 0) ...[
-                          const SizedBox(width: 8),
+                      ],
+                    ),
+                    if (offer.specialistRating > 0) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
                           Icon(
                             Icons.star_rounded,
                             size: 16,
@@ -1367,9 +1371,21 @@ class HomeScreenState extends State<HomeScreen> {
                               fontSize: 14,
                             ),
                           ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '(${offer.totalReviews} ${offer.totalReviews == 1
+                                ? 'opinia'
+                                : offer.totalReviews % 10 >= 2 && offer.totalReviews % 10 <= 4
+                                ? 'opinie'
+                                : 'opinii'})',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
-                      ],
-                    ),
+                      ),
+                    ],
                     if (offer.proposedDate != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
@@ -1411,7 +1427,9 @@ class HomeScreenState extends State<HomeScreen> {
                         child: Wrap(
                           spacing: 6,
                           runSpacing: 6,
-                          children: offer.selectedServiceNames.map((serviceName) {
+                          children: offer.selectedServiceNames.map((
+                            serviceName,
+                          ) {
                             return Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
@@ -1598,7 +1616,7 @@ class _RotatingOneLinersState extends State<_RotatingOneLiners> {
   static const _oneLiners = [
     'Twoje zdrowie. Twój dom. Twoje zasady.',
     'Zdrowie zaczyna się w domu.',
-    'Najlepsza opieka tam, gdzie czujesz się najlepiej.',
+    'Wspaniała opieka tam, gdzie czujesz się najlepiej.',
     'Zarządzaj swoim zdrowiem z ulubionego fotela.',
     'Cieszymy się, że jesteś.',
     'Dołącz i zadbaj o siebie.',

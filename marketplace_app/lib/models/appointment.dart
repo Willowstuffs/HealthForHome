@@ -181,6 +181,7 @@ class AppointmentOffer {
   final String? bio;
   final List<String> selectedServiceNames;
   final double specialistRating; // specialist avg rating from 0-5
+  final int totalReviews;
 
   AppointmentOffer({
     required this.specialistId,
@@ -191,6 +192,7 @@ class AppointmentOffer {
     this.bio,
     required this.selectedServiceNames,
     required this.specialistRating,
+    required this.totalReviews,
   });
 
   factory AppointmentOffer.fromJson(Map<String, dynamic> json) {
@@ -207,6 +209,7 @@ class AppointmentOffer {
           ? List<String>.from(json['selectedServiceNames'])
           : [],
       specialistRating: (json['specialistRating'] as num?)?.toDouble() ?? 0.0,
+      totalReviews: json['totalReviews'] ?? 0,
     );
   }
 }
