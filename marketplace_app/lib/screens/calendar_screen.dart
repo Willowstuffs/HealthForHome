@@ -302,6 +302,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
         padding: EdgeInsets.all(8),
         child: TableCalendar<Appointment>(
+          locale: 'pl_PL',
           firstDay: DateTime.now().subtract(Duration(days: 365)),
           lastDay: DateTime.now().add(Duration(days: 365)),
           focusedDay: _focusedDay,

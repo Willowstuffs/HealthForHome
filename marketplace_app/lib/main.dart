@@ -8,6 +8,7 @@ import 'screens/home_screen.dart';
 import 'theme/app_theme.dart';
 import 'services/api_service.dart';
 import 'services/notification_service.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 @pragma(
   'vm:entry-point',
@@ -26,6 +27,8 @@ void main() async {
       statusBarBrightness: Brightness.light,
     ),
   );
+
+  await initializeDateFormatting('pl_PL', null);
 
   // initialize Firebase using the newly generated firebase_options.dart
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
