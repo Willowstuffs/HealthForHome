@@ -14,7 +14,7 @@ class Appointment {
   final DateTime updatedAt;
   final DateTime? cancelledAt;
   final DateTime? finalDate;
-
+  final String? specialistPhoneNumber;
   final String? specialistName;
   final String? clientName;
   final List<String>? serviceNames;
@@ -39,6 +39,7 @@ class Appointment {
     this.clientName,
     this.serviceNames,
     this.finalDate,
+    this.specialistPhoneNumber,
     required this.isRated,
   });
 
@@ -67,6 +68,7 @@ class Appointment {
       serviceNames: json['serviceNames'] != null
           ? List<String>.from(json['serviceNames'])
           : null,
+      specialistPhoneNumber: json['specialistPhoneNumber'],
       finalDate: json['finalDate'] != null
           ? DateTime.parse(json['finalDate'])
           : null,
@@ -177,6 +179,8 @@ class AppointmentOffer {
   final double proposedPrice;
   final DateTime? proposedDate;
   final String? bio;
+  final List<String> selectedServiceNames;
+  final double specialistRating; // specialist avg rating from 0-5
 
   AppointmentOffer({
     required this.specialistId,
@@ -185,6 +189,8 @@ class AppointmentOffer {
     required this.proposedPrice,
     this.proposedDate,
     this.bio,
+    required this.selectedServiceNames,
+    required this.specialistRating,
   });
 
   factory AppointmentOffer.fromJson(Map<String, dynamic> json) {
@@ -197,6 +203,10 @@ class AppointmentOffer {
           ? DateTime.parse(json['proposedDate'])
           : null,
       bio: json['bio'],
+      selectedServiceNames: json['selectedServiceNames'] != null
+          ? List<String>.from(json['selectedServiceNames'])
+          : [],
+      specialistRating: (json['specialistRating'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }
