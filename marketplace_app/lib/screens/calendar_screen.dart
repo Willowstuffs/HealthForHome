@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:marketplace_app/widgets/screen_status_bar.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../models/appointment.dart';
@@ -485,10 +486,119 @@ class _CalendarScreenState extends State<CalendarScreen> {
               if (appt.appointmentStatus != 'cancelled' &&
                   appt.appointmentStatus != 'open' &&
                   appt.appointmentStatus != 'pending')
-                _buildDetailRow(
-                  Icons.person,
-                  'Specjalista:',
-                  appt.specialistName ?? 'Brak danych',
+                Padding(
+                  padding: EdgeInsets.only(bottom: 16.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.person, color: AppColors.primary, size: 20),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Specjalista:',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              appt.specialistName ?? 'Brak danych',
+                              style: TextStyle(
+                                color: AppColors.onSurface,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (appt.appointmentStatus == 'confirmed' &&
+                          appt.specialistPhoneNumber != null)
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Telefon:',
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Builder(
+                                builder: (context) {
+                                  bool isCopied = false;
+                                  return StatefulBuilder(
+                                    builder: (context, setLocalState) {
+                                      return Row(
+                                        children: [
+                                          Flexible(
+                                            child: Text(
+                                              appt.specialistPhoneNumber!,
+                                              style: TextStyle(
+                                                color: AppColors.onSurface,
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
+                                          SizedBox(width: 12),
+                                          GestureDetector(
+                                            onTap: () {
+                                              Clipboard.setData(
+                                                ClipboardData(
+                                                  text: appt
+                                                      .specialistPhoneNumber!,
+                                                ),
+                                              );
+                                              setLocalState(
+                                                () => isCopied = true,
+                                              );
+                                              Future.delayed(
+                                                const Duration(seconds: 2),
+                                                () {
+                                                  if (context.mounted) {
+                                                    setLocalState(
+                                                      () => isCopied = false,
+                                                    );
+                                                  }
+                                                },
+                                              );
+                                            },
+                                            child: AnimatedSwitcher(
+                                              duration: const Duration(
+                                                milliseconds: 200,
+                                              ),
+                                              child: Icon(
+                                                isCopied
+                                                    ? Icons.check_rounded
+                                                    : Icons.copy,
+                                                key: ValueKey<bool>(isCopied),
+                                                size: 16,
+                                                color: isCopied
+                                                    ? Colors.green
+                                                    : AppColors.primary,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               if (appt.appointmentStatus != 'cancelled' &&
                   appt.appointmentStatus != 'open')
@@ -545,7 +655,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 _buildDetailRow(
                   Icons.attach_money,
                   'Cena:',
-                  '${appt.totalPrice!.toStringAsFixed(2)} PLN',
+                  '${appt.totalPrice!.toStringAsFixed(2)} zł',
                 ),
               if (appt.clientNotes != null && appt.clientNotes!.isNotEmpty)
                 _buildDetailRow(
