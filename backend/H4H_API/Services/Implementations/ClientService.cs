@@ -713,6 +713,11 @@ namespace H4H_API.Services.Implementations
                     .Select(s => s.AverageRating)
                     .FirstOrDefaultAsync();
 
+                var totalReviews = await _context.specialists
+                    .Where(s => s.Id == os.SpecialistId)
+                    .Select(s => s.TotalReviews)
+                    .FirstOrDefaultAsync();
+
                 var offerDto = new AppointmentOfferDto
                 {
                     SpecialistId = os.SpecialistId,
@@ -722,7 +727,8 @@ namespace H4H_API.Services.Implementations
                     ProposedDate = os.ProposedDate,
                     Bio = os.Specialist.Bio,
                     SelectedServiceIds = os.ServiceTypeIds?.ToList() ?? new List<Guid>(),
-                    SpecialistRating = specialistAvgRating
+                    SpecialistRating = specialistAvgRating,
+                    TotalReviews = totalReviews
                 };
 
                 // Pobieramy nazwy usług, które specjalista zaznaczył w tej konkretnej ofercie
