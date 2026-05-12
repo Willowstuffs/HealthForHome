@@ -201,6 +201,16 @@ namespace H4H_API.Controllers
                 .SuccessResponse(null, "Profil został zaktualizowany."));
         }
 
+        /// <summary>
+        /// Wycofuje się z potwierdzonej wizyty (np. gdy specjalista nie może jej zrealizować).
+        /// </summary>
+        [HttpPost("appointments/{id}/resign")]
+        public async Task<ActionResult<ApiResponse<object?>>> Resign(Guid id)
+        {
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            await _specialistService.ResignFromAppointmentAsync(userId, id);
+            return Ok(ApiResponse<object?>.SuccessResponse(null, "Pomyślnie wycofano się z wizyty."));
+        }
 
         /// <summary>
         /// Pozwala specjaliście ocenić klienta po zakończonej wizycie. Ocena jest anonimowa i służy do budowania reputacji klienta w systemie.

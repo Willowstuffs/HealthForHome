@@ -368,6 +368,9 @@ namespace H4H_API.Services.Implementations
             var specialist = await _context.specialists.FindAsync(specialistId)
                 ?? throw new AppException("Nie znaleziono profilu specjalisty.", ErrorCodes.SpecialistNotFound);
 
+            // Wymuszenie rodzaju daty, żeby Postgres nie marudził bo Ania chce YYYY-MM-DD
+            var dateToSave = DateTime.SpecifyKind(validUntil, DateTimeKind.Utc);
+
             //Szukanie kwalifikacji
             var qualification = await _context.specialist_qualifications
                 .FirstOrDefaultAsync(q => q.SpecialistId == specialistId && q.IsActive);
@@ -375,7 +378,7 @@ namespace H4H_API.Services.Implementations
             if (qualification != null)
             {
                 // Jeśli istnieje, aktualizowanie daty
-                qualification.LicenseValidUntil = validUntil;
+                qualification.LicenseValidUntil = dateToSave;
             }
             else
             {
@@ -392,12 +395,11 @@ namespace H4H_API.Services.Implementations
                     SpecialistId = specialistId,
                     Profession = profession,
                     LicenseNumber = "PENDING", // Wypełniamy tymczasowo, bo baza wymaga NOT NULL
-                    LicenseValidUntil = validUntil,
+                    LicenseValidUntil = dateToSave,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
                 });
             }
-
             await _context.SaveChangesAsync();
         }
 
