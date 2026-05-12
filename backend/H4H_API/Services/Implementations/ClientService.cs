@@ -10,7 +10,6 @@ using H4H_API.Exceptions;
 using H4H_API.Helpers;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
 
 namespace H4H_API.Services.Implementations
 {
@@ -326,6 +325,23 @@ namespace H4H_API.Services.Implementations
             // Mapujemy listę modeli na listę DTO za pomocą AutoMappera
             var items = _mapper.Map<List<AppointmentDto>>(appointments);
 
+            // Uzupełniamy numer telefonu specjalisty tylko dla wizyt o statusie "confirmed"
+            foreach (var item in items)
+            {
+                if (item.AppointmentStatus == "confirmed")
+                {
+                    var specialist = await _context.specialists.FindAsync(item.SpecialistId);
+                    if (specialist == null)
+                        throw new AppException($"Nie znaleziono specjalisty.", ErrorCodes.SpecialistNotFound);
+
+                    var user = await _context.users.FindAsync(specialist.UserId);
+                    if (user == null)
+                        throw new AppException($"Nie znaleziono użytkownika specjalisty.", ErrorCodes.SpecialistNotFound);
+
+                    item.SpecialistPhoneNumber = user?.PhoneNumber;
+                }
+            }
+
             // Pobieramy wszystkie unikalne ID usług specjalisty z pobranych wizyt
             var allServiceIds = appointments.SelectMany(a => a.SpecialistServiceIds).Distinct().ToList();
 
@@ -341,10 +357,7 @@ namespace H4H_API.Services.Implementations
                 foreach (var item in items)
                 {
                     var original = appointments.First(a => a.Id == item.Id);
-                    item.ServiceNames = original.SpecialistServiceIds
-                        .Where(id => serviceNamesMap.ContainsKey(id))
-                        .Select(id => serviceNamesMap[id])
-                        .ToList();
+                    item.ServiceNames = original.ServiceNamesSnapshot?.Split(", ").ToList() ?? new List<string>();
                 }
             }
 
@@ -695,6 +708,16 @@ namespace H4H_API.Services.Implementations
             // Mapujemy każde zgłoszenie na DTO, w tym pobieramy nazwy usług, które specjalista zaznaczył w tej ofercie
             foreach (var os in offers)
             {
+                var specialistAvgRating = await _context.specialists
+                    .Where(s => s.Id == os.SpecialistId)
+                    .Select(s => s.AverageRating)
+                    .FirstOrDefaultAsync();
+
+                var totalReviews = await _context.specialists
+                    .Where(s => s.Id == os.SpecialistId)
+                    .Select(s => s.TotalReviews)
+                    .FirstOrDefaultAsync();
+
                 var offerDto = new AppointmentOfferDto
                 {
                     SpecialistId = os.SpecialistId,
@@ -703,7 +726,9 @@ namespace H4H_API.Services.Implementations
                     ProposedPrice = os.Price,
                     ProposedDate = os.ProposedDate,
                     Bio = os.Specialist.Bio,
-                    SelectedServiceIds = os.ServiceTypeIds?.ToList() ?? new List<Guid>()
+                    SelectedServiceIds = os.ServiceTypeIds?.ToList() ?? new List<Guid>(),
+                    SpecialistRating = specialistAvgRating,
+                    TotalReviews = totalReviews
                 };
 
                 // Pobieramy nazwy usług, które specjalista zaznaczył w tej konkretnej ofercie
@@ -803,7 +828,7 @@ namespace H4H_API.Services.Implementations
 
             await _context.SaveChangesAsync();
         }
-        
+
         /// <summary>
         /// Asynchronously retrieves the review for a specified appointment belonging to the specified user.
         /// </summary>
