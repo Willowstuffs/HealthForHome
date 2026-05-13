@@ -196,11 +196,14 @@ Widget build(BuildContext context) {
 
                     const SizedBox(height: 24),
 
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _saveProfile,
-                        child: const Text("Zapisz zmiany"),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 24), 
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _saveProfile,
+                          child: const Text("Zapisz zmiany"),
+                        ),
                       ),
                     ),
                   ],

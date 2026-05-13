@@ -6,6 +6,7 @@ import 'theme/app_theme.dart';
 import 'screens/home_screen.dart';
 import 'firebase_options.dart';
 import 'services/notification_services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 class MyHttpOverrides extends HttpOverrides {
   @override
@@ -44,11 +45,25 @@ class MyApp extends StatelessWidget {
     
 
     return MaterialApp(
-      navigatorKey: navigatorKey,
-      title: 'HealthForHome',
-      theme: AppTheme.lightTheme,
-      home: const HomeScreen(),
-      debugShowCheckedModeBanner: false,
-    );
+    navigatorKey: navigatorKey,
+    title: 'HealthForHome',
+    theme: AppTheme.lightTheme,
+
+    locale: const Locale('pl', 'PL'),
+
+    supportedLocales: const [
+      Locale('pl', 'PL'),
+      Locale('en', 'US'),
+    ],
+
+    localizationsDelegates: const [
+      GlobalMaterialLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+    ],
+
+    home: const HomeScreen(),
+    debugShowCheckedModeBanner: false,
+  );
   }
 }

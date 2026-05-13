@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:specjalist_app/screens/registration_screens/certfikate_nurse_screen.dart';
 import 'package:specjalist_app/screens/registration_screens/certyficate_notnurse_screen.dart';
 import 'package:specjalist_app/screens/main_screens/maintoolbar_screen.dart';
+import 'package:specjalist_app/screens/registration_screens/register_screen.dart';
 import 'package:specjalist_app/screens/registration_screens/waiting_screen.dart';
 import 'package:specjalist_app/services/notification_services.dart';
 import '../../theme/app_theme.dart';
@@ -105,7 +106,20 @@ Widget build(BuildContext context) {
     child: Form(
       key: _formKey,
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+
+            const SizedBox(height: 40),
+
+            const Text(
+              "Zaloguj się",
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 8),
                        
             _buildTextField(
               emailController,
@@ -125,8 +139,8 @@ Widget build(BuildContext context) {
                 child: ElevatedButton(
                   onPressed: isLoading ? null : _login,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.onSurface, 
-                    foregroundColor: AppColors.surface, 
+                    backgroundColor: AppColors.secondary, 
+                    foregroundColor: AppColors.livingColor10, 
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -142,6 +156,24 @@ Widget build(BuildContext context) {
                 ),
               ),
               const SizedBox(height: 16), 
+              Center(
+              child: TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const RegisterScreen(),
+                    ),
+                  );
+                },
+                child: const Text(
+                  "Nie masz konta? Zarejestruj się",
+                  style: TextStyle(fontSize: 15),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 40),
             ],
           ),
         ),
@@ -163,8 +195,13 @@ Widget build(BuildContext context) {
       validator: (v) => v == null || v.isEmpty ? 'Pole wymagane' : null,
       decoration: InputDecoration(
         labelText: label,
+        labelStyle: const TextStyle(fontSize: 16),
         filled: true,
         fillColor: AppColors.onPrimary,
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 18,
+          horizontal: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
         ),

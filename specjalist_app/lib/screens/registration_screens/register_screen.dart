@@ -126,7 +126,18 @@ Widget build(BuildContext context) {
     child: Form(
       key: _formKey,
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+
+            const SizedBox(height: 40),
+
+            const Text(
+              "Utwórz konto",
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             _buildDropdownField(),
             const SizedBox(height: 16),
             _buildTextField(firstNameController, 'Imię'),
@@ -159,8 +170,8 @@ Widget build(BuildContext context) {
               child: ElevatedButton(
                 onPressed: isLoading ? null : _register,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.onSurface, 
-                  foregroundColor: AppColors.surface, 
+                  backgroundColor: AppColors.secondary, 
+                    foregroundColor: AppColors.livingColor10, 
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -190,30 +201,30 @@ Widget build(BuildContext context) {
 
 // Lista rozwijana ze specjalizacjami
   Widget _buildDropdownField() {
-    return DropdownButtonFormField<String>(
-      initialValue: selectedSpecialization,
-      items: specializations
-          .map((s) => DropdownMenuItem(
-                value: s,
-                child: Text(s),
-              ))
-          .toList(),
-      onChanged: (value) {
-        setState(() {
-          selectedSpecialization = value;
-        });
-      },
-      decoration: InputDecoration(
-        labelText: 'Specjalizacja',
-        filled: true,
-        fillColor: AppColors.onPrimary,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+  return DropdownButtonFormField<String>(
+    initialValue: selectedSpecialization,
+    items: specializations
+        .map((s) => DropdownMenuItem(
+              value: s,
+              child: Text(s),
+            ))
+        .toList(),
+    onChanged: (value) {
+      setState(() => selectedSpecialization = value);
+    },
+    validator: (v) => v == null ? 'Wybierz specjalizację' : null,
+    decoration: InputDecoration(
+      labelText: 'Specjalizacja',
+      filled: true,
+      fillColor: AppColors.onPrimary,
+      contentPadding:
+          const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
       ),
-      validator: (v) => v == null ? 'Wybierz specjalizację' : null,
-    );
-  }
+    ),
+  );
+}
 
   // Pole tekstowe
   Widget _buildTextField(TextEditingController controller, String label,
@@ -223,12 +234,17 @@ Widget build(BuildContext context) {
       obscureText: obscureText,
       keyboardType: keyboardType,
        textInputAction: TextInputAction.next,
-        
+        style: const TextStyle(fontSize: 16),
       validator: (v) => v == null || v.isEmpty ? 'Pole wymagane' : null,
       decoration: InputDecoration(
         labelText: label,
         filled: true,
         fillColor: AppColors.onPrimary,
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 18,
+          horizontal: 16,
+        ),
+
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
         ),
