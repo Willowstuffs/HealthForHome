@@ -14,6 +14,9 @@ import SzczegolyUzytkownika from "./SzczegolyUzytkownika.jsx";
 
 import ListaZamowien from "./ListaZamowien.jsx";
 import SzczegolyZamowienia from "./SzczegolyZamowienia.jsx";
+
+import LegalPage from "./Legalpages.jsx";
+
 import "/src/styles/admin.css";
 
 
@@ -22,6 +25,9 @@ function App() {
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
+      
+      /* strony prawne */
+      <Route path="/legal/:type" element={<LegalPage />} />
 
       {/* wszystko po zalogowaniu ma wspólny layout */}
       <Route
