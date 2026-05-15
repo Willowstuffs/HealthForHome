@@ -680,20 +680,38 @@ Widget _ratingButton({
 }) {
   final isSelected = selected == value;
 
+  Color getColor() {
+    switch (value) {
+      case 'good':
+        return Colors.green;
+      case 'neutral':
+        return Colors.orange;
+      case 'bad':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  final color = getColor();
+
   return GestureDetector(
     onTap: () => onTap(value),
-    child: Container(
-      padding: const EdgeInsets.all(12),
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isSelected
-            ? Colors.green.withValues(alpha: 0.2)
-            : Colors.grey.withValues(alpha: 0.1),
-        shape: BoxShape.circle,
+        color: isSelected ? color.withValues(alpha: 0.15) : Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isSelected ? color : Colors.grey.shade300,
+          width: 2,
+        ),
       ),
       child: Icon(
         icon,
-        size: 32,
-        color: isSelected ? Colors.green : Colors.grey,
+        size: 28,
+        color: isSelected ? color : Colors.grey,
       ),
     ),
   );

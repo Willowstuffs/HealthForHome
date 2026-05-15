@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:specjalist_app/services/user_profile.dart';
 import '../../theme/app_theme.dart';
@@ -57,6 +59,7 @@ class _StartScreenState extends State<StartScreen> {
     debugPrint("Services load error: $e");
   }
 }
+
 void _goToProfileFix() {
   final hasCity = UserSession.profile?.serviceAreas?.any(
         (a) => a.city.trim().isNotEmpty,
@@ -134,79 +137,92 @@ Future<void> _loadProfile() async {
     
     await NotificationService().uploadTokenToServer();
   }
-   Future<void> _fetchData() async {
-    if (!_hasValidProfile) {
-      setState(() {
-        inquiries = [];
-        isLoading = false;
-      });
-      return;
-    }
-    try {
-      final fetchedInquiries = await ApiService().getInquiries(
-        patientName: "",
-        dateFrom: DateTime(now.year, now.month, now.day),
-        dateTo:
-            DateTime(now.year, now.month, now.day).add(const Duration(days: 90)),
+Future<void> _fetchData() async {
+  if (!_hasValidProfile) {
+    setState(() {
+      inquiries = [];
+      isLoading = false;
+    });
+    return;
+  }
+
+  try {
+    final fetchedInquiries = await ApiService().getInquiries(
+      patientName: "",
+      dateFrom: DateTime(now.year, now.month, now.day),
+      dateTo: DateTime(now.year, now.month, now.day)
+          .add(const Duration(days: 90)),
+    );
+
+    final formatter = DateFormat('dd-MM-yyyy HH:mm');
+
+    final List<Map<String, dynamic>> processed = [];
+
+    for (final i in fetchedInquiries) {
+      final id = (i['appointmentId'] ?? i['AppointmentId'])?.toString();
+      final clientId = (i['clientId'] ?? i['ClientId'])?.toString();
+
+      final start = DateTime.tryParse(
+        i['scheduledStart'] ?? i['ScheduledStart'] ?? '',
       );
 
-      final displayFormatter = DateFormat('dd-MM-yyyy HH:mm');
+      final end = DateTime.tryParse(
+        i['scheduledEnd'] ?? i['ScheduledEnd'] ?? '',
+      );
 
-      List<Map<String, dynamic>> processed = [];
+      final rawAddress = i['patientAddress'] ?? i['PatientAddress'] ?? '';
+      final address = AddressFormatter.short(rawAddress);
 
-      for (var i in fetchedInquiries) {
-        final id = i['appointmentId']?.toString() ?? i['AppointmentId']?.toString();
+      final apiIsRead = i['isRead'] == true || i['IsRead'] == true;
+      final isNew = !apiIsRead && !_readIds.contains(id);
 
+      dynamic reviewsRaw = i['reviews'] ?? i['Reviews'];
 
-        DateTime? start = i['scheduledStart'] != null
-            ? DateTime.tryParse(i['scheduledStart'])
-            : (i['ScheduledStart'] != null
-                ? DateTime.tryParse(i['ScheduledStart'])
-                : null);
-
-        DateTime? end = i['scheduledEnd'] != null
-            ? DateTime.tryParse(i['scheduledEnd'])
-            : (i['ScheduledEnd'] != null
-                ? DateTime.tryParse(i['ScheduledEnd'])
-                : null);
-
-       final originalAddress =
-          i['patientAddress'] ?? i['PatientAddress'] ?? '';
-
-         final streetAndCity =
-          AddressFormatter.short(originalAddress);
-        bool apiIsRead = i['isRead'] == true || i['IsRead'] == true;
-        bool isNew = !apiIsRead && !_readIds.contains(id);
-
-        processed.add({
-          'id': id?.toString() ?? '',
-          'name': i['patientName'] ?? i['PatientName'] ?? '',
-          'startDate': start != null ? displayFormatter.format(start) : '',
-          'endDate': end != null ? displayFormatter.format(end) : '',
-          'service': i['serviceName'] ?? i['ServiceName'] ?? '',
-          'address': streetAndCity,
-          'description': i['description'] ?? i['Description'] ?? '',
-          'distanceKm':i['distanceKm'],
-          'isNew': isNew,
-        });
+// Jeśli to String, zdekoduj go
+      if (reviewsRaw is String) {
+        reviewsRaw = jsonDecode(reviewsRaw);
       }
-      processed.sort((a, b) {
-        if (a['isNew'] == b['isNew']) return 0;
-        return a['isNew'] ? -1 : 1;
-      });
-      if (!mounted) return;
+      debugPrint("TYPE: ${reviewsRaw.runtimeType}");
+debugPrint("VALUE: $reviewsRaw");
+      // Mapujemy na ustandaryzowany format małych liter, aby uniknąć problemów w widgetach
+      Map<String, int> cleanReviews = {
+        'goodCount': (reviewsRaw?['GoodCount'] ?? reviewsRaw?['goodCount'] ?? 0) as int,
+        'neutralCount': (reviewsRaw?['NeutralCount'] ?? reviewsRaw?['neutralCount'] ?? 0) as int,
+        'badCount': (reviewsRaw?['BadCount'] ?? reviewsRaw?['badCount'] ?? 0) as int,
+      };
 
-      setState(() {
-        inquiries = processed;
-        isLoading = false;
-      });
-    } catch (e) {
-      print('Błąd pobierania zapytań: $e');
+      processed.add({
+        'id': id ?? '',
+        'clientId': clientId,
+        'name': i['patientName'] ?? i['PatientName'] ?? '',
+        'startDate': start != null ? formatter.format(start) : '',
+        'endDate': end != null ? formatter.format(end) : '',
+        'service': i['serviceName'] ?? i['ServiceName'] ?? '',
+        'address': address,
+        'description': i['description'] ?? i['Description'] ?? '',
+        'distanceKm': i['distanceKm'],
+        'isNew': isNew,
 
-      if (mounted) {
-        setState(() => isLoading = false);
-      }
+        // 🔥 NAJWAŻNIEJSZE — STATYSTYKI Z API
+        'reviews': cleanReviews,
+      });
     }
+
+    setState(() {
+      inquiries = processed;
+      isLoading = false;
+    });
+
+    // DEBUG całej listy
+    debugPrint("📦 PROCESSED INQUIRIES:");
+    for (final p in processed) {
+      debugPrint("${p['clientId']} => ${p['reviews']}");
+    }
+
+  } catch (e) {
+    debugPrint('❌ Błąd pobierania zapytań: $e');
+    if (mounted) setState(() => isLoading = false);
+  }
 }
 
 @override
@@ -438,6 +454,14 @@ Widget _buildHeader() {
       separatorBuilder: (context, index) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
         final item = inquiries[index];
+        
+        // Pobieramy naszą ustandaryzowaną mapę
+        final reviews = item['reviews'] as Map<String, int>?;
+
+        // Wyciągamy wartości używając kluczy, które zdefiniowałeś w processed.add
+        int good = reviews?['goodCount'] ?? 0;
+        int neutral = reviews?['neutralCount'] ?? 0;
+        int bad = reviews?['badCount'] ?? 0;
         return Container(
           decoration: BoxDecoration(
             color: AppColors.surfaceContainer,
@@ -467,6 +491,26 @@ Widget _buildHeader() {
                             ),
                       ),
                     ),
+                    const SizedBox(height: 8),
+
+                  Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.outlineVariant),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildRatingCompact(Icons.thumb_up, good, Colors.green),
+                      const SizedBox(width: 10),
+                      _buildRatingCompact(Icons.thumbs_up_down, neutral, Colors.orange),
+                      const SizedBox(width: 10),
+                      _buildRatingCompact(Icons.thumb_down, bad, Colors.red),
+                    ],
+                  ),
+                ),
                     Container(
                       width: 28,
                       height: 28,
@@ -554,7 +598,28 @@ Widget _buildHeader() {
       },
     );
   }
+Widget _buildRatingCompact(IconData icon, int count, Color color) {
+  final isEmpty = count == 0;
 
+  return Row(
+    children: [
+      Icon(
+        icon,
+        size: 14,
+        color: isEmpty ? color.withValues(alpha: 0.3) : color,
+      ),
+      const SizedBox(width: 4),
+      Text(
+        count.toString(),
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: isEmpty ? color.withValues(alpha: 0.4) : color,
+        ),
+      ),
+    ],
+  );
+}
   Widget _buildInfoRow(IconData icon, String text) {
     return Row(
       children: [
