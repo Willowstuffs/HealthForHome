@@ -15,6 +15,7 @@
 
         public const string SpecialistNotFound = "SPEC_001";
         public const string SpecialistQualificationNotFound = "SPEC_002";
+        public const string SpecialistAccountSuspended = "SPEC_003";
 
         // Walidacja danych
         public const string ValidationError = "VAL_001";

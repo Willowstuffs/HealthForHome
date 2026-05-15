@@ -17,5 +17,8 @@ namespace H4H_API.DTOs.Admin
         public string? LicensePhotoUrl { get; set; }
         public string? IdCardPhotoUrl { get; set; }
         public string? VerificationNotes { get; set; }
+
+        // Dodane pole do przechowywania daty ważności licencji, jeśli jest dostępna
+        public DateTime? LicenseValidUntil { get; set; }
     }
 }
