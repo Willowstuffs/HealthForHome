@@ -405,6 +405,16 @@ class ApiService {
     }
   }
 
+  Future<void> completeAppointment(String id) async {
+    try {
+      await _dio.post('/api/Client/appointments/$id/complete');
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (_) {
+      throw Exception('Nieznany błąd podczas kończenia wizyty');
+    }
+  }
+
   Future<String> createServiceRequest(CreateServiceRequestDto dto) async {
     try {
       final response = await _dio.post(

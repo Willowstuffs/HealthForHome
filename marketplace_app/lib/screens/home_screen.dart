@@ -514,7 +514,7 @@ class HomeScreenState extends State<HomeScreen> {
                 context,
                 MaterialPageRoute(builder: (_) => const AccountScreen()),
               );
-              _refreshData();
+              _checkLoginAndLoadProfile();
             },
             child: Container(
               width: 56,
@@ -824,7 +824,7 @@ class HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      'Brak nadchodzących wizyt',
+                      'Brak nadchodzących wizyt.',
                       style: TextStyle(color: AppColors.textSecondary),
                     ),
                   ],
