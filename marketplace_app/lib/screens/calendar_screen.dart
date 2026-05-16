@@ -117,6 +117,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
         appt.scheduledEnd.month,
         appt.scheduledEnd.day,
       );
+      if (appt.finalDate != null && appt.appointmentStatus == 'confirmed') {
+        debugPrint('\nAppt ID: ${appt.id}');
+        debugPrint('Services: ${appt.serviceNames}');
+        debugPrint('Final date: ${appt.finalDate}');
+        debugPrint('Now date: ${DateTime.now()}');
+        debugPrint(
+          'Is final date before now? ${appt.finalDate!.isBefore(DateTime.now())}',
+        );
+      }
       final finalDay = appt.finalDate != null
           ? DateTime(
               appt.finalDate!.year,
@@ -776,7 +785,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
                 SizedBox(height: 8),
               ],
-              if (appt.appointmentStatus == 'confirmed') ...[
+              if (appt.appointmentStatus == 'confirmed' &&
+                  appt.finalDate != null &&
+                  DateTime(
+                    appt.finalDate!.year,
+                    appt.finalDate!.month,
+                    appt.finalDate!.day,
+                    appt.finalDate!.hour,
+                    appt.finalDate!.minute,
+                  ).isBefore(DateTime.now())) ...[
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
