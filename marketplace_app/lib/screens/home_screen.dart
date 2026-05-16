@@ -67,7 +67,7 @@ class HomeScreenState extends State<HomeScreen> {
 
   Future<void> _refreshData() async {
     if (!ApiService().isLoggedIn) {
-      _checkLoginAndLoadProfile();
+      setState(() {});
       return;
     }
     setState(() {
@@ -325,7 +325,7 @@ class HomeScreenState extends State<HomeScreen> {
                                 builder: (_) => const LoginRegisterScreen(),
                               ),
                             );
-                            _checkLoginAndLoadProfile();
+                            _refreshData();
                           },
                         ),
                       ),
@@ -514,7 +514,7 @@ class HomeScreenState extends State<HomeScreen> {
                 context,
                 MaterialPageRoute(builder: (_) => const AccountScreen()),
               );
-              _checkLoginAndLoadProfile();
+              _refreshData();
             },
             child: Container(
               width: 56,
