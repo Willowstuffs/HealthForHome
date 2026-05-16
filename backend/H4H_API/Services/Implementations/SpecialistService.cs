@@ -70,6 +70,16 @@ namespace H4H_API.Services.Implementations
         {
             var specialist = await _context.specialists
                 .FirstOrDefaultAsync(s => s.UserId == userId) ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
+
+            // --- Dodane sprawdzenie, czy specjalista jest zawieszony (suspended) - jeśli tak, nie pozwalamy na pobieranie zapytań ---
+            if (specialist.IsSuspended)
+            {
+                // Możemy zwrócić pustą listę zamiast błędu, żeby aplikacja się nie wywaliła na starcie, 
+                // ale specjalista nie zobaczy żadnych ofert.
+                return new List<InquiryListItemDto>();
+            }
+            // -----------------------
+
             var area = await _context.service_areas
                 .Where(a => a.Specialist.UserId == userId)
                 .OrderByDescending(a => a.IsPrimary)
@@ -380,6 +390,12 @@ namespace H4H_API.Services.Implementations
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
                 ?? throw new AppException("Profil nie istnieje.", ErrorCodes.SpecialistNotFound);
 
+            // --- Sprawdzenie, czy mozna dodac oferte (czy konto nie jest zawieszone) ---
+            if (specialist.IsSuspended)
+            {
+                throw new AppException("Twoje konto jest zawieszone przez administratora. Nie możesz wysyłać nowych ofert.", ErrorCodes.SpecialistAccountSuspended);
+            }
+            // -----------------------
 
             var appointment = await _context.appointments
                 .FirstOrDefaultAsync(a => a.Id == appointmentId);
