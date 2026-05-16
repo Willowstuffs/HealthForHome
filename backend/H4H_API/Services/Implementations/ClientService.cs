@@ -306,8 +306,9 @@ namespace H4H_API.Services.Implementations
             var query = _context.appointments
                 .Include(a => a.Client) // Ważne dla ClientName
                 .Include(a => a.Specialist) // Ważne dla SpecialistName
-                                            //.Include(a => a.SpecialistService) // Ważne dla ServiceName, usuwam bo teraz mam listę usług, a nie pojedynczą
-                                            //    .ThenInclude(ss => ss!.ServiceType) //usuwam bo teraz mam listę usług, a nie pojedynczą
+                .Include(a => a.ServiceType) // Ważne dla ServiceTypeName
+                                             //.Include(a => a.SpecialistService) // Ważne dla ServiceName, usuwam bo teraz mam listę usług, a nie pojedynczą
+                                             //    .ThenInclude(ss => ss!.ServiceType) //usuwam bo teraz mam listę usług, a nie pojedynczą
                 .Where(a => a.ClientId == client.Id)
                 .AsQueryable();
 

@@ -31,6 +31,7 @@
         // Właściwości nawigacyjne (opcjonalne - do wypełnienia jeśli potrzebne)
         public string? SpecialistName { get; set; }
         public string? ClientName { get; set; }
+        public string? ServiceTypeName { get; set; }
         public List<string> ServiceNames { get; set; } = new();
     }
 }
