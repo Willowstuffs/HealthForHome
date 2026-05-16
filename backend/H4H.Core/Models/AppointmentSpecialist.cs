@@ -29,6 +29,10 @@ namespace H4H.Core.Models
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTimeHelper.NowUnspecified;
 
+        [Column("proposed_date")] // dodanie propozycji pelnej daty (z godziną)
+        public DateTime ProposedDate { get; set; }
+
+
         // Relacje do innych tabel
         public virtual Appointment Appointment { get; set; } = null!;
         public virtual Specialist Specialist { get; set; } = null!;

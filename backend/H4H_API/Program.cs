@@ -102,6 +102,8 @@ builder.Services.AddScoped<ISpecialistService, SpecialistService>();
 builder.Services.AddScoped<IGeocoder, Geocoder>();
 builder.Services.AddSingleton<FirebaseNotificationService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<AppointmentsLifeCycleService>();
+builder.Services.AddHostedService<AppointmentCompletionWorker>();
 builder.Services.AddHttpClient();
 
 
@@ -155,10 +157,11 @@ app.UseSwaggerUI(c =>
 
 // Middleware 
 app.UseMiddleware<ErrorHandlingMiddleware>();
+app.UseMiddleware<JwtMiddleware>();
 /*
 app.UseHttpsRedirection();
 RENDER MA WLASNA BRAMKE HTTPS, redirect sprawia tylko problemy.
-*/ 
+*/
 app.UseCors("AllowFlutter");
 app.UseStaticFiles();
 app.UseAuthentication();

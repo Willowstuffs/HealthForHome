@@ -8,7 +8,7 @@ namespace H4H_API.Services.Interfaces
         string GenerateAccessToken(User user);
         string GenerateRefreshToken();
         // Weryfikuje token i zwraca ID użytkownika jeśli token jest poprawny
-        Guid? ValidateToken(string token);
+        Guid? ValidateToken(string token, bool validateLifetime = true);
         Task<bool> IsTokenRevoked(string token);
         Task RevokeToken(string token);
     }

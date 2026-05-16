@@ -6,6 +6,8 @@ using H4H_API.DTOs.Specialist;
 using H4H_API.Exceptions;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using NetTopologySuite.Geometries;
 using ErrorCodes = H4H_API.Helpers.ErrorCodes;
 
 
@@ -25,17 +27,21 @@ namespace H4H_API.Services.Implementations
         private readonly ApplicationDbContext _context;
         private readonly IJwtService _jwtService;
         private readonly IEmailService _emailService; //wstrzykniecie serwisu email do wysylania kodow weryfikacyjnych
+        private readonly IConfiguration _configuration;
+        private readonly IGeocoder _geocoder; // wstrzykniecie serwisu geokodowania do walidacji adresu przy rejestracji klienta
 
         /// <summary>
         /// Initializes a new instance of the AuthService class using the specified database context and JWT service.
         /// </summary>
         /// <param name="context">The database context used to access application data for authentication operations. Cannot be null.</param>
         /// <param name="jwtService">The JWT service used to generate and validate JSON Web Tokens for authentication. Cannot be null.</param>
-        public AuthService(ApplicationDbContext context, IJwtService jwtService, IEmailService emailService)
+        public AuthService(ApplicationDbContext context, IJwtService jwtService, IEmailService emailService, IConfiguration configuration, IGeocoder geocoder)
         {
             _context = context;
             _jwtService = jwtService;
             _emailService = emailService;
+            _configuration = configuration;
+            _geocoder = geocoder;
         }
 
         /// <summary>
@@ -59,17 +65,34 @@ namespace H4H_API.Services.Implementations
 
             // Sprawdź czy użytkownik istnieje i czy hasło jest poprawne
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-                throw new UnauthorizedAccessException("Nieprawidłowy email lub hasło");
+                throw new AppException("Nieprawidłowy email lub hasło.", ErrorCodes.InvalidCredentials);
+
+            if (!user.IsActive)
+                throw new AppException("Konto nie jest aktywne. Zweryfikuj e-mail.", ErrorCodes.UserInactive);
 
             // Aktualizuj last login
-            user.LastLoginAt = DateTime.Now;
+            user.LastLoginAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
             // Generuj tokeny
             var accessToken = _jwtService.GenerateAccessToken(user);
             var refreshToken = _jwtService.GenerateRefreshToken();
 
-            // TODO: Zapisz refresh token do bazy (do implementacji
+            // --- NOWA LOGIKA: Zapisz refresh token do bazy ---
+            var refreshTokenExpires = DateTime.UtcNow.AddDays(7); // Ustalamy ważność na 7 dni
+
+            var refreshTokenEntry = new RefreshToken
+            {
+                Id = Guid.NewGuid(),
+                Token = refreshToken,
+                UserId = user.Id,
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = refreshTokenExpires
+            };
+
+            _context.RefreshTokens.Add(refreshTokenEntry);
+            await _context.SaveChangesAsync();
+            // -------------------------------------------------
 
             // Przygotuj informacje o użytkowniku do odpowiedzi
             var userInfo = new UserInfoDto
@@ -93,13 +116,12 @@ namespace H4H_API.Services.Implementations
                 userInfo.LastName = user.Specialist.LastName;
             }
 
-            // Zwróć odpowiedź z tokenami i danymi użytkownika
             return new LoginResponse
             {
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
-                AccessTokenExpires = DateTime.Now.AddMinutes(15), // Token dostępowy ważny 15 minut
-                RefreshTokenExpires = DateTime.Now.AddDays(7), // Token odświeżający ważny 7 dni
+                AccessTokenExpires = DateTime.UtcNow.AddMinutes(15),
+                RefreshTokenExpires = refreshTokenExpires, // Używamy tej samej zmiennej co do bazy
                 User = userInfo
             };
         }
@@ -120,6 +142,22 @@ namespace H4H_API.Services.Implementations
             // Sprawdź czy email już istnieje
             if (await _context.users.AnyAsync(u => u.Email == request.Email))
                 throw new ArgumentException("Użytkownik o podanym emailu już istnieje");
+
+            // --- NOWA SEKCJA: Walidacja adresu przy rejestracji ---
+            string? validatedAddress = request.Address;
+            Point? addressPoint = null;
+
+            if (!string.IsNullOrWhiteSpace(request.Address))
+            {
+                var geocodeResult = await _geocoder.GeocodeAddressAsync(request.Address);
+                if (geocodeResult == null)
+                    throw new AppException("Podany adres nie został odnaleziony. Proszę podać dokładniejszy adres lub uzupełnić profil później.", ErrorCodes.GeocodingFailed);
+
+                validatedAddress = geocodeResult.FormattedAddress; // Podmieniamy na "ładny" adres
+                addressPoint = _geocoder.CreatePoint(geocodeResult.Longitude, geocodeResult.Latitude);
+            }
+            // -----------------------------------------------------
+
 
             // Utwórz użytkownika
             var user = new User
@@ -144,7 +182,9 @@ namespace H4H_API.Services.Implementations
                 FirstName = request.FirstName,
                 LastName = request.LastName,
                 DateOfBirth = request.DateOfBirth,
-                Address = request.Address,
+                //Address = request.Address,
+                Address = validatedAddress, // ZMIANA: używamy zwalidowanego adresu
+                AddressPoint = addressPoint, // ZMIANA: zapisujemy punkt od razu
                 EmergencyContact = request.EmergencyContact,
                 CreatedAt = DateTime.Now
             };
@@ -246,48 +286,117 @@ namespace H4H_API.Services.Implementations
         /// <exception cref="UnauthorizedAccessException">Thrown if the access token is invalid, the user does not exist, or the user is inactive.</exception>
         public async Task<LoginResponse> RefreshTokenAsync(RefreshTokenRequest request)
         {
-            var userId = _jwtService.ValidateToken(request.AccessToken);
+            // 1. Walidujemy token (bez sprawdzania daty wygaśnięcia)
+            var userId = _jwtService.ValidateToken(request.AccessToken, false);
             if (!userId.HasValue)
-                throw new UnauthorizedAccessException("Nieprawidłowy token");
+                throw new AppException("Nieprawidłowy token dostępu.", ErrorCodes.InvalidToken);
 
-            var user = await _context.users.FindAsync(userId.Value);
-            if (user == null || !user.IsActive)
-                throw new UnauthorizedAccessException("Użytkownik nie istnieje lub jest nieaktywny");
+            // 2. Szukamy tokena w bazie 
+            var storedToken = await _context.RefreshTokens
+                .FirstOrDefaultAsync(t => t.Token == request.RefreshToken && t.UserId == userId.Value);
 
-            // Tutaj sprawdź refresh token w bazie (do zrobienia)
+            if (storedToken == null || storedToken.ExpiresAt < DateTime.UtcNow || storedToken.RevokedAt != null)
+                throw new AppException("Sesja wygasła. Zaloguj się ponownie.", ErrorCodes.RefreshTokenInvalidOrExpired);
 
+            // 3. Pobieramy użytkownika i sprawdzamy czy nie jest nullem 
+            var user = await _context.users
+                .Include(u => u.Client)
+                .Include(u => u.Specialist)
+                .FirstOrDefaultAsync(u => u.Id == userId.Value);
+
+            if (user == null)
+                throw new AppException("Użytkownik nie istnieje.", ErrorCodes.UserNotFound);
+
+            if (!user.IsActive)
+                throw new AppException("Konto jest nieaktywne.", ErrorCodes.UserInactive);
+
+            // 4. Usuwamy stary token z bazy (rotacja)
+            _context.RefreshTokens.Remove(storedToken);
+
+            // 5. Generujemy nowe dane 
             var newAccessToken = _jwtService.GenerateAccessToken(user);
-            var newRefreshToken = _jwtService.GenerateRefreshToken();
+            var newRefreshTokenString = _jwtService.GenerateRefreshToken();
+            var refreshTokenExpires = DateTime.UtcNow.AddDays(7);
 
-            // Zaktualizuj refresh token w bazie (do zrobienia)
+            var newRefreshToken = new RefreshToken // Deklaracja nowej zmiennej
+            {
+                Id = Guid.NewGuid(),
+                Token = newRefreshTokenString,
+                UserId = user.Id,
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = refreshTokenExpires
+            };
 
+            // 6. Przygotowujemy informacje o użytkowniku do odpowiedzi
             var userInfo = new UserInfoDto
             {
                 Id = user.Id,
                 Email = user.Email,
-                UserType = user.UserType
+                UserType = user.UserType,
+                PhoneNumber = user.PhoneNumber,
+                AvatarUrl = user.AvatarUrl
             };
+
+            // Mapowanie imienia i nazwiska w zależności od roli
+            if (user.UserType == "client" && user.Client != null)
+            {
+                userInfo.FirstName = user.Client.FirstName;
+                userInfo.LastName = user.Client.LastName;
+            }
+            else if (user.UserType == "specialist" && user.Specialist != null)
+            {
+                userInfo.FirstName = user.Specialist.FirstName;
+                userInfo.LastName = user.Specialist.LastName;
+            }
+
+            // 7. Zapisujemy zmiany
+            _context.RefreshTokens.Add(newRefreshToken);
+            await _context.SaveChangesAsync();
+
+            // Pobranie czasu wygaśnięcia z konfiguracji
+            var expiresMinutes = double.Parse(_configuration["Jwt:AccessTokenExpiresMinutes"] ?? "15");
 
             return new LoginResponse
             {
                 AccessToken = newAccessToken,
-                RefreshToken = newRefreshToken,
-                AccessTokenExpires = DateTime.Now.AddMinutes(15),
-                RefreshTokenExpires = DateTime.Now.AddDays(7),
+                RefreshToken = newRefreshTokenString,
+                AccessTokenExpires = DateTime.UtcNow.AddMinutes(expiresMinutes),
+                RefreshTokenExpires = refreshTokenExpires,
                 User = userInfo
             };
         }
 
         /// <summary>
-        /// Revokes the specified access token, logging the user out asynchronously.
+        /// Wylogowuje użytkownika poprzez unieważnienie jego Access Tokena (dodanie do czarnej listy) oraz unieważnienie sesji
         /// </summary>
-        /// <param name="accessToken">The access token to revoke. Cannot be null or empty.</param>
-        /// <returns>A task that represents the asynchronous operation. The task result is <see langword="true"/> if the logout
-        /// operation was initiated successfully.</returns>
-        public async Task<bool> LogoutAsync(string accessToken)
+        /// <param name="accessToken"></param>
+        /// <param name="refreshToken"></param>
+        /// <returns></returns>
+        public async Task LogoutAsync(string accessToken, string refreshToken)
         {
-            await _jwtService.RevokeToken(accessToken);
-            return true;
+            // 1. Access Token na czarną listę
+            if (!string.IsNullOrEmpty(accessToken))
+            {
+                var cleanToken = accessToken.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+                    ? accessToken.Substring(7)
+                    : accessToken;
+                await _jwtService.RevokeToken(cleanToken);
+            }
+
+            // 2. Unieważnienie Refresh Tokena w bazie (ustawienie revoked_at w tabeli refresh_tokens)
+            if (!string.IsNullOrEmpty(refreshToken))
+            {
+                var dbToken = await _context.Set<RefreshToken>()
+                    .FirstOrDefaultAsync(t => t.Token == refreshToken);
+
+                if (dbToken == null)
+                {
+                    throw new AppException("Nie znaleziono podanego tokenu odświeżania.", ErrorCodes.RefreshTokenInvalidOrExpired);
+                }
+
+                dbToken.RevokedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+            }
         }
 
         /// <summary>

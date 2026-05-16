@@ -7,16 +7,21 @@ namespace H4H_API.DTOs.Specialist
     /// </summary>
     public class SpecialistServiceManageDto
     {
-        // ID Typu usługi (np. "Masaż leczniczy" z tabeli słownikowej service_types)
-        [Required]
-        public Guid ServiceTypeId { get; set; }
+        public Guid? ServiceTypeId { get; set; }
+
+        // Nowe pola dla "ręcznego" wpisywania
+        [MaxLength(100)]
+        public string? ServiceName { get; set; }
+
+        [MaxLength(50)]
+        public string? Category { get; set; }
 
         [Required]
         [Range(1, 10000)]
         public decimal Price { get; set; }
 
         [Required]
-        [Range(5, 720)] // od 5 minut do 12 godzin
+        [Range(5, 720)]
         public int DurationMinutes { get; set; }
 
         [MaxLength(500)]

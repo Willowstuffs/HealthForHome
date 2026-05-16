@@ -1,11 +1,10 @@
 using H4H_API.DTOs.Appointments;
+using H4H_API.DTOs.Client;
 using H4H_API.DTOs.Common;
 using H4H_API.DTOs.Specialist;
-using H4H_API.Services.Implementations;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace H4H_API.Controllers
@@ -16,10 +15,12 @@ namespace H4H_API.Controllers
     public class SpecialistController : ControllerBase
     {
         private readonly ISpecialistService _specialistService;
+        private readonly IClientService _clientService; // dodany serwis klienta do pobierania statystyk klienta
 
-        public SpecialistController(ISpecialistService specialistService)
+        public SpecialistController(ISpecialistService specialistService, IClientService clientService)
         {
             _specialistService = specialistService;
+            _clientService = clientService;
         }
 
         /// <summary>
@@ -149,13 +150,12 @@ namespace H4H_API.Controllers
         }
 
         /// <summary>Potwierdza oczekującą wizytę przez specjalistę. 
-        /// !!! DO POPRAWIENIA GDY BEDZIE UPDATE BAZY !!!
         /// </summary>
         [HttpPatch("appointments/{id}/confirm")]
         public async Task<ActionResult<ApiResponse<object?>>> ConfirmAppointment(Guid id, [FromBody] ConfirmAppointmentDto dto)
         {
             var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
-            await _specialistService.ConfirmAppointmentAsync(userId, id, dto.ServiceTypeIds, dto.Price);
+            await _specialistService.ConfirmAppointmentAsync(userId, id, dto.ServiceTypeIds, dto.Price, dto.ProposedDate);
             return Ok(ApiResponse<object?>.SuccessResponse(null, "Wizyta została potwierdzona."));
         }
 
@@ -185,8 +185,8 @@ namespace H4H_API.Controllers
 
             return Ok(ApiResponse<List<InquiryListItemDto>>.SuccessResponse(inquiries, "Pobrano listę zapytań."));
         }
-        
-      
+
+
         /// <summary>
         /// Aktualizuje wszystkie dane profilu specjalisty
         /// </summary>
@@ -199,6 +199,33 @@ namespace H4H_API.Controllers
 
             return Ok(ApiResponse<object?>
                 .SuccessResponse(null, "Profil został zaktualizowany."));
+        }
+
+
+        /// <summary>
+        /// Pozwala specjaliście ocenić klienta po zakończonej wizycie. Ocena jest anonimowa i służy do budowania reputacji klienta w systemie.
+        /// </summary>
+        /// <param name="appointmentId"></param>
+        /// <param name="dto"></param>
+        /// <returns></returns>
+        [HttpPost("appointments/{appointmentId}/rate-client")]
+        public async Task<ActionResult<ApiResponse>> RateClient(Guid appointmentId, [FromBody] RateClientDto dto)
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            await _specialistService.RateClientAsync(userId, appointmentId, dto);
+            return Ok(ApiResponse.SuccessResponse("Ocena klienta została zapisana."));
+        }
+
+        /// <summary>
+        /// Pobiera statystyki klienta, takie jak liczba wizyt, oceny otrzymane od specjalistów, itp. 
+        /// </summary>
+        /// <param name="clientId"></param>
+        /// <returns></returns>
+        [HttpGet("{clientId}/stats")]
+        public async Task<ActionResult<ApiResponse<ClientStatsDto>>> GetClientStats(Guid clientId)
+        {
+            var stats = await _clientService.GetClientStatsAsync(clientId);
+            return Ok(ApiResponse<ClientStatsDto>.SuccessResponse(stats));
         }
 
     }

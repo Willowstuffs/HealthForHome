@@ -32,6 +32,8 @@ namespace H4H.Data
         public DbSet<AddressGeocache> address_geocache { get; set; }
         public DbSet<AppointmentSpecialist> appointments_specialists { get; set; }
         public DbSet<DeviceToken> device_tokens { get; set; }
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<RevokedToken> RevokedTokens { get; set; }
 
         // dla PostGIS i NetTopologySuite
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -71,6 +73,7 @@ namespace H4H.Data
             modelBuilder.Entity<Message>().ToTable("messages", t => t.ExcludeFromMigrations());
             modelBuilder.Entity<Notification>().ToTable("notifications", t => t.ExcludeFromMigrations());
             modelBuilder.Entity<VerificationCode>().ToTable("verification_codes", t => t.ExcludeFromMigrations());
+            modelBuilder.Entity<RevokedToken>().ToTable("revoked_tokens");
 
             // SKONFIGURUJEMY TYLKO NOWE KOLUMNY
             modelBuilder.Entity<Client>(entity =>
@@ -226,11 +229,11 @@ namespace H4H.Data
                       .HasForeignKey(a => a.ServiceTypeId)
                       .IsRequired(false);
 
-                // Relacja z konkretną usługa specjalisty
-                entity.HasOne(a => a.SpecialistService)
-                    .WithMany(ss => ss.Appointments)
-                    .HasForeignKey(a => a.SpecialistServiceId)
-                    .OnDelete(DeleteBehavior.SetNull);
+                // Relacja z konkretną usługa specjalisty // usunięta, bo teraz mamy tablicę SpecialistServiceIds i relację wiele-do-wielu przez AppointmentSpecialist
+                //entity.HasOne(a => a.SpecialistService)
+                //    .WithMany(ss => ss.Appointments)
+                //    .HasForeignKey(a => a.SpecialistServiceIds)
+                //    .OnDelete(DeleteBehavior.SetNull);
 
                 // 2. NOWE KOLUMNY PRZESTRZENNE I MAPOWANIE
                 entity.Property(a => a.Location)

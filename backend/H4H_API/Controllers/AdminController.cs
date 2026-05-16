@@ -3,12 +3,13 @@ using H4H_API.DTOs.Common;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 namespace H4H_API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    // TODO: Dodać [Authorize(Roles = "admin")] gdy wdrożymy JWT dla admina
+    [Authorize(Roles = "admin")]
     public class AdminController : ControllerBase
     {
         private readonly IAdminService _adminService;
@@ -121,6 +122,38 @@ namespace H4H_API.Controllers
         {
             var result = await _adminService.GetAppointmentsAsync(filter);
             return Ok(ApiResponse<PagedResponse<AdminAppointmentListItemDto>>.SuccessResponse(result));
+        }
+
+        /// <summary>Zapisuje datę ważności licencji specjalisty</summary>
+        [HttpPut("specialists/{id}/license-validity")]
+        public async Task<IActionResult> UpdateLicenseValidity(Guid id, [FromBody] UpdateLicenseDto dto)
+        {
+            await _adminService.UpdateLicenseValidityAsync(id, dto.ValidUntil);
+            return Ok(ApiResponse<object?>.SuccessResponse(null, "Data ważności licencji została zaktualizowana."));
+        }
+
+        /// <summary>Zawieszenie konta specjalisty</summary>
+        [HttpPost("specialists/{id}/suspend")]
+        public async Task<IActionResult> SuspendSpecialist(Guid id)
+        {
+            await _adminService.SuspendSpecialistAsync(id);
+            return Ok(ApiResponse<object?>.SuccessResponse(null, "Konto specjalisty zostało zawieszone."));
+        }
+
+        /// <summary>Odwieszenie konta specjalisty</summary>
+        [HttpPost("specialists/{id}/unsuspend")]
+        public async Task<IActionResult> UnsuspendSpecialist(Guid id)
+        {
+            await _adminService.UnsuspendSpecialistAsync(id);
+            return Ok(ApiResponse<object?>.SuccessResponse(null, "Konto specjalisty zostało odwieszone."));
+        }
+
+        /// <summary>Pobiera szczegóły zamówienia/wizyty</summary>
+        [HttpGet("appointments/{id}")]
+        public async Task<ActionResult<AdminAppointmentDetailsDto>> GetAppointmentDetails(Guid id)
+        {
+            var details = await _adminService.GetAppointmentDetailsAsync(id);
+            return Ok(details);
         }
     }
 }

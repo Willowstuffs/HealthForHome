@@ -1,14 +1,14 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
-using H4H_API.Services.Interfaces;
-using H4H_API.DTOs.Common;
+﻿using H4H_API.DTOs.Appointments;
 using H4H_API.DTOs.Client;
-using H4H_API.DTOs.Appointments;
-using System.Security.Claims;
+using H4H_API.DTOs.Common;
 using H4H_API.DTOs.Specialist;
+using H4H_API.Exceptions;
 using H4H_API.Helpers;
+using H4H_API.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using H4H_API.Services.Implementations;
+using System.Security.Claims;
 
 
 
@@ -35,7 +35,7 @@ namespace H4H_API.Controllers
         {
             _clientService = clientService;
             _specialistService = specialistService;
-            _geocoder = geocoder; 
+            _geocoder = geocoder;
         }
 
         // Pobiera profil zalogowanego klienta
@@ -181,7 +181,7 @@ namespace H4H_API.Controllers
             if (addressPoint == null)
             {
                 return BadRequest(ApiResponse<List<NearbySpecialistDto>>.ErrorResponse(
-                    "Brak zapisanego adresu w profilu", ErrorCodes.AddressNotFound)); 
+                    "Brak zapisanego adresu w profilu", ErrorCodes.AddressNotFound));
             }
 
             var specialists = await _specialistService.GetNearbySpecialistsAsync(
@@ -212,7 +212,7 @@ namespace H4H_API.Controllers
             if (geocodeResult == null)
             {
                 return NotFound(ApiResponse<List<NearbySpecialistDto>>.ErrorResponse(
-                    "Nie udało się odnaleźć podanego adresu", ErrorCodes.AddressNotFound)); 
+                    "Nie udało się odnaleźć podanego adresu", ErrorCodes.AddressNotFound));
             }
 
             // 2. Szukamy specjalistów w tych współrzędnych
@@ -222,6 +222,123 @@ namespace H4H_API.Controllers
             );
 
             return Ok(ApiResponse<List<NearbySpecialistDto>>.SuccessResponse(specialists));
+        }
+
+
+        /// <summary>
+        /// Pobiera listę specjalistów, którzy odpowiedzieli na prośbę o usługę klienta (oferty dla danej wizyty)
+        /// </summary>
+        /// <param name="appointmentId"></param>
+        /// <returns></returns>
+        [HttpGet("appointments/{appointmentId}/offers")]
+        public async Task<ActionResult<ApiResponse<List<AppointmentOfferDto>>>> GetAppointmentOffers(Guid appointmentId)
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            var offers = await _clientService.GetOffersForAppointmentAsync(userId, appointmentId);
+            return Ok(ApiResponse<List<AppointmentOfferDto>>.SuccessResponse(offers));
+        }
+
+        /// <summary>
+        /// Pozwala klientowi zaakceptować ofertę specjalisty dla danej wizyty, co powinno skutkować przypisaniem tej wizyty do wybranego specjalisty i zmianą statusu wizyty na "confirmed".
+        /// </summary>
+        /// <param name="appointmentId"></param>
+        /// <param name="specialistId"></param>
+        /// <returns></returns>
+        [HttpPost("appointments/{appointmentId}/accept-offer/{specialistId}")]
+        public async Task<ActionResult<ApiResponse<object>>> AcceptSpecialistOffer(Guid appointmentId, Guid specialistId)
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            await _clientService.AcceptSpecialistOfferAsync(userId, appointmentId, specialistId);
+
+            return Ok(ApiResponse<object?>.SuccessResponse(null, "Specjalista został wybrany pomyślnie."));
+        }
+
+        /// <summary>
+        /// Allows a client to submit a rating for a specialist based on a completed appointment.
+        /// The rating can only be submitted once per appointment. Returns 409 Conflict if the appointment has already been rated.
+        /// </summary>
+        /// <param name="appointmentId">The appointment identifier to rate the specialist for.</param>
+        /// <param name="dto">The rating request containing rating value (0-5) and optional comment.</param>
+        /// <returns>Success response if the rating was created, or error response if validation fails.</returns>
+        [HttpPost("appointments/{appointmentId}/rate")]
+        public async Task<ActionResult<ApiResponse<object>>> RateSpecialist(Guid appointmentId, [FromBody] RateSpecialistDto dto)
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+                await _clientService.RateSpecialistAsync(userId, appointmentId, dto);
+
+                return Ok(ApiResponse<object?>.SuccessResponse(null, "Ocena została zapisana pomyślnie."));
+            }
+            catch (AppException ex) when (ex.ErrorCode == ErrorCodes.AppointmentAlreadyRated)
+            {
+                return Conflict(ApiResponse<object?>.ErrorResponse(
+                    "Ta wizyta została już oceniona",
+                    ErrorCodes.AppointmentAlreadyRated));
+            }
+            catch (AppException ex) when (ex.ErrorCode == ErrorCodes.AppointmentNotFound)
+            {
+                return NotFound(ApiResponse<object?>.ErrorResponse(
+                    "Nie można znaleźć tej wizyty",
+                    ErrorCodes.AppointmentNotFound));
+            }
+            catch (AppException ex) when (ex.ErrorCode == ErrorCodes.ClientNotFound)
+            {
+                return NotFound(ApiResponse<object?>.ErrorResponse(
+                    "Nie znaleziono profilu klienta",
+                    ErrorCodes.ClientNotFound));
+            }
+            catch (AppException ex) when (ex.ErrorCode == ErrorCodes.ValidationError)
+            {
+                return BadRequest(ApiResponse<object?>.ErrorResponse(
+                    "Błąd walidacji danych",
+                    ErrorCodes.ValidationError));
+            }
+        }
+
+        /// <summary>
+        /// Returns the authenticated client's review for the given appointment.
+        /// </summary>
+        /// <param name="appointmentId">Appointment identifier.</param>
+        [HttpGet("appointments/{appointmentId}/review")]
+        public async Task<ActionResult<ApiResponse<AppointmentReviewDto>>> GetAppointmentReview(Guid appointmentId)
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+                var review = await _clientService.GetAppointmentReviewAsync(userId, appointmentId);
+                return Ok(ApiResponse<AppointmentReviewDto>.SuccessResponse(review));
+            }
+            catch (AppException ex) when (ex.ErrorCode == ErrorCodes.ReviewNotFound)
+            {
+                return NotFound(ApiResponse<AppointmentReviewDto>.ErrorResponse(
+                    "Nie znaleziono opinii dla tej wizyty",
+                    ErrorCodes.ReviewNotFound));
+            }
+            catch (AppException ex) when (ex.ErrorCode == ErrorCodes.AppointmentNotFound)
+            {
+                return NotFound(ApiResponse<AppointmentReviewDto>.ErrorResponse(
+                    "Nie można znaleźć tej wizyty",
+                    ErrorCodes.AppointmentNotFound));
+            }
+            catch (AppException ex) when (ex.ErrorCode == ErrorCodes.ClientNotFound)
+            {
+                return NotFound(ApiResponse<AppointmentReviewDto>.ErrorResponse(
+                    "Nie znaleziono profilu klienta",
+                    ErrorCodes.ClientNotFound));
+            }
+        }
+
+        /// <summary>
+        /// Pobiera statystyki klienta, takie jak liczba wizyt, oceny otrzymane od specjalistów, itp. 
+        /// </summary>
+        /// <param name="clientId"></param>
+        /// <returns></returns>
+        [HttpGet("{clientId}/stats")]
+        public async Task<ActionResult<ApiResponse<ClientStatsDto>>> GetClientStats(Guid clientId)
+        {
+            var stats = await _clientService.GetClientStatsAsync(clientId);
+            return Ok(ApiResponse<ClientStatsDto>.SuccessResponse(stats));
         }
     }
 }

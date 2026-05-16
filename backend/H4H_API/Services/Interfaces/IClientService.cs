@@ -22,7 +22,6 @@ namespace H4H_API.Services.Interfaces
         // Zarządzanie wizytami
         Task<PagedResponse<AppointmentDto>> GetAppointmentsAsync(Guid userId, PagedRequest request, string? status = null);
         Task<AppointmentDto> GetAppointmentDetailsAsync(Guid userId, Guid appointmentId);
-        Task<AppointmentDto> CreateAppointmentAsync(Guid userId, CreateAppointmentDto dto);
         Task<bool> CancelAppointmentAsync(Guid userId, Guid appointmentId);
 
         // Wyszukiwanie specjalistów
@@ -34,5 +33,16 @@ namespace H4H_API.Services.Interfaces
 
         // Wyszukiwanie specjalistów na podstawie lokalizacji klienta
         Task<NetTopologySuite.Geometries.Point?> GetClientAddressPointAsync(Guid userId);
+
+        // Zarządzanie odpowiedziami specjalistów na prośby o usługę
+        Task<List<AppointmentOfferDto>> GetOffersForAppointmentAsync(Guid userId, Guid appointmentId);
+        Task AcceptSpecialistOfferAsync(Guid userId, Guid appointmentId, Guid specialistId);
+
+        // Oceny specjalistów
+        Task RateSpecialistAsync(Guid userId, Guid appointmentId, RateSpecialistDto dto);
+        Task<AppointmentReviewDto> GetAppointmentReviewAsync(Guid userId, Guid appointmentId);
+
+        // Statystyki klienta
+        Task<ClientStatsDto> GetClientStatsAsync(Guid clientId);
     }
 }

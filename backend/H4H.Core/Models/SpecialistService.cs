@@ -31,6 +31,6 @@ namespace H4H.Core.Models
 
         public virtual Specialist Specialist { get; set; } = null!;
         public virtual ServiceType ServiceType { get; set; } = null!;
-        public virtual ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
+        // public virtual ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
     }
 }

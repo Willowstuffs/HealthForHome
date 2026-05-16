@@ -8,11 +8,17 @@ namespace H4H_API.DTOs.Admin
         public string? Bio { get; set; }
         public string? PhoneNumber { get; set; }
         public bool IsVerified { get; set; }
+        public List<AdminClientAppointmentDto> Appointments { get; set; } = new();
+        public List<AdminClientListItemDto> AcceptedClients { get; set; } = new(); // Lub inne pasujące DTO
+        public List<SpecialistActivityDto> Activities { get; set; } = new();
 
         // Dane z tabeli specialist_qualifications
         public string? LicenseNumber { get; set; }
         public string? LicensePhotoUrl { get; set; }
         public string? IdCardPhotoUrl { get; set; }
         public string? VerificationNotes { get; set; }
+
+        // Dodane pole do przechowywania daty ważności licencji, jeśli jest dostępna
+        public DateTime? LicenseValidUntil { get; set; }
     }
 }

@@ -1,5 +1,3 @@
-
-
 -- TWORZENIE TABEL
 -- uzytkownicy
 CREATE TABLE users (
@@ -14,8 +12,6 @@ CREATE TABLE users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login_at TIMESTAMP
 );
-
-SELECT * FROM users;
 
 -- klienci
 CREATE TABLE clients (
@@ -187,18 +183,6 @@ CREATE TABLE verification_logs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- lokalizacjee ??
---CREATE TABLE locations (
---    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
---    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
---    user_type VARCHAR(20) NOT NULL CHECK (user_type IN ('client', 'specialist')),
---    latitude DECIMAL(10, 8),
---    longitude DECIMAL(11, 8),
---    address TEXT,
---    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
---);
-
-
 -- Tabela wiadomości (chat)
 CREATE TABLE IF NOT EXISTS messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -235,21 +219,6 @@ CREATE TABLE IF NOT EXISTS verification_codes (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-
--- czy sie zrobilo
-SELECT table_name 
-FROM information_schema.tables 
-WHERE table_schema = 'public'
-ORDER BY table_name;
-
-SELECT 
-    table_name,
-    (SELECT COUNT(*) FROM information_schema.columns 
-     WHERE table_name = t.table_name) as column_count
-FROM information_schema.tables t
-WHERE table_schema = 'public'
-ORDER BY table_name;
-
 -- ZMIANY W TABELACH
 
 --po dodaniu administratorow dodac klucz obcy w kwalifikacjach
@@ -263,46 +232,10 @@ ON DELETE SET NULL;
 ALTER TABLE reviews 
 ADD CONSTRAINT unique_appointment_review UNIQUE (appointment_id);
 
--- INDEKSY ?
---CREATE INDEX idx_users_email ON users(email);
---CREATE INDEX idx_users_user_type ON users(user_type);
---CREATE INDEX idx_specialists_is_verified ON specialists(is_verified);
---CREATE INDEX idx_specialists_verification_status ON specialists(verification_status);
---CREATE INDEX idx_appointments_status ON appointments(appointment_status);
---CREATE INDEX idx_appointments_scheduled_start ON appointments(scheduled_start);
---CREATE INDEX idx_appointments_client_id ON appointments(client_id);
---CREATE INDEX idx_appointments_specialist_id ON appointments(specialist_id);
---CREATE INDEX idx_reviews_specialist_id ON reviews(specialist_id);
---CREATE INDEX idx_service_areas_city ON service_areas(city);
---CREATE INDEX idx_specialist_availability_date ON specialist_availability(date);
---CREATE INDEX idx_messages_sender ON messages(sender_id);
---CREATE INDEX idx_messages_receiver ON messages(receiver_id);
---CREATE INDEX idx_messages_appointment ON messages(appointment_id);
---CREATE INDEX idx_notifications_user ON notifications(user_id);
---CREATE INDEX idx_notifications_is_read ON notifications(is_read);
---CREATE INDEX idx_verification_codes_email ON verification_codes(email);
---CREATE INDEX idx_verification_codes_code ON verification_codes(code);
-
--- TEST INTEGRALNOSCI czy wszystkie relacje git
-SELECT 
-    tc.table_name, 
-    kcu.column_name, 
-    ccu.table_name AS foreign_table_name,
-    ccu.column_name AS foreign_column_name
-FROM information_schema.table_constraints tc
-JOIN information_schema.key_column_usage kcu 
-    ON tc.constraint_name = kcu.constraint_name
-JOIN information_schema.constraint_column_usage ccu 
-    ON ccu.constraint_name = tc.constraint_name
-WHERE tc.constraint_type = 'FOREIGN KEY'
-ORDER BY tc.table_name;
-
-
-
 -- DODANIE POSTGISA:
 
 CREATE EXTENSION IF NOT EXISTS postgis;
-SELECT PostGIS_Version();
+-- SELECT PostGIS_Version();
 
 -- DODAJEMY KOLUMNY DO service_areas
 ALTER TABLE service_areas
@@ -350,13 +283,9 @@ CREATE TABLE appointments_specialists (
 );
 
 -- Kto ostatecznie wziął to zlecenie (PIERWSZY który zaakceptował)
-ALTER TABLE appointments ADD COLUMN selected_specialist_id UUID REFERENCES specialists(id);
-
-SELECT * FROM "__EFMigrationsHistory";
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS selected_specialist_id UUID REFERENCES specialists(id);
 
 -- Aktualizacja 08.02.26
-
---czesc1
 
 -- 1. Dodanie tabeli dla tokenów urządzeń (FCM) - Kasia
 CREATE TABLE device_tokens (
@@ -372,103 +301,13 @@ CREATE TABLE device_tokens (
 CREATE INDEX idx_device_tokens_user ON device_tokens(user_id);
 CREATE INDEX idx_device_tokens_fcm_token ON device_tokens(fcm_token);
 
-SELECT * FROM device_tokens;
-SELECT * FROM "__EFMigrationsHistory";
-
--- czesc 2
-
--- Tabela ogłoszeń (Giełda zleceń / Zapytania o usługę)
-CREATE TABLE service_requests (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    
-    -- ClientId jest NULLable, aby umożliwić zapytania od gości
-    client_id UUID REFERENCES clients(id) ON DELETE SET NULL,
-    service_type_id UUID NOT NULL REFERENCES service_types(id) ON DELETE CASCADE,
-    
-    -- Dane kontaktowe (szczególnie ważne dla gości)
-    contact_name VARCHAR(255),
-    phone_number VARCHAR(20),
-    email VARCHAR(255),
-    
-    -- Opis i uwagi
-    description TEXT NOT NULL,
-    
-    -- Zakres dat
-    date_from TIMESTAMP NOT NULL,
-    date_to TIMESTAMP NOT NULL,
-    
-    -- Opcjonalna cena maksymalna
-    max_price DECIMAL(10,2),
-    
-    -- Lokalizacja i PostGIS
-    address TEXT NOT NULL,
-    location geography(Point, 4326), 
-    
-    -- Statusy: open, assigned, closed, expired
-    status VARCHAR(20) DEFAULT 'open' 
-        CHECK (status IN ('open', 'assigned', 'closed', 'expired')),
-    
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-
--- Indeksy dla wydajności
-CREATE INDEX idx_service_requests_location ON service_requests USING GIST(location);
-CREATE INDEX idx_service_requests_status ON service_requests(status);
-CREATE INDEX idx_service_requests_client ON service_requests(client_id);
-
--- AKTUALIZACJA SERVICE REQUEST 19.02 - mam nadzieje ze teraz zadziala ;-;
--- 1. Zmiana nazw kolumn na na małe literki spójne z resztą tabelek
-ALTER TABLE service_requests RENAME COLUMN "Id" TO id;
-ALTER TABLE service_requests RENAME COLUMN "ClientId" TO client_id;
-ALTER TABLE service_requests RENAME COLUMN "ServiceTypeId" TO service_type_id;
-ALTER TABLE service_requests RENAME COLUMN "ContactName" TO contact_name;
-ALTER TABLE service_requests RENAME COLUMN "PhoneNumber" TO phone_number;
-ALTER TABLE service_requests RENAME COLUMN "Email" TO email;
-ALTER TABLE service_requests RENAME COLUMN "Description" TO description;
-ALTER TABLE service_requests RENAME COLUMN "DateFrom" TO date_from;
-ALTER TABLE service_requests RENAME COLUMN "DateTo" TO date_to;
-ALTER TABLE service_requests RENAME COLUMN "MaxPrice" TO max_price;
-ALTER TABLE service_requests RENAME COLUMN "Address" TO address;
-ALTER TABLE service_requests RENAME COLUMN "Location" TO location;
-ALTER TABLE service_requests RENAME COLUMN "Status" TO status;
-ALTER TABLE service_requests RENAME COLUMN "CreatedAt" TO created_at;
-ALTER TABLE service_requests RENAME COLUMN "UpdatedAt" TO updated_at;
-
--- 2. Zmiana typów kolumn na wymagane (NOT NULL) tam, gdzie to konieczne
--- Uwaga: Jeśli macioe tam puste dane, te komendy mogą wyrzucić błąd - wtedy najpierw DELETE FROM service_requests;
-ALTER TABLE service_requests ALTER COLUMN contact_name SET NOT NULL;
-ALTER TABLE service_requests ALTER COLUMN phone_number SET NOT NULL;
-ALTER TABLE service_requests ALTER COLUMN email SET NOT NULL;
-ALTER TABLE service_requests ALTER COLUMN location SET NOT NULL;
-
--- 3. Ustawienie jawnych typów dla dat i geolokalizacji (PostGIS)
-ALTER TABLE service_requests ALTER COLUMN date_from TYPE timestamp without time zone;
-ALTER TABLE service_requests ALTER COLUMN date_to TYPE timestamp without time zone;
-ALTER TABLE service_requests ALTER COLUMN created_at TYPE timestamp without time zone;
-ALTER TABLE service_requests ALTER COLUMN updated_at TYPE timestamp without time zone;
-ALTER TABLE service_requests ALTER COLUMN location TYPE geography(Point, 4326);
-
--- 4. Naprawa Kluczy Obcych (Foreign Keys)
--- Najpierw usuwamy stare klucze (używamy nazw, które wygenerował EF wcześniej)
-ALTER TABLE service_requests DROP CONSTRAINT IF EXISTS "FK_service_requests_clients_ClientId";
-ALTER TABLE service_requests DROP CONSTRAINT IF EXISTS "FK_service_requests_service_types_ServiceTypeId";
-
--- Dodajemy nowe klucze z poprawnym mapowaniem
-ALTER TABLE service_requests 
-    ADD CONSTRAINT FK_service_requests_clients_client_id 
-    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL;
-
-ALTER TABLE service_requests 
-    ADD CONSTRAINT FK_service_requests_service_types_service_type_id 
-    FOREIGN KEY (service_type_id) REFERENCES service_types(id) ON DELETE CASCADE;
 
 -- AKTUALIZACJA JEDNAK NARA SERVICE REQUESR
+
 -- 1. Dodanie kolumn do tabeli appointments
 ALTER TABLE appointments 
-ADD COLUMN location geography(Point, 4326),
-ADD COLUMN service_type_id uuid;
+ADD COLUMN IF NOT EXISTS location geography(Point, 4326),
+ADD COLUMN IF NOT EXISTS service_type_id uuid;
 
 -- 2. Utworzenie relacji (Klucza obcego) z tabelą service_types
 ALTER TABLE appointments
@@ -606,6 +445,7 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
     expires_at TIMESTAMP NOT NULL,
     revoked_at TIMESTAMP
 );
+
 
 -- Aktualizacja 18.04.2026 - Poprawki w tabeli appointments umozliwiajace prawidlowe dodawanie uslug do oferty
 

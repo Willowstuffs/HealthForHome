@@ -106,17 +106,23 @@ namespace H4H_API.Services.Implementations
                 if (dto.DateOfBirth.HasValue)
                     client.DateOfBirth = dto.DateOfBirth.Value;
 
-                // AKTUALIZACJA ADRESU Z GEOKODOWANIEM
+                // AKTUALIZACJA ADRESU Z GEOKODOWANIEM (Walidacja blokująca)
                 if (!string.IsNullOrEmpty(dto.Address))
                 {
                     var oldAddress = client.Address;
-                    client.Address = dto.Address;
-                    client.User.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
 
-                    // Automatyczna geolokalizacja adresu (tylko jeśli adres się zmienił)
                     if (oldAddress != dto.Address)
                     {
-                        await GeocodeClientAddressAsync(client);
+                        // ZMIANA: Teraz rzucamy wyjątek, jeśli geokodowanie się nie uda
+                        var geocoded = await _geocoder.GeocodeAddressAsync(dto.Address);
+                        if (geocoded == null)
+                            throw new AppException("Nie mogliśmy zweryfikować nowego adresu. Proszę poprawić dane.", ErrorCodes.GeocodingFailed);
+
+                        client.Address = geocoded.FormattedAddress; // Zapisujemy ładnie sformatowany adres zwrócony przez geocoder <3
+                        client.AddressPoint = _geocoder.CreatePoint(geocoded.Longitude, geocoded.Latitude);
+                        client.AddressGeocodedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
+
+                        client.User.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
                     }
                 }
 
@@ -160,7 +166,8 @@ namespace H4H_API.Services.Implementations
         }
 
         /// <summary>
-        /// Geokoduje adres klienta i zapisuje współrzędne
+        /// Geokoduje adres klienta i zapisuje współrzędne; po zmianie staje się zbędna, bo teraz geokodowanie jest integralną 
+        /// częścią aktualizacji profilu, ale zostawiam na wszelki wypadek, może się przydać do ręcznego geokodowania z endpointu API
         /// </summary>
         private async Task<bool> GeocodeClientAddressAsync(Client client)
         {
@@ -299,8 +306,8 @@ namespace H4H_API.Services.Implementations
             var query = _context.appointments
                 .Include(a => a.Client) // Ważne dla ClientName
                 .Include(a => a.Specialist) // Ważne dla SpecialistName
-                .Include(a => a.SpecialistService) // Ważne dla ServiceName
-                    .ThenInclude(ss => ss!.ServiceType)
+                                            //.Include(a => a.SpecialistService) // Ważne dla ServiceName, usuwam bo teraz mam listę usług, a nie pojedynczą
+                                            //    .ThenInclude(ss => ss!.ServiceType) //usuwam bo teraz mam listę usług, a nie pojedynczą
                 .Where(a => a.ClientId == client.Id)
                 .AsQueryable();
 
@@ -317,6 +324,42 @@ namespace H4H_API.Services.Implementations
 
             // Mapujemy listę modeli na listę DTO za pomocą AutoMappera
             var items = _mapper.Map<List<AppointmentDto>>(appointments);
+
+            // Uzupełniamy numer telefonu specjalisty tylko dla wizyt o statusie "confirmed"
+            foreach (var item in items)
+            {
+                if (item.AppointmentStatus == "confirmed")
+                {
+                    var specialist = await _context.specialists.FindAsync(item.SpecialistId);
+                    if (specialist == null)
+                        throw new AppException($"Nie znaleziono specjalisty.", ErrorCodes.SpecialistNotFound);
+
+                    var user = await _context.users.FindAsync(specialist.UserId);
+                    if (user == null)
+                        throw new AppException($"Nie znaleziono użytkownika specjalisty.", ErrorCodes.SpecialistNotFound);
+
+                    item.SpecialistPhoneNumber = user?.PhoneNumber;
+                }
+            }
+
+            // Pobieramy wszystkie unikalne ID usług specjalisty z pobranych wizyt
+            var allServiceIds = appointments.SelectMany(a => a.SpecialistServiceIds).Distinct().ToList();
+
+            if (allServiceIds.Any())
+            {
+                // Pobieramy nazwy usług z bazy (jedno zapytanie)
+                var serviceNamesMap = await _context.specialist_services
+                    .Include(ss => ss.ServiceType)
+                    .Where(ss => allServiceIds.Contains(ss.Id))
+                    .ToDictionaryAsync(ss => ss.Id, ss => ss.ServiceType.Name);
+
+                // Przypisujemy listy nazw do każdego DTO
+                foreach (var item in items)
+                {
+                    var original = appointments.First(a => a.Id == item.Id);
+                    item.ServiceNames = original.ServiceNamesSnapshot?.Split(", ").ToList() ?? new List<string>();
+                }
+            }
 
             return new PagedResponse<AppointmentDto>
             {
@@ -344,23 +387,33 @@ namespace H4H_API.Services.Implementations
             var appointment = await _context.appointments
                 .Include(a => a.Client)
                 .Include(a => a.Specialist)
-                .Include(a => a.SpecialistService)
-                    .ThenInclude(ss => ss!.ServiceType)
                 .FirstOrDefaultAsync(a => a.Id == appointmentId && a.ClientId == client.Id);
 
             if (appointment == null)
                 throw new AppException($"Nie znaleziono wizyty o ID {appointmentId} dla tego klienta", ErrorCodes.AppointmentNotFound);
 
-            // Mapuj model wizyty na DTO, w tym nazwy klienta, specjalisty i usługi
-            return _mapper.Map<AppointmentDto>(appointment);
+            var dto = _mapper.Map<AppointmentDto>(appointment);
+
+            // LOGIKA ODPORNA NA USUWANIE USŁUG:
+            // 1. Jeśli mamy snapshot (nowe wizyty), używamy go
+            if (!string.IsNullOrEmpty(appointment.ServiceNamesSnapshot))
+            {
+                dto.ServiceNames = appointment.ServiceNamesSnapshot.Split(", ").ToList();
+            }
+            // 2. Jeśli nie ma snapshota (stare wizyty), pobieramy "na żywo" (uwaga: tutaj mogą znikać przy usunięciu)
+            else if (appointment.SpecialistServiceIds != null && appointment.SpecialistServiceIds.Any())
+            {
+                // Pobieramy nazwy usług z tablicy specialist_services, ale tylko dla tych ID, które są powiązane z tą wizytą
+                dto.ServiceNames = await _context.specialist_services
+                    .Include(ss => ss.ServiceType)
+                    .Where(ss => appointment.SpecialistServiceIds.Contains(ss.Id))
+                    .Select(ss => ss.ServiceType.Name)
+                    .ToListAsync();
+            }
+
+            return dto;
         }
 
-        public async Task<AppointmentDto> CreateAppointmentAsync(Guid userId, CreateAppointmentDto dto)
-        {
-            await Task.CompletedTask; //usuwam warning o braku await
-            // TODO: Zaimplementować z walidacją odległości
-            throw new NotImplementedException("CreateAppointmentAsync not implemented yet");
-        }
         /// <summary>
         /// Anuluj wizytę (termin) klienta, jeśli wizyta należy do niego i nie jest już zakończona lub anulowana. Zwraca true jeśli anulowano, false jeśli nie można anulować z powodu statusu wizyty.
         /// </summary>
@@ -522,6 +575,18 @@ namespace H4H_API.Services.Implementations
 
             var geocoded = await _geocoder.GeocodeAddressAsync(cleanAddress);
 
+            // WALIDACJA ADRESU - eliminujemy przypadki, gdzie geocoder nie obługuje adresu i zwraca (0,0) lub null lub inny niepoprawny wynik.
+            // Sprawdzamy, czy geocoder w ogóle zwrócił wynik i czy ma współrzędne
+            if (geocoded == null || geocoded.Latitude == 0 || geocoded.Longitude == 0)
+            {
+                // Jeśli nie udało się namierzyć adresu, przerywamy proces i informujemy klienta
+                throw new AppException(
+                    "Nie udało się zweryfikować podanego adresu. Proszę wpisać dokładniejszy adres (np. dodać miasto lub numer domu).",
+                    ErrorCodes.AddressNotFound
+                );
+            }
+
+
             // Jeśli użytkownik jest zalogowany, ale nie znaleziono klienta, to jest błąd - nie można stworzyć ogłoszenia bez klienta
             if (!finalClientId.HasValue)
                 throw new AppException("Musisz być zalogowany, aby stworzyć ogłoszenie", ErrorCodes.ClientNotFound);
@@ -615,6 +680,290 @@ namespace H4H_API.Services.Implementations
                 await _context.SaveChangesAsync();
             }
             return client?.AddressPoint;
+        }
+
+        // Pobieranie ofert od specjalistów
+        public async Task<List<AppointmentOfferDto>> GetOffersForAppointmentAsync(Guid userId, Guid appointmentId)
+        {
+            // Sprawdzamy czy to na pewno ogłoszenie tego klienta
+            var client = await _context.clients.FirstOrDefaultAsync(c => c.UserId == userId);
+
+            if (client == null)
+                throw new AppException("Nie znaleziono profilu klienta.", ErrorCodes.ClientNotFound);
+
+            var appointment = await _context.appointments
+                .FirstOrDefaultAsync(a => a.Id == appointmentId && a.ClientId == client.Id);
+
+            if (appointment == null)
+                throw new AppException("Nie znaleziono ogłoszenia.", ErrorCodes.AppointmentNotFound);
+
+            // Pobieramy wszystkie oferty (AppointmentSpecialist) dla tego ogłoszenia wraz z danymi specjalisty
+            var offers = await _context.Set<AppointmentSpecialist>()
+                .Include(os => os.Specialist)
+                .Where(os => os.AppointmentId == appointmentId)
+                .ToListAsync();
+
+            var result = new List<AppointmentOfferDto>();
+
+            // Mapujemy każde zgłoszenie na DTO, w tym pobieramy nazwy usług, które specjalista zaznaczył w tej ofercie
+            foreach (var os in offers)
+            {
+                var specialistAvgRating = await _context.specialists
+                    .Where(s => s.Id == os.SpecialistId)
+                    .Select(s => s.AverageRating)
+                    .FirstOrDefaultAsync();
+
+                var totalReviews = await _context.specialists
+                    .Where(s => s.Id == os.SpecialistId)
+                    .Select(s => s.TotalReviews)
+                    .FirstOrDefaultAsync();
+
+                var offerDto = new AppointmentOfferDto
+                {
+                    SpecialistId = os.SpecialistId,
+                    FirstName = os.Specialist.FirstName,
+                    LastName = os.Specialist.LastName,
+                    ProposedPrice = os.Price,
+                    ProposedDate = os.ProposedDate,
+                    Bio = os.Specialist.Bio,
+                    SelectedServiceIds = os.ServiceTypeIds?.ToList() ?? new List<Guid>(),
+                    SpecialistRating = specialistAvgRating,
+                    TotalReviews = totalReviews
+                };
+
+                // Pobieramy nazwy usług, które specjalista zaznaczył w tej konkretnej ofercie
+                if (os.ServiceTypeIds != null && os.ServiceTypeIds.Any())
+                {
+                    offerDto.SelectedServiceNames = await _context.specialist_services
+                        .Include(ss => ss.ServiceType)
+                        .Where(ss => os.ServiceTypeIds.Contains(ss.Id))
+                        .Select(ss => ss.ServiceType.Name)
+                        .ToListAsync();
+                }
+
+                result.Add(offerDto);
+            }
+
+            // zwracamy listę ofert dla tego ogłoszenia
+            return result;
+        }
+
+
+        /// <summary>
+        /// Asynchronicznie akceptuje ofertę specjalisty dla danego ogłoszenia. Sprawdza, czy oferta należy do tego ogłoszenia i klienta, a następnie przypisuje specjalistę do wizyty, zmienia status na "confirmed" i zapisuje cenę z oferty jako finalną. Zwraca zaktualizowane dane wizyty.
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="appointmentId"></param>
+        /// <param name="specialistId"></param>
+        /// <returns></returns>
+        /// <exception cref="AppException"></exception>
+        public async Task AcceptSpecialistOfferAsync(Guid userId, Guid appointmentId, Guid specialistId)
+        {
+            var client = await _context.clients
+                .FirstOrDefaultAsync(c => c.UserId == userId);
+
+            if (client == null)
+                throw new AppException("Nie znaleziono profilu klienta.", ErrorCodes.ClientNotFound);
+
+            var appointment = await _context.appointments
+                .FirstOrDefaultAsync(a => a.Id == appointmentId && a.ClientId == client.Id);
+
+            if (appointment == null)
+                throw new AppException("Ogłoszenie nie istnieje.", ErrorCodes.AppointmentNotFound);
+
+            var offer = await _context.appointments_specialists
+                .FirstOrDefaultAsync(o =>
+                    o.AppointmentId == appointmentId &&
+                    o.SpecialistId == specialistId);
+
+            if (offer == null)
+                throw new AppException("Ten specjalista nie złożył oferty.", ErrorCodes.ValidationError);
+
+            var specialistServiceIds = offer.ServiceTypeIds ?? new List<Guid>(); ;
+
+            // 5. MAP TO specialist_services
+            var specialistServices = await _context.specialist_services
+                .Where(ss => specialistServiceIds.Contains(ss.Id))
+                .ToListAsync();
+
+            if (!specialistServices.Any())
+            {
+                throw new AppException("Ten specjalista nie złożył oferty.", ErrorCodes.ValidationError);
+            }
+
+            // 6. EXTRACT service_type_id
+            var serviceTypeIds = specialistServices
+                .Select(ss => ss.ServiceTypeId)
+                .Distinct()
+                .ToList();
+
+            // 7. GET service_types (snapshot source)
+            var serviceTypes = await _context.service_types
+                .Where(st => serviceTypeIds.Contains(st.Id))
+                .ToListAsync();
+
+            var serviceNames = serviceTypes
+                .Select(st => st.Name)
+                .ToList();
+
+
+            // 8. SNAPSHOT
+            var snapshot = serviceNames.Any()
+                ? string.Join(", ", serviceNames)
+                : null;
+
+            // 9. UPDATE APPOINTMENT
+            appointment.SpecialistId = specialistId;
+            appointment.AppointmentStatus = "confirmed";
+            appointment.TotalPrice = offer.Price;
+            appointment.FinalDate = offer.ProposedDate;
+
+            appointment.SpecialistServiceIds = specialistServices
+                .Select(ss => ss.ServiceTypeId)
+                .ToArray();
+
+            appointment.ServiceNamesSnapshot = snapshot;
+
+            appointment.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Asynchronously retrieves the review for a specified appointment belonging to the specified user.
+        /// </summary>
+        /// <param name="userId">The unique identifier of the user whose appointment review is to be retrieved.</param>
+        /// <param name="appointmentId">The unique identifier of the appointment for which the review is requested.</param>
+        /// <returns></returns>
+        /// <exception cref="AppException"></exception>
+        public async Task<AppointmentReviewDto> GetAppointmentReviewAsync(Guid userId, Guid appointmentId)
+        {
+            var client = await _context.clients.FirstOrDefaultAsync(c => c.UserId == userId) ??
+                throw new AppException("Nie znaleziono profilu klienta", ErrorCodes.ClientNotFound);
+
+            var appointmentExists = await _context.appointments
+                .AnyAsync(a => a.Id == appointmentId && a.ClientId == client.Id);
+
+            if (!appointmentExists)
+                throw new AppException("Nie znaleziono wizyty dla tego klienta", ErrorCodes.AppointmentNotFound);
+
+            var review = await _context.Set<Review>()
+                .FirstOrDefaultAsync(r => r.AppointmentId == appointmentId && r.ClientId == client.Id)
+                ?? throw new AppException("Nie znaleziono opinii dla tej wizyty", ErrorCodes.ReviewNotFound);
+
+            var appointmentIsRated = await _context.appointments
+                .Where(a => a.Id == appointmentId && a.ClientId == client.Id)
+                .Select(a => a.IsRated)
+                .FirstOrDefaultAsync();
+
+            if (!appointmentIsRated)
+                throw new AppException("Wizyta nie jest oznaczona jako oceniona, ale opinia istnieje. Proszę skontaktować się z supportem.", ErrorCodes.DataConflict);
+
+            return new AppointmentReviewDto
+            {
+                Id = review.Id,
+                AppointmentId = review.AppointmentId,
+                ClientId = review.ClientId,
+                SpecialistId = review.SpecialistId,
+                Rating = review.Rating,
+                Comment = review.Comment,
+                IsVerified = review.IsVerified,
+                CreatedAt = review.CreatedAt,
+                UpdatedAt = review.UpdatedAt
+            };
+        }
+
+        /// <summary>
+        /// Asynchronously submits a rating for a specialist for a completed appointment.
+        /// </summary>
+        /// <param name="userId">The unique identifier of the client submitting the rating.</param>
+        /// <param name="appointmentId">The unique identifier of the appointment being rated.</param>
+        /// <param name="dto">The rating request containing rating value (0-5) and optional comment.</param>
+        /// <returns></returns>
+        /// <exception cref="AppException"></exception>
+        public async Task RateSpecialistAsync(Guid userId, Guid appointmentId, RateSpecialistDto dto)
+        {
+            // validate rating is in valid range
+            if (dto.Rating < 0 || dto.Rating > 5)
+                throw new AppException("Ocena musi być w przedziale od 0 do 5", ErrorCodes.ValidationError);
+
+            // get client
+            var client = await _context.clients.FirstOrDefaultAsync(c => c.UserId == userId) ??
+                throw new AppException("Nie znaleziono profilu klienta", ErrorCodes.ClientNotFound);
+
+            // get appointment and check ownership
+            var appointment = await _context.appointments
+                .FirstOrDefaultAsync(a => a.Id == appointmentId && a.ClientId == client.Id) ??
+                throw new AppException("Nie znaleziono wizyty dla tego klienta", ErrorCodes.AppointmentNotFound);
+
+            // check if appointment has already been rated
+            if (appointment.IsRated)
+                throw new AppException("Ta wizyta została już oceniona", ErrorCodes.AppointmentAlreadyRated);
+
+            // ensure specialist is assigned
+            if (!appointment.SpecialistId.HasValue)
+                throw new AppException("Wizyta nie ma przypisanego specjalisty", ErrorCodes.ValidationError);
+
+            // create review record
+            var review = new Review
+            {
+                Id = Guid.NewGuid(),
+                AppointmentId = appointmentId,
+                ClientId = client.Id,
+                SpecialistId = appointment.SpecialistId.Value,
+                Rating = dto.Rating,
+                Comment = dto.Comment,
+                IsVerified = true,
+                CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified),
+                UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
+            };
+
+            // mark appointment as rated
+            appointment.IsRated = true;
+            appointment.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
+
+            // get specialist and update average rating
+            var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.Id == appointment.SpecialistId.Value);
+            if (specialist != null)
+            {
+                // fetch all existing reviews for this specialist
+                var existingReviews = await _context.Set<Review>()
+                    .Where(r => r.SpecialistId == specialist.Id)
+                    .ToListAsync();
+
+                // calculate new average rating
+                var allRatings = existingReviews.Select(r => (decimal)r.Rating).ToList();
+                allRatings.Add(dto.Rating);
+
+                specialist.AverageRating = Math.Round(allRatings.Average(), 2);
+                specialist.TotalReviews = existingReviews.Count + 1;
+            }
+
+            // save all changes
+            _context.Set<Review>().Add(review);
+            await _context.SaveChangesAsync();
+        }
+
+
+        /// <summary>
+        /// Pobiera statystyki ocen klienta na podstawie wizyt, które zostały ocenione przez specjalistów. Zwraca liczbę ocen "good", "neutral" i "bad" dla danego klienta.
+        /// </summary>
+        /// <param name="clientId"></param>
+        /// <returns></returns>
+        public async Task<ClientStatsDto> GetClientStatsAsync(Guid clientId)
+        {
+            var ratings = await _context.appointments
+                .Where(a => a.ClientId == clientId && a.ClientRating != null)
+                .GroupBy(a => a.ClientRating)
+                .Select(g => new { Rating = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            return new ClientStatsDto
+            {
+                GoodCount = ratings.FirstOrDefault(r => r.Rating == "good")?.Count ?? 0,
+                NeutralCount = ratings.FirstOrDefault(r => r.Rating == "neutral")?.Count ?? 0,
+                BadCount = ratings.FirstOrDefault(r => r.Rating == "bad")?.Count ?? 0
+            };
         }
     }
 }
