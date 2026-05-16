@@ -133,7 +133,7 @@ class AppointmentCard extends StatelessWidget {
 
   Widget _buildMiddleContent() {
     final title = appointment.serviceNames?.isEmpty ?? true
-        ? 'Wizyta domowa'
+        ? appointment.serviceTypeName ?? 'Wizyta domowa'
         : appointment.serviceNames!.join(', ');
 
     if (appointment.appointmentStatus == 'pending') {
