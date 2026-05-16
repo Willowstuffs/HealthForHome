@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+
 import { listOrders } from "./api/adminApi";
+
 import OrderStatusBadge from "./components/OrderStatusBadge";
 
 const DEFAULT_QUERY = {
@@ -11,13 +13,17 @@ const DEFAULT_QUERY = {
   page: 1,
   pageSize: 20,
 };
+
 function formatDateTimePL(value) {
   if (!value) return "—";
 
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
+  const date = new Date(value);
 
-  return d.toLocaleString("pl-PL", {
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  return date.toLocaleString("pl-PL", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -25,6 +31,13 @@ function formatDateTimePL(value) {
     minute: "2-digit",
   });
 }
+
+function formatPrice(value) {
+  return typeof value === "number"
+    ? `${value} PLN`
+    : "—";
+}
+
 function ListaZamowien() {
   const [query, setQuery] = useState(DEFAULT_QUERY);
 
@@ -41,19 +54,31 @@ function ListaZamowien() {
   useEffect(() => {
     let cancelled = false;
 
-    setLoading(true);
-    setError("");
+    async function loadOrders() {
+      setLoading(true);
+      setError("");
 
-    listOrders(query)
-      .then((res) => {
-        if (!cancelled) setData(res);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e?.message || "Błąd pobierania listy zamówień");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+      try {
+        const res = await listOrders(query);
+
+        if (!cancelled) {
+          setData(res);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError(
+            e?.message ||
+              "Błąd pobierania listy zamówień"
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadOrders();
 
     return () => {
       cancelled = true;
@@ -61,13 +86,20 @@ function ListaZamowien() {
   }, [query]);
 
   const canPrev = query.page > 1;
-  const canNext = data.page * data.pageSize < data.total;
+
+  const canNext =
+    data.page * data.pageSize < data.total;
 
   const resultLabel = useMemo(() => {
     if (loading) return "Ładowanie…";
     if (error) return "Błąd";
     if (data.total === 0) return "Brak wyników";
-    const totalPages = Math.max(1, Math.ceil(data.total / data.pageSize));
+
+    const totalPages = Math.max(
+      1,
+      Math.ceil(data.total / data.pageSize)
+    );
+
     return `Strona ${data.page} z ${totalPages} • Wyświetlono ${data.items.length} wyników`;
   }, [loading, error, data]);
 
@@ -75,66 +107,120 @@ function ListaZamowien() {
     <div className="page">
       <h1>Lista zamówień</h1>
 
-      {/* FILTRY */}
       <div className="card card-pad">
         <div className="filters-grid orders-filters">
           <label className="field">
             <span>Status</span>
+
             <select
               value={query.status}
-              onChange={(e) => setQuery((q) => ({ ...q, status: e.target.value, page: 1 }))}
+              onChange={(e) =>
+                setQuery((q) => ({
+                  ...q,
+                  status: e.target.value,
+                  page: 1,
+                }))
+              }
             >
               <option value="">Wszystkie</option>
-<option value="pending">Oczekujące</option>
-<option value="confirmed">Potwierdzone</option>
-<option value="open">Otwarte</option>
-<option value="cancelled">Anulowane</option>
-<option value="completed">Zakończone</option>
+              <option value="pending">
+                Oczekujące
+              </option>
+              <option value="confirmed">
+                Potwierdzone
+              </option>
+              <option value="open">
+                Otwarte
+              </option>
+              <option value="cancelled">
+                Anulowane
+              </option>
+              <option value="completed">
+                Zakończone
+              </option>
             </select>
           </label>
 
           <label className="field">
             <span>Data od</span>
+
             <input
               type="date"
               value={query.createdFrom}
-              onChange={(e) => setQuery((q) => ({ ...q, createdFrom: e.target.value, page: 1 }))}
+              onChange={(e) =>
+                setQuery((q) => ({
+                  ...q,
+                  createdFrom: e.target.value,
+                  page: 1,
+                }))
+              }
             />
           </label>
 
           <label className="field">
             <span>Data do</span>
+
             <input
               type="date"
               value={query.createdTo}
-              onChange={(e) => setQuery((q) => ({ ...q, createdTo: e.target.value, page: 1 }))}
+              onChange={(e) =>
+                setQuery((q) => ({
+                  ...q,
+                  createdTo: e.target.value,
+                  page: 1,
+                }))
+              }
             />
           </label>
 
           <label className="field">
             <span>Sortowanie</span>
+
             <select
               value={query.sort}
-              onChange={(e) => setQuery((q) => ({ ...q, sort: e.target.value, page: 1 }))}
+              onChange={(e) =>
+                setQuery((q) => ({
+                  ...q,
+                  sort: e.target.value,
+                  page: 1,
+                }))
+              }
             >
-              <option value="CREATED_DESC">Najnowsze</option>
-              <option value="CREATED_ASC">Najstarsze</option>
+              <option value="CREATED_DESC">
+                Najnowsze
+              </option>
+
+              <option value="CREATED_ASC">
+                Najstarsze
+              </option>
             </select>
           </label>
 
           <div className="filters-actions">
-            <button className="btn" onClick={() => setQuery(DEFAULT_QUERY)}>
+            <button
+              className="btn"
+              onClick={() =>
+                setQuery(DEFAULT_QUERY)
+              }
+            >
               Wyczyść
             </button>
           </div>
         </div>
       </div>
 
-      {/* STANY */}
-      {loading && <p className="muted">Ładowanie...</p>}
-      {error && <p className="error">{error}</p>}
+      {loading && (
+        <p className="muted">
+          Ładowanie...
+        </p>
+      )}
 
-      {/* TABELA */}
+      {error && (
+        <p className="error">
+          {error}
+        </p>
+      )}
+
       {!loading && !error && (
         <div className="card table-card">
           <div className="table-scroll">
@@ -155,39 +241,67 @@ function ListaZamowien() {
               <tbody>
                 {data.items.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="muted">
+                    <td
+                      colSpan={8}
+                      className="muted"
+                    >
                       Brak wyników
                     </td>
                   </tr>
                 ) : (
-                  data.items.map((o) => (
-                    <tr key={o.appointmentId}>
-                      <td className="mono cell-strong">#{o.appointmentId}</td>
-
-                      <td>
-                        <div className="cell-strong">{o.contactName || "—"}</div>
+                  data.items.map((order) => (
+                    <tr
+                      key={order.appointmentId}
+                    >
+                      <td className="mono cell-strong">
+                        #{order.appointmentId}
                       </td>
 
                       <td>
-                        <div>{o.clientAddress || "—"}</div>
+                        <div className="cell-strong">
+                          {order.contactName ||
+                            "—"}
+                        </div>
                       </td>
 
-                      <td>{o.serviceName || "—"}</td>
+                      <td>
+                        {order.clientAddress ||
+                          "—"}
+                      </td>
+
+                      <td>
+                        {order.serviceName ||
+                          "—"}
+                      </td>
 
                       <td className="cell-strong">
-                        {typeof o.totalPrice === "number" ? `${o.totalPrice} PLN` : "—"}
+                        {formatPrice(
+                          order.totalPrice
+                        )}
                       </td>
 
                       <td>
-                        <OrderStatusBadge status={o.status} />
+                        <OrderStatusBadge
+                          status={order.status}
+                        />
                       </td>
 
                       <td>
-                        {formatDateTimePL(o.scheduledStart)}
+                        {formatDateTimePL(
+                          order.scheduledStart
+                        )}
                       </td>
 
                       <td className="cell-right">
-                        <Link to={`/orders/${o.appointmentId || o.id}`}>Szczegóły</Link>
+                        <Link
+                          className="table-link"
+                          to={`/orders/${
+                            order.appointmentId ||
+                            order.id
+                          }`}
+                        >
+                          Szczegóły
+                        </Link>
                       </td>
                     </tr>
                   ))
@@ -197,13 +311,20 @@ function ListaZamowien() {
           </div>
 
           <div className="table-footer">
-            <span className="muted">{resultLabel}</span>
+            <span className="muted">
+              {resultLabel}
+            </span>
 
             <div className="pager">
               <button
                 className="btn"
                 disabled={!canPrev}
-                onClick={() => setQuery((q) => ({ ...q, page: q.page - 1 }))}
+                onClick={() =>
+                  setQuery((q) => ({
+                    ...q,
+                    page: q.page - 1,
+                  }))
+                }
               >
                 ← Poprzednia
               </button>
@@ -211,7 +332,12 @@ function ListaZamowien() {
               <button
                 className="btn"
                 disabled={!canNext}
-                onClick={() => setQuery((q) => ({ ...q, page: q.page + 1 }))}
+                onClick={() =>
+                  setQuery((q) => ({
+                    ...q,
+                    page: q.page + 1,
+                  }))
+                }
               >
                 Następna →
               </button>

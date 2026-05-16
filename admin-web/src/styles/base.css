@@ -1,35 +1,25 @@
 :root {
-  /* TEXT */
-  --text: #2D2D2D;
-  --muted: #6E6E6E;
+  --text: #2d2d2d;
+  --muted: #6e6e6e;
 
-  /* PRIMARY  */
-  --primary: #778F81;
-  --primary-hover: #435B4D;
-  --primary-strong: #2E4438;
+  --primary: #778f81;
+  --primary-hover: #435b4d;
+  --primary-strong: #2e4438;
 
-  /* BACKGROUND */
-  --background: #FBF2EE;
-  --surface: #FFFFFF;
-  --surface-soft: #F5DFD7;
+  --background: #fbf2ee;
+  --surface: #ffffff;
+  --surface-soft: #f5dfd7;
 
-  /* SECONDARY */
-  --secondary: #DFC2BC;
+  --secondary: #dfc2bc;
+  --accent: #0a8b26;
+  --border: #e5e7eb;
 
-  /* ACCENT */
-  --accent: #0A8B26;
-
-  /* BORDER */
-  --border: #E5E7EB;
-
-  /* STATUS */
-  --status-open: #0284C7;
-  --status-confirmed: #0A8B26;
-  --status-cancelled: #EF4444;
+  --status-open: #0284c7;
+  --status-confirmed: #0a8b26;
+  --status-cancelled: #ef4444;
   --status-completed: #475569;
-  --status-pending: #D97706;
+  --status-pending: #d97706;
 
-  /* RADIUS */
   --radius: 12px;
   --radius-sm: 8px;
 }
@@ -41,6 +31,7 @@ body {
 
 body {
   margin: 0;
+
   font-family: "Inter", sans-serif;
   font-size: 15px;
   line-height: 1.45;

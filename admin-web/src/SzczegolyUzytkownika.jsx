@@ -1,58 +1,114 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+
 import AdminHeader from "./components/AdminHeader";
 import { getUser } from "./api/adminApi";
+
 import "./styles/uzytkownikSzczegoly.css";
 
 function initials(firstName, lastName) {
-  const a = (firstName || "").trim().charAt(0).toUpperCase();
-  const b = (lastName || "").trim().charAt(0).toUpperCase();
-  return (a + b) || "??";
+  const first = String(firstName || "")
+    .trim()
+    .charAt(0)
+    .toUpperCase();
+
+  const last = String(lastName || "")
+    .trim()
+    .charAt(0)
+    .toUpperCase();
+
+  return first + last || "??";
 }
 
 function translateStatus(status) {
   switch (String(status || "").toLowerCase()) {
     case "open":
       return "Otwarte";
+
     case "pending":
       return "Oczekujące";
+
     case "confirmed":
       return "Potwierdzone";
+
     case "in_progress":
       return "W trakcie";
+
     case "completed":
       return "Zakończone";
+
     case "cancelled":
       return "Anulowane";
+
     case "no_show":
       return "Nieobecność";
+
     default:
       return status || "-";
   }
 }
+
+function formatDateTimePL(value) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  return date.toLocaleString("pl-PL", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatPrice(value) {
+  return typeof value === "number"
+    ? `${value} PLN`
+    : "-";
+}
+
 function SzczegolyUzytkownika() {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const [data, setData] = useState(null);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError("");
 
-    getUser(id)
-      .then((res) => {
-        if (!cancelled) setData(res);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e?.message || "Błąd pobierania danych użytkownika");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    async function loadUser() {
+      setLoading(true);
+      setError("");
+
+      try {
+        const res = await getUser(id);
+
+        if (!cancelled) {
+          setData(res);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError(
+            e?.message ||
+              "Błąd pobierania danych użytkownika"
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadUser();
 
     return () => {
       cancelled = true;
@@ -60,28 +116,53 @@ function SzczegolyUzytkownika() {
   }, [id]);
 
   const createdAtLabel = useMemo(() => {
-    if (!data?.createdAt) return "-";
-    const d = new Date(data.createdAt);
-    return Number.isNaN(d.getTime()) ? "-" : d.toLocaleString("pl-PL", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-  }, [data]);
+    return formatDateTimePL(data?.createdAt);
+  }, [data?.createdAt]);
 
-  if (loading) return <p style={{ padding: 24 }}>Ładowanie...</p>;
-  if (error) return <p style={{ padding: 24, color: "tomato" }}>{error}</p>;
-  if (!data) return null;
-  const appointments = Array.isArray(data.appointments) ? data.appointments : [];
+  if (loading) {
+    return (
+      <p style={{ padding: 24 }}>
+        Ładowanie...
+      </p>
+    );
+  }
+
+  if (error) {
+    return (
+      <p
+        style={{
+          padding: 24,
+          color: "tomato",
+        }}
+      >
+        {error}
+      </p>
+    );
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  const appointments = Array.isArray(
+    data.appointments
+  )
+    ? data.appointments
+    : [];
 
   const ordersCount = appointments.length;
 
-  const ordersTotalValue = appointments.reduce((sum, item) => {
-    return sum + Number(item.price ?? item.totalPrice ?? 0);
-  }, 0);
- 
+  const ordersTotalValue = appointments.reduce(
+    (sum, item) =>
+      sum +
+      Number(
+        item.price ??
+          item.totalPrice ??
+          0
+      ),
+    0
+  );
+
   return (
     <div>
       <AdminHeader />
@@ -89,66 +170,112 @@ function SzczegolyUzytkownika() {
       <div className="admin-container">
         <div className="page user-details-wrap">
           <div className="user-details-hero">
-            <h1 className="user-details-title">Szczegóły użytkownika</h1>
+            <h1 className="user-details-title">
+              Szczegóły użytkownika
+            </h1>
           </div>
 
-          {/* Header card */}
           <div className="user-profile-card">
             <div className="user-profile-left">
-              <div className="user-avatar">{initials(data.firstName, data.lastName)}</div>
+              <div className="user-avatar">
+                {initials(
+                  data.firstName,
+                  data.lastName
+                )}
+              </div>
 
               <div className="user-profile-main">
                 <h2 className="user-name">
-                  {data.firstName} {data.lastName}
+                  {data.firstName}{" "}
+                  {data.lastName}
                 </h2>
-                <div className="user-email">{data.email}</div>
+
+                <div className="user-email">
+                  {data.email}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Cards grid */}
           <div className="user-details-grid">
             <div className="user-card">
-              <h3 className="user-card-title">Informacje podstawowe</h3>
+              <h3 className="user-card-title">
+                Informacje podstawowe
+              </h3>
 
               <div className="user-kv">
                 <div className="user-kv-row">
-                  <div className="user-kv-key">ID użytkownika</div>
-                  <div className="user-kv-val">{data.clientId || data.id || "-"}</div>
+                  <div className="user-kv-key">
+                    ID użytkownika
+                  </div>
+
+                  <div className="user-kv-val">
+                    {data.clientId ||
+                      data.id ||
+                      "-"}
+                  </div>
                 </div>
 
                 <div className="user-kv-row">
-                  <div className="user-kv-key">Telefon</div>
-                  <div className="user-kv-val">{data.phoneNumber || data.phone || "-"}</div>
+                  <div className="user-kv-key">
+                    Telefon
+                  </div>
+
+                  <div className="user-kv-val">
+                    {data.phoneNumber ||
+                      data.phone ||
+                      "-"}
+                  </div>
                 </div>
 
                 <div className="user-kv-row">
-                  <div className="user-kv-key">Data rejestracji</div>
-                  <div className="user-kv-val">{createdAtLabel}</div>
+                  <div className="user-kv-key">
+                    Data rejestracji
+                  </div>
+
+                  <div className="user-kv-val">
+                    {createdAtLabel}
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="user-card user-card--activity">
-              <h3 className="user-card-title">Aktywność</h3>
+              <h3 className="user-card-title">
+                Aktywność
+              </h3>
 
               <div className="user-kv">
                 <div className="user-kv-row">
-                  <div className="user-kv-key">Liczba zamówień</div>
-                  <div className="user-kv-val">{ordersCount}</div>
+                  <div className="user-kv-key">
+                    Liczba zamówień
+                  </div>
+
+                  <div className="user-kv-val">
+                    {ordersCount}
+                  </div>
                 </div>
 
                 <div className="user-kv-row">
-                  <div className="user-kv-key">Wartość zamówień</div>
-                  <div className="user-kv-val">{ordersTotalValue} PLN</div>
+                  <div className="user-kv-key">
+                    Wartość zamówień
+                  </div>
+
+                  <div className="user-kv-val">
+                    {ordersTotalValue} PLN
+                  </div>
                 </div>
               </div>
             </div>
 
-           
             <div className="user-card user-activity-card">
               <div className="user-activity-head">
-                <h3 className="user-card-title" style={{ margin: 0 }}>Aktywność</h3>
+                <h3
+                  className="user-card-title"
+                  style={{ margin: 0 }}
+                >
+                  Aktywność
+                </h3>
               </div>
 
               <div className="user-activity-body">
@@ -161,49 +288,72 @@ function SzczegolyUzytkownika() {
                       <th>Wartość</th>
                     </tr>
                   </thead>
+
                   <tbody>
                     {appointments.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="user-activity-empty">
-                          Użytkownik nie złożył jeszcze żadnego zamówienia.
+                        <td
+                          colSpan={4}
+                          className="user-activity-empty"
+                        >
+                          Użytkownik nie złożył
+                          jeszcze żadnego
+                          zamówienia.
                         </td>
                       </tr>
                     ) : (
-                      appointments.map((appointment) => (
-                        <tr key={appointment.appointmentId}>
-                          <td>#{appointment.appointmentId}</td>
-                          <td>
-                            {appointment.scheduledStart
-                              ? new Date(appointment.scheduledStart).toLocaleString("pl-PL", {
-                                  year: "numeric",
-                                  month: "2-digit",
-                                  day: "2-digit",
-                                  hour: "2-digit",
-                                  minute: "2-digit"
-                                })
-                              : "-"}
-                          </td>
-                          <td>{translateStatus(appointment.status)}</td>
-                          <td>
-                            {typeof appointment.price === "number"
-                              ? `${appointment.price} PLN`
-                              : "-"}
-                          </td>
-                        </tr>
-                      ))
+                      appointments.map(
+                        (appointment) => (
+                          <tr
+                            key={
+                              appointment.appointmentId
+                            }
+                          >
+                            <td>
+                              #
+                              {
+                                appointment.appointmentId
+                              }
+                            </td>
+
+                            <td>
+                              {formatDateTimePL(
+                                appointment.scheduledStart
+                              )}
+                            </td>
+
+                            <td>
+                              {translateStatus(
+                                appointment.status
+                              )}
+                            </td>
+
+                            <td>
+                              {formatPrice(
+                                appointment.price
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      )
                     )}
                   </tbody>
                 </table>
 
                 <div className="user-back-row">
-                  <button className="user-back-link" onClick={() => navigate("/users")} type="button">
+                  <button
+                    className="user-back-link"
+                    onClick={() =>
+                      navigate("/users")
+                    }
+                    type="button"
+                  >
                     ← Lista użytkowników
                   </button>
                 </div>
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </div>

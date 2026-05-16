@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+
 import { listUsers } from "./api/adminApi";
 
 const DEFAULT_QUERY = {
@@ -10,6 +11,20 @@ const DEFAULT_QUERY = {
   page: 1,
   pageSize: 20,
 };
+
+function formatDate(value) {
+  if (!value) return "—";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return date.toLocaleDateString();
+}
+
+function getFullName(user) {
+  return `${user.firstName || ""} ${user.lastName || ""}`.trim() || "—";
+}
 
 function ListaUzytkownikow() {
   const [query, setQuery] = useState(DEFAULT_QUERY);
@@ -27,75 +42,117 @@ function ListaUzytkownikow() {
   useEffect(() => {
     let cancelled = false;
 
-    setLoading(true);
-    setError("");
+    async function loadUsers() {
+      setLoading(true);
+      setError("");
 
-    listUsers(query)
-      .then((res) => {
-        if (!cancelled) setData(res);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e?.message || "Błąd pobierania listy użytkowników");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+      try {
+        const res = await listUsers(query);
+
+        if (!cancelled) {
+          setData(res);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError(e?.message || "Błąd pobierania listy użytkowników");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadUsers();
 
     return () => {
       cancelled = true;
     };
   }, [query]);
 
-  const canPrev = query.page > 1;
-  const canNext = data.page * data.pageSize < data.total;
+  const page = Number(data.page || query.page || 1);
+  const pageSize = Number(data.pageSize || query.pageSize || 20);
+  const total = Number(data.total ?? data.totalCount ?? data.items?.length ?? 0);
+
+  const canPrev = page > 1;
+  const canNext = page * pageSize < total;
 
   const resultLabel = useMemo(() => {
     if (loading) return "Ładowanie…";
     if (error) return "Błąd";
-    if (data.total === 0) return "Brak wyników";
-    const totalPages = Math.max(1, Math.ceil(data.total / data.pageSize));
-    return `Strona ${data.page} z ${totalPages} • Wyświetlono ${data.items.length} wyników`;
-  }, [loading, error, data]);
+    if (total === 0) return "Brak wyników";
+
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+    return `Strona ${page} z ${totalPages} • Wyświetlono ${data.items.length} wyników`;
+  }, [loading, error, data.items.length, page, pageSize, total]);
 
   return (
     <div className="page">
       <h1>Lista użytkowników</h1>
 
-      {/* FILTRY */}
       <div className="card card-pad">
         <div className="filters-grid users-filters">
           <label className="field field-span-2">
             <span>Szukaj (imię, nazwisko, email)</span>
+
             <input
               value={query.q}
-              onChange={(e) => setQuery((q) => ({ ...q, q: e.target.value, page: 1 }))}
+              onChange={(e) =>
+                setQuery((q) => ({
+                  ...q,
+                  q: e.target.value,
+                  page: 1,
+                }))
+              }
               placeholder="np. Kowalski / test@test.pl"
             />
           </label>
 
           <label className="field">
             <span>Data rejestracji od</span>
+
             <input
               type="date"
               value={query.createdFrom}
-              onChange={(e) => setQuery((q) => ({ ...q, createdFrom: e.target.value, page: 1 }))}
+              onChange={(e) =>
+                setQuery((q) => ({
+                  ...q,
+                  createdFrom: e.target.value,
+                  page: 1,
+                }))
+              }
             />
           </label>
 
           <label className="field">
             <span>Data rejestracji do</span>
+
             <input
               type="date"
               value={query.createdTo}
-              onChange={(e) => setQuery((q) => ({ ...q, createdTo: e.target.value, page: 1 }))}
+              onChange={(e) =>
+                setQuery((q) => ({
+                  ...q,
+                  createdTo: e.target.value,
+                  page: 1,
+                }))
+              }
             />
           </label>
 
           <label className="field">
             <span>Sortowanie</span>
+
             <select
               value={query.sort}
-              onChange={(e) => setQuery((q) => ({ ...q, sort: e.target.value, page: 1 }))}
+              onChange={(e) =>
+                setQuery((q) => ({
+                  ...q,
+                  sort: e.target.value,
+                  page: 1,
+                }))
+              }
             >
               <option value="CREATED_DESC">Najnowsze</option>
               <option value="CREATED_ASC">Najstarsze</option>
@@ -103,18 +160,19 @@ function ListaUzytkownikow() {
           </label>
 
           <div className="filters-actions">
-            <button className="btn" onClick={() => setQuery(DEFAULT_QUERY)}>
+            <button
+              className="btn"
+              onClick={() => setQuery(DEFAULT_QUERY)}
+            >
               Wyczyść
             </button>
           </div>
         </div>
       </div>
 
-      {/* STANY */}
       {loading && <p className="muted">Ładowanie...</p>}
       {error && <p className="error">{error}</p>}
 
-      {/* TABELA */}
       {!loading && !error && (
         <div className="card table-card">
           <div className="table-scroll">
@@ -123,7 +181,6 @@ function ListaUzytkownikow() {
                 <tr>
                   <th>Imię i nazwisko</th>
                   <th>Email</th>
-                  
                   <th>Data rejestracji</th>
                   <th></th>
                 </tr>
@@ -132,20 +189,18 @@ function ListaUzytkownikow() {
               <tbody>
                 {data.items.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="muted">
+                    <td colSpan={4} className="muted">
                       Brak wyników
                     </td>
                   </tr>
                 ) : (
-                  data.items.map((u) => (
-                    <tr key={u.id}>
-                      <td className="cell-strong">
-                        {`${u.firstName || ""} ${u.lastName || ""}`.trim() || "—"}
-                      </td>
-                      <td>{u.email || "—"}</td>
-                      <td>{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}</td>
+                  data.items.map((user) => (
+                    <tr key={user.id}>
+                      <td className="cell-strong">{getFullName(user)}</td>
+                      <td>{user.email || "—"}</td>
+                      <td>{formatDate(user.createdAt)}</td>
                       <td className="cell-right">
-                        <Link className="table-link" to={`/users/${u.id}`}>
+                        <Link className="table-link" to={`/users/${user.id}`}>
                           Szczegóły
                         </Link>
                       </td>
@@ -163,7 +218,12 @@ function ListaUzytkownikow() {
               <button
                 className="btn"
                 disabled={!canPrev}
-                onClick={() => setQuery((q) => ({ ...q, page: q.page - 1 }))}
+                onClick={() =>
+                  setQuery((q) => ({
+                    ...q,
+                    page: q.page - 1,
+                  }))
+                }
               >
                 ← Poprzednia
               </button>
@@ -171,7 +231,12 @@ function ListaUzytkownikow() {
               <button
                 className="btn"
                 disabled={!canNext}
-                onClick={() => setQuery((q) => ({ ...q, page: q.page + 1 }))}
+                onClick={() =>
+                  setQuery((q) => ({
+                    ...q,
+                    page: q.page + 1,
+                  }))
+                }
               >
                 Następna →
               </button>

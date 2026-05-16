@@ -1,68 +1,63 @@
-function label(status){
-  switch(status){
-    case "PENDING":
-      return "Oczekuje";
+const STATUS_CONFIG = {
+  PENDING: {
+    label: "Oczekuje",
+    style: {
+      background: "#e0f2fe",
+      color: "#0369a1",
+      border: "1px solid #bae6fd",
+    },
+  },
 
-    case "APPROVED":
-      return "Zaakceptowany";
+  APPROVED: {
+    label: "Zaakceptowany",
+    style: {
+      background: "#dcfce7",
+      color: "#166534",
+      border: "1px solid #bbf7d0",
+    },
+  },
 
-    case "REJECTED":
-      return "Odrzucony";
+  REJECTED: {
+    label: "Odrzucony",
+    style: {
+      background: "#fee2e2",
+      color: "#991b1b",
+      border: "1px solid #fecaca",
+    },
+  },
 
-    case "SUSPENDED":
-      return "Zawieszony";
+  SUSPENDED: {
+    label: "Zawieszony",
+    style: {
+      background: "#fff3cd",
+      color: "#856404",
+      border: "1px solid #ffe69c",
+    },
+  },
 
-    default:
-      return status || "-";
-  }
-}
+  DEFAULT: {
+    label: "-",
+    style: {
+      background: "#f1f5f9",
+      color: "#475569",
+      border: "1px solid #e2e8f0",
+    },
+  },
+};
 
-function style(status){
-  switch(status){
-    case "PENDING":
-      return {
-        background: "#e0f2fe",
-        color: "#0369a1",
-        border: "1px solid #bae6fd",
-      };
+export default function StatusBadge({ status }) {
+  const config =
+    STATUS_CONFIG[status] || {
+      ...STATUS_CONFIG.DEFAULT,
+      label: status || "-",
+    };
 
-    case "APPROVED":
-      return {
-        background: "#dcfce7",
-        color: "#166534",
-        border: "1px solid #bbf7d0",
-      };
-
-    case "REJECTED":
-      return {
-        background: "#fee2e2",
-        color: "#991b1b",
-        border: "1px solid #fecaca",
-      };
-
-    case "SUSPENDED":
-      return {
-        background: "#fff3cd",
-        color: "#856404",
-        border: "1px solid #ffe69c",
-      };
-
-    default:
-      return {
-        background: "#f1f5f9",
-        color: "#475569",
-        border: "1px solid #e2e8f0",
-      };
-  }
-}
-
-export default function StatusBadge({ status }){
   return (
     <span
       className="badge"
-      style={style(status)}
+      style={config.style}
     >
-      {label(status)}
+      {config.label}
     </span>
   );
 }

@@ -1,15 +1,67 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+
 import AdminHeader from "./components/AdminHeader";
-import { getOrder } from "./api/adminApi";
 import OrderStatusBadge from "./components/OrderStatusBadge";
+
+import {
+  getAppointmentReview,
+  getOrder,
+} from "./api/adminApi";
+
 import "./styles/zamowienieSzczegoly.css";
 
 function initialsFromName(fullName) {
-  const parts = String(fullName || "").trim().split(/\s+/).filter(Boolean);
-  const a = (parts[0] || "").charAt(0).toUpperCase();
-  const b = (parts[1] || "").charAt(0).toUpperCase();
-  return (a + b) || "??";
+  const parts = String(fullName || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  const first = (parts[0] || "")
+    .charAt(0)
+    .toUpperCase();
+
+  const second = (parts[1] || "")
+    .charAt(0)
+    .toUpperCase();
+
+  return first + second || "??";
+}
+
+function formatDateTimePL(value) {
+  if (!value) {
+    return "—";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  return date.toLocaleString("pl-PL", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+function formatPrice(value) {
+  return typeof value === "number"
+    ? `${value} PLN`
+    : "—";
+}
+
+function stars(rating) {
+  const value = Number(rating || 0);
+
+  return (
+    `${"★".repeat(value)}` +
+    `${"☆".repeat(Math.max(0, 5 - value))}`
+  );
 }
 
 function SzczegolyZamowienia() {
@@ -17,66 +69,128 @@ function SzczegolyZamowienia() {
   const navigate = useNavigate();
 
   const [data, setData] = useState(null);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [review, setReview] = useState(null);
+
+  const [reviewLoading, setReviewLoading] =
+    useState(false);
+
+  const [reviewError, setReviewError] =
+    useState("");
+
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError("");
 
-    getOrder(id)
-      .then((res) => {
-        if (!cancelled) setData(res);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e?.message || "Błąd pobierania zamówienia");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    async function loadOrder() {
+      setLoading(true);
+      setError("");
+
+      try {
+        const res = await getOrder(id);
+
+        if (!cancelled) {
+          setData(res);
+        }
+
+        try {
+          setReviewLoading(true);
+          setReviewError("");
+
+          const reviewRes =
+            await getAppointmentReview(
+              res.appointmentId || res.id
+            );
+
+          if (!cancelled) {
+            setReview(reviewRes);
+          }
+        } catch {
+          if (!cancelled) {
+            setReview(null);
+            setReviewError(
+              "Brak opinii dla tej wizyty"
+            );
+          }
+        } finally {
+          if (!cancelled) {
+            setReviewLoading(false);
+          }
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError(
+            e?.message ||
+              "Błąd pobierania zamówienia"
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadOrder();
 
     return () => {
       cancelled = true;
     };
   }, [id]);
 
-const createdAtLabel = useMemo(() => {
-  if (!data?.createdAt) return "—";
+  const createdAtLabel = useMemo(() => {
+    return formatDateTimePL(data?.createdAt);
+  }, [data?.createdAt]);
 
-  const value = String(data.createdAt).trim();
+  if (loading) {
+    return (
+      <p style={{ padding: 24 }}>
+        Ładowanie...
+      </p>
+    );
+  }
 
-  // format typu: 2026-03-21T12:14:59.0706127
-  const match = value.match(
-    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/
-  );
+  if (error) {
+    return (
+      <p
+        style={{
+          padding: 24,
+          color: "tomato",
+        }}
+      >
+        {error}
+      </p>
+    );
+  }
 
-  if (!match) return value;
-
-  const [, year, month, day, hour, minute, second] = match;
-  return `${day}.${month}.${year}, ${hour}:${minute}:${second}`;
-}, [data]);
-
-  if (loading) return <p style={{ padding: 24 }}>Ładowanie...</p>;
-  if (error) return <p style={{ padding: 24, color: "tomato" }}>{error}</p>;
-  if (!data) return null;
-  console.log("ORDER DETAILS DATA:", data);
+  if (!data) {
+    return null;
+  }
 
   const customerName =
-    typeof data.contactName === "string" && data.contactName.trim() !== ""
+    typeof data.contactName === "string" &&
+    data.contactName.trim() !== ""
       ? data.contactName
       : "—";
 
   const customerEmail =
-    typeof data.contactEmail === "string" && data.contactEmail.trim() !== ""
+    typeof data.contactEmail === "string" &&
+    data.contactEmail.trim() !== ""
       ? data.contactEmail
       : "—";
 
   const customerPhone =
-    typeof data.contactPhoneNumber === "string" && data.contactPhoneNumber.trim() !== ""
+    typeof data.contactPhoneNumber ===
+      "string" &&
+    data.contactPhoneNumber.trim() !== ""
       ? data.contactPhoneNumber
       : "—";
 
+  const isCompleted =
+    String(data.status).toUpperCase() ===
+    "COMPLETED";
 
   return (
     <div>
@@ -86,83 +200,197 @@ const createdAtLabel = useMemo(() => {
         <div className="page order-wrap">
           <div className="order-hero">
             <div>
-              <h1 className="order-title">Szczegóły zamówienia</h1>
+              <h1 className="order-title">
+                Szczegóły zamówienia
+              </h1>
             </div>
           </div>
 
           <div className="order-card">
-            {/* header: avatar + customer */}
             <div className="order-header">
-              <div className="order-avatar">{initialsFromName(customerName)}</div>
+              <div className="order-avatar">
+                {initialsFromName(customerName)}
+              </div>
 
               <div className="order-header-main">
-                <h2 className="order-customer-name">{customerName}</h2>
-                <div className="order-customer-email">{customerEmail}</div>
+                <h2 className="order-customer-name">
+                  {customerName}
+                </h2>
+
+                <div className="order-customer-email">
+                  {customerEmail}
+                </div>
               </div>
             </div>
 
-            {/* grid: left info, right status/value/desc */}
             <div className="order-grid">
-              {/* LEFT */}
               <div className="order-col">
                 <div className="order-section">
-                  <div className="order-label">Data zamówienia</div>
-                  <div className="order-value order-date">{createdAtLabel}</div>
+                  <div className="order-label">
+                    Data zamówienia
+                  </div>
+
+                  <div className="order-value order-date">
+                    {createdAtLabel}
+                  </div>
                 </div>
-                <div className="order-section">
-  <div className="order-label">Usługa</div>
-  <div className="order-value">{data.serviceName || "—"}</div>
-</div>
 
                 <div className="order-section">
-                  <div className="order-label">Zamawiający</div>
+                  <div className="order-label">
+                    Usługa
+                  </div>
+
+                  <div className="order-value">
+                    {data.serviceName || "—"}
+                  </div>
+                </div>
+
+                <div className="order-section">
+                  <div className="order-label">
+                    Zamawiający
+                  </div>
+
                   <div className="order-kv">
-                    <div className="order-value">{customerName}</div>
-                    <div className="order-value" style={{ color: "rgba(15,23,42,0.65)", fontWeight: 700 }}>
+                    <div className="order-value">
+                      {customerName}
+                    </div>
+
+                    <div
+                      className="order-value"
+                      style={{
+                        color:
+                          "rgba(15,23,42,0.65)",
+                        fontWeight: 700,
+                      }}
+                    >
                       {customerEmail}
                     </div>
-                    <div className="order-value" style={{ color: "rgba(15,23,42,0.65)", fontWeight: 700 }}>
+
+                    <div
+                      className="order-value"
+                      style={{
+                        color:
+                          "rgba(15,23,42,0.65)",
+                        fontWeight: 700,
+                      }}
+                    >
                       {customerPhone}
                     </div>
                   </div>
                 </div>
 
                 <div className="order-section">
-                  <div className="order-label">Specjalista</div>
-                  <div className="order-value">{data.specialistName || "—"}</div>
+                  <div className="order-label">
+                    Specjalista
+                  </div>
+
+                  <div className="order-value">
+                    {data.specialistName ||
+                      "—"}
+                  </div>
                 </div>
               </div>
 
-              {/* RIGHT */}
               <div className="order-col order-col--right">
                 <div className="order-section">
-                  <div className="order-label">Status</div>
+                  <div className="order-label">
+                    Status
+                  </div>
+
                   <div className="order-status-wrap">
-                    <OrderStatusBadge status={data.status} />
+                    <OrderStatusBadge
+                      status={data.status}
+                    />
                   </div>
                 </div>
 
                 <div className="order-section">
-                  <div className="order-label">Wartość zamówienia</div>
-                  <div className="order-value" style={{ fontWeight: 900 }}>
-                    {typeof data.totalPrice === "number" ? `${data.totalPrice} PLN` : "—"}
+                  <div className="order-label">
+                    Wartość zamówienia
+                  </div>
+
+                  <div
+                    className="order-value"
+                    style={{
+                      fontWeight: 900,
+                    }}
+                  >
+                    {formatPrice(
+                      data.totalPrice
+                    )}
                   </div>
                 </div>
 
                 <div className="order-section">
-                  <div className="order-label">Opis</div>
-                  <div className="order-value">{data.clientNotes || "—"}</div>
+                  <div className="order-label">
+                    Opis
+                  </div>
+
+                  <div className="order-value">
+                    {data.clientNotes ||
+                      "—"}
+                  </div>
                 </div>
+
+                {isCompleted && (
+                  <div className="order-section">
+                    <div className="order-label">
+                      Ocena wizyty
+                    </div>
+
+                    {reviewLoading ? (
+                      <div className="order-value">
+                        Ładowanie opinii...
+                      </div>
+                    ) : review ? (
+                      <div className="order-kv">
+                        <div
+                          className="order-value"
+                          style={{
+                            fontWeight: 900,
+                          }}
+                        >
+                          {stars(
+                            review.rating
+                          )}{" "}
+                          {review.rating}/5
+                        </div>
+
+                        <div
+                          className="order-value"
+                          style={{
+                            color:
+                              "rgba(15,23,42,0.65)",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {review.comment ||
+                            "Brak komentarza"}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="order-value">
+                        {reviewError ||
+                          "Brak opinii"}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="order-back-row">
-              <button className="order-back-link" onClick={() => navigate("/orders")} type="button">
+              <button
+                className="order-back-link"
+                onClick={() =>
+                  navigate("/orders")
+                }
+                type="button"
+              >
                 ← Lista zamówień
               </button>
             </div>
           </div>
-
         </div>
       </div>
     </div>

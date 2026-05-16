@@ -1,96 +1,147 @@
-@media (max-width: 768px) {
-  .legal-page-bg {
-    padding-top: 40px;
-  }
-  .legal-container {
-    padding: 35px 24px;
-    border-radius: 22px;
-  }
-  .legal-container h1 {
-    font-size: 32px;
-  }
-}
-.legal-container {
+.legal-page-bg {
+  position: relative;
+
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+
   width: 100%;
-  max-width: 900px;
-  padding: 60px 50px;
-  border-radius: 28px;
+  min-height: 100vh;
+
+  padding: 80px 16px;
+
+  overflow-x: hidden;
+
+  background:
+    radial-gradient(
+      900px 520px at 20% 30%,
+      rgba(255,255,255,0.14),
+      transparent 55%
+    ),
+    radial-gradient(
+      1200px 700px at 65% 35%,
+      rgba(223,194,188,0.30),
+      transparent 60%
+    ),
+    linear-gradient(
+      90deg,
+      #2E4438 0%,
+      #435B4D 38%,
+      #778F81 68%,
+      #F5DFD7 100%
+    );
+}
+
+.legal-page-bg::after {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+
+  pointer-events: none;
+
+  background-image:
+    radial-gradient(
+      rgba(255,255,255,0.18) 1px,
+      transparent 1px
+    );
+
+  background-size: 16px 16px;
+
+  opacity: 0.14;
+}
+
+.legal-container {
   position: relative;
   z-index: 1;
 
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(226, 232, 240, 0.70);
+  width: 100%;
+  max-width: 900px;
+
+  padding: 60px 50px;
+
+  border-radius: 28px;
+  border: 1px solid rgba(226,232,240,0.70);
+
+  background: rgba(255,255,255,0.82);
+
   backdrop-filter: blur(20px);
-  box-shadow: 0 40px 100px rgba(15, 23, 42, 0.14);
-  
+
+  box-shadow:
+    0 40px 100px rgba(15,23,42,0.14);
+
   line-height: 1.8;
 }
+
 .legal-container::before {
   content: "";
+
   position: absolute;
   inset: -40px;
   z-index: -1;
-  background: radial-gradient(circle at 50% 30%, rgba(119,143,129,0.2), transparent 70%);
+
+  background:
+    radial-gradient(
+      circle at 50% 30%,
+      rgba(119,143,129,0.2),
+      transparent 70%
+    );
+
   filter: blur(15px);
 }
 
 .legal-container h1 {
+  margin-bottom: 40px;
+
+  color: #0f172a;
+
   font-size: 48px;
   font-weight: 850;
-  letter-spacing: -0.03em;
-  color: #0f172a; 
-  margin-bottom: 40px;
   line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.legal-content {
+  color: #1f2937;
+  font-size: 16px;
 }
 
 .legal-content h2 {
-  font-size: 26px;
-  font-weight: 800;
-  color: #2E4438;
   margin-top: 36px;
   margin-bottom: 16px;
+
+  color: #2E4438;
+
+  font-size: 26px;
+  font-weight: 800;
   letter-spacing: -0.01em;
 }
 
 .legal-content p {
   margin-bottom: 1.2rem;
 }
-.legal-content {
-  color: #1f2937;
-  font-size: 16px;
-}
 
 .legal-content ul {
-  padding-left: 20px;
   margin-bottom: 20px;
+  padding-left: 20px;
 }
 
 .legal-content li {
   margin: 10px 0;
 }
-.legal-page-bg {
-  min-height: 100vh;
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 80px 16px;
-  position: relative;
-  overflow-x: hidden;
 
-  /* Gradient z LoginPage */
-  background: 
-    radial-gradient(900px 520px at 20% 30%, rgba(255,255,255,0.14), transparent 55%),
-    radial-gradient(1200px 700px at 65% 35%, rgba(223,194,188,0.30), transparent 60%),
-    linear-gradient(90deg, #2E4438 0%, #435B4D 38%, #778F81 68%, #F5DFD7 100%);
-}
-.legal-page-bg::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image: radial-gradient(rgba(255,255,255,0.18) 1px, transparent 1px);
-  background-size: 16px 16px;
-  opacity: 0.14;
-  z-index: 0;
+@media (max-width: 768px) {
+  .legal-page-bg {
+    padding-top: 40px;
+  }
+
+  .legal-container {
+    padding: 35px 24px;
+    border-radius: 22px;
+  }
+
+  .legal-container h1 {
+    font-size: 32px;
+  }
 }

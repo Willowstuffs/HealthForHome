@@ -1,35 +1,27 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 
 import LoginPage from "./LoginPage.jsx";
 import RequireAdminAuth from "./RequireAdminAuth.jsx";
-
 import AdminLayout from "./AdminLayout.jsx";
 import Dashboard from "./Dashboard.jsx";
 
 import ListaSpecjalistow from "./ListaSpecjalistow.jsx";
 import SzczegolySpecjalisty from "./SzczegolySpecjalisty.jsx";
-
 import ListaUzytkownikow from "./ListaUzytkownikow.jsx";
 import SzczegolyUzytkownika from "./SzczegolyUzytkownika.jsx";
-
 import ListaZamowien from "./ListaZamowien.jsx";
 import SzczegolyZamowienia from "./SzczegolyZamowienia.jsx";
-
 import LegalPage from "./Legalpages.jsx";
 
 import "/src/styles/admin.css";
-
 
 function App() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
-      
-      /* strony prawne */
       <Route path="/legal/:type" element={<LegalPage />} />
 
-      {/* wszystko po zalogowaniu ma wspólny layout */}
       <Route
         element={
           <RequireAdminAuth>
@@ -48,8 +40,10 @@ function App() {
         <Route path="/orders" element={<ListaZamowien />} />
         <Route path="/orders/:id" element={<SzczegolyZamowienia />} />
 
-        {/* fallback w panelu */}
-        <Route path="*" element={<div style={{ padding: 24 }}>404 - Nie znaleziono strony</div>} />
+        <Route
+          path="*"
+          element={<div style={{ padding: 24 }}>404 - Nie znaleziono strony</div>}
+        />
       </Route>
     </Routes>
   );

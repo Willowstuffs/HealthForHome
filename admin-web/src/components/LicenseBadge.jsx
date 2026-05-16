@@ -1,14 +1,33 @@
-function LicenseBadge({ status }) {
-  const map = {
-    ACTIVE: { label: "WAŻNA", bg: "#22c55e" },
-    EXPIRING_SOON: { label: "WYGASA WKRÓTCE", bg: "#f59e0b" },
-    EXPIRED: { label: "WYGASŁA", bg: "#ef4444" },
-    UNKNOWN: { label: "BRAK DANYCH", bg: "#64748b" },
-    SUSPENDED: { label: "ZAWIESZONA", bg: "#f59e0b" },
-    REVOKED: { label: "ODEBRANA", bg: "#6b7280" },
-  };
+const LICENSE_STATUS = {
+  ACTIVE: {
+    label: "WAŻNA",
+    bg: "#22c55e",
+  },
+  EXPIRING_SOON: {
+    label: "WYGASA WKRÓTCE",
+    bg: "#f59e0b",
+  },
+  EXPIRED: {
+    label: "WYGASŁA",
+    bg: "#ef4444",
+  },
+  SUSPENDED: {
+    label: "ZAWIESZONA",
+    bg: "#f59e0b",
+  },
+  REVOKED: {
+    label: "ODEBRANA",
+    bg: "#6b7280",
+  },
+  UNKNOWN: {
+    label: "BRAK DANYCH",
+    bg: "#64748b",
+  },
+};
 
-  const cfg = map[status] || map.UNKNOWN;
+function LicenseBadge({ status }) {
+  const { label, bg } =
+    LICENSE_STATUS[status] || LICENSE_STATUS.UNKNOWN;
 
   return (
     <span
@@ -19,10 +38,10 @@ function LicenseBadge({ status }) {
         fontSize: 12,
         fontWeight: 700,
         color: "#111",
-        background: cfg.bg,
+        background: bg,
       }}
     >
-      {cfg.label}
+      {label}
     </span>
   );
 }

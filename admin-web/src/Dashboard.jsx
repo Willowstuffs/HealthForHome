@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+
 import {
   getAdminStats,
   listOrders,
-  listUsers,
-  listSpecialists,
 } from "./api/adminApi";
+
+import OrderStatusBadge from "./components/OrderStatusBadge";
 
 function pad2(n) {
   return String(n).padStart(2, "0");
@@ -16,14 +17,17 @@ function toYMDLocal(d) {
 }
 
 function dayLabelPL(d) {
-  const days = ["Nd", "Pn", "Wt", "Śr", "Cz", "Pt", "Sb"];
-  return days[d.getDay()];
+  return ["Nd", "Pn", "Wt", "Śr", "Cz", "Pt", "Sb"][d.getDay()];
 }
+
 function formatDateTimePL(value) {
   if (!value) return "—";
 
   const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
+
+  if (Number.isNaN(d.getTime())) {
+    return "—";
+  }
 
   return d.toLocaleString("pl-PL", {
     year: "numeric",
@@ -33,50 +37,41 @@ function formatDateTimePL(value) {
     minute: "2-digit",
   });
 }
-function orderDayKey(o) {
-  const value = o?.createdAt || o?.scheduledStart;
-  if (!value) return null;
+
+function orderDayKey(order) {
+  const value = order?.createdAt || order?.scheduledStart;
+
+  if (!value) {
+    return null;
+  }
 
   if (typeof value === "string" && value.length >= 10) {
     return value.slice(0, 10);
   }
 
   const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
+
+  if (Number.isNaN(d.getTime())) {
+    return null;
+  }
+
   return toYMDLocal(d);
 }
 
 function timeAgoPL(value) {
   if (!value) return "—";
 
-  const raw = String(value).trim();
+  const d = new Date(value);
 
-  const match = raw.match(
-    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/
-  );
-
-  let d;
-
-  if (match) {
-    const [, year, month, day, hour, minute, second] = match;
-
-    d = new Date(
-      Number(year),
-      Number(month) - 1,
-      Number(day),
-      Number(hour),
-      Number(minute),
-      Number(second)
-    );
-  } else {
-    d = new Date(raw);
+  if (Number.isNaN(d.getTime())) {
+    return "—";
   }
-
-  if (Number.isNaN(d.getTime())) return "—";
 
   const diffMs = Date.now() - d.getTime();
 
-  if (diffMs < 0) return "zaplanowano";
+  if (diffMs < 0) {
+    return "zaplanowano";
+  }
 
   const diffMin = Math.floor(diffMs / 60000);
 
@@ -84,70 +79,74 @@ function timeAgoPL(value) {
   if (diffMin < 60) return `${diffMin} min temu`;
 
   const diffH = Math.floor(diffMin / 60);
-  if (diffH < 24) return `${diffH} godz. temu`;
 
-  const diffD = Math.floor(diffH / 24);
-  return `${diffD} dni temu`;
+  if (diffH < 24) {
+    return `${diffH} godz. temu`;
+  }
+
+  return `${Math.floor(diffH / 24)} dni temu`;
 }
-/** ---------- small components ---------- */
-function StatCard({ title, value, hint, to, className = "" }) {
+
+function StatCard({ title, value, hint, to }) {
   const content = (
-    <div className={`card card-pad stat-card ${className}`}>
+    <div className="card card-pad stat-card">
       <div className="card-head">
         <div className="card-title">{title}</div>
       </div>
 
       <div className="stat-number">{value}</div>
-      {hint ? (
+
+      {hint && (
         <div className="muted" style={{ marginTop: 6 }}>
           {hint}
         </div>
-      ) : null}
+      )}
     </div>
   );
 
-  return to ? (
-    <Link to={to} style={{ textDecoration: "none", color: "inherit" }}>
+  if (!to) {
+    return content;
+  }
+
+  return (
+    <Link
+      to={to}
+      style={{
+        textDecoration: "none",
+        color: "inherit",
+      }}
+    >
       {content}
     </Link>
-  ) : (
-    content
   );
 }
 
-/** ---------- chart card ---------- */
-function OrdersChart({ series, totalRevenue, newOrders, successRate, loading }) {
+function OrdersChart({
+  series,
+  totalRevenue,
+  newOrders,
+  successRate,
+  loading,
+}) {
   if (loading) {
     return (
       <div className="card card-pad">
-        <div className="card-head" style={{ justifyContent: "space-between" }}>
-          <div>
-            <h2>Przychody</h2>
-            <div className="muted" style={{ marginTop: 6 }}>
-              Ostatnie 7 dni
-            </div>
-          </div>
-        </div>
-        <div className="muted" style={{ padding: "18px 0" }}>
-          Ładowanie danych wykresu...
+        <h2>Przychody</h2>
+
+        <div className="muted" style={{ marginTop: 12 }}>
+          Ładowanie danych...
         </div>
       </div>
     );
   }
 
-  if (!series || series.length === 0) {
+  if (!series.length) {
     return (
       <div className="card card-pad">
-        <div className="card-head" style={{ justifyContent: "space-between" }}>
-          <div>
-            <h2>Przychody</h2>
-            <div className="muted" style={{ marginTop: 6 }}>
-              Ostatnie 7 dni
-            </div>
-          </div>
-        </div>
-        <div className="muted" style={{ padding: "18px 0" }}>
-          Brak danych z ostatnich 7 dni.
+        <h2>Przychody</h2>
+
+        <div className="muted" style={{ marginTop: 12 }}>
+          Brak danych
         </div>
       </div>
     );
@@ -157,24 +156,23 @@ function OrdersChart({ series, totalRevenue, newOrders, successRate, loading }) 
   const H = 180;
   const P = 16;
 
-  const values = series.map((p) => Number(p.value || 0));
+  const values = series.map((x) => Number(x.value || 0));
+
   const max = Math.max(1, ...values);
   const min = Math.min(...values);
 
-  const steps = 4;
-const stepValues = [];
-
-for (let i = 0; i <= steps; i++) {
-  const value = Math.round((max / steps) * i);
-  stepValues.push(value);
-}
-
   const scaleX = (i) =>
-    series.length === 1 ? P : P + (i * (W - 2 * P)) / (series.length - 1);
+    series.length === 1
+      ? P
+      : P + (i * (W - 2 * P)) / (series.length - 1);
 
   const scaleY = (v) => {
-    if (max === min) return H / 2;
+    if (max === min) {
+      return H / 2;
+    }
+
     const t = (v - min) / (max - min);
+
     return H - P - t * (H - 2 * P);
   };
 
@@ -184,103 +182,69 @@ for (let i = 0; i <= steps; i++) {
 
   return (
     <div className="card card-pad">
-      <div className="card-head" style={{ justifyContent: "space-between" }}>
+      <div className="card-head">
         <div>
           <h2>Przychody</h2>
+
           <div className="muted" style={{ marginTop: 6 }}>
             Ostatnie 7 dni
           </div>
         </div>
-
-        <select className="btn" style={{ height: 40 }} defaultValue="7" disabled>
-          <option value="7">Ostatnie 7 dni</option>
-        </select>
       </div>
 
-      <div style={{ marginTop: 12 }}>
-        <svg
-          viewBox={`0 0 ${W} ${H}`}
-          width="100%"
-          height="180"
-          role="img"
-          aria-label="Wykres przychodów"
-        >
-          {stepValues.map((v, i) => {
-  const y = scaleY(v);
-  return (
-    <g key={i}>
-      <line
-        x1={P}
-        x2={W - P}
-        y1={y}
-        y2={y}
-        stroke="currentColor"
-        strokeWidth="1"
-        opacity="0.1"
-      />
-      <text
-        x={P - 6}
-        y={y + 4}
-        textAnchor="end"
-        fontSize="12"
-        opacity="0.5"
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        width="100%"
+        height="180"
       >
-        {v} zł
-      </text>
-    </g>
-  );
-})}
-          <polyline
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            points={points}
-            opacity="0.25"
-          />
-          <polyline
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            points={points}
-          />
+        <polyline
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          points={points}
+        />
 
-          {series.map((p, i) => (
-            <text
-              key={p.date + i}
-              x={scaleX(i)}
-              y={H - 4}
-              textAnchor="middle"
-              fontSize="12"
-              opacity="0.5"
-            >
-              {p.dateLabel}
-            </text>
-          ))}
-        </svg>
-      </div>
+        {series.map((p, i) => (
+          <text
+            key={p.date}
+            x={scaleX(i)}
+            y={H - 4}
+            textAnchor="middle"
+            fontSize="12"
+            opacity="0.5"
+          >
+            {p.dateLabel}
+          </text>
+        ))}
+      </svg>
 
       <div
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
           gap: 12,
-          marginTop: 6,
+          marginTop: 12,
         }}
       >
         <div>
           <div className="muted">Łączny przychód</div>
+
           <div className="stat-number" style={{ fontSize: 22 }}>
             {totalRevenue} PLN
           </div>
         </div>
+
         <div>
           <div className="muted">Nowe zamówienia</div>
+
           <div className="stat-number" style={{ fontSize: 22 }}>
             {newOrders}
           </div>
         </div>
+
         <div>
           <div className="muted">Skuteczność</div>
+
           <div className="stat-number" style={{ fontSize: 22 }}>
             {successRate}%
           </div>
@@ -294,26 +258,22 @@ function ActivityList({ items, loading }) {
   if (loading) {
     return (
       <div className="card card-pad">
-        <div className="card-head" style={{ justifyContent: "space-between" }}>
-          <h2>Ostatnia aktywność</h2>
-          <span className="muted">…</span>
-        </div>
+        <h2>Ostatnia aktywność</h2>
+
         <div className="muted" style={{ marginTop: 12 }}>
-          Ładowanie aktywności...
+          Ładowanie...
         </div>
       </div>
     );
   }
 
-  if (!items || items.length === 0) {
+  if (!items.length) {
     return (
       <div className="card card-pad">
-        <div className="card-head" style={{ justifyContent: "space-between" }}>
-          <h2>Ostatnia aktywność</h2>
-          <span className="muted">…</span>
-        </div>
+        <h2>Ostatnia aktywność</h2>
+
         <div className="muted" style={{ marginTop: 12 }}>
-          Brak aktywności.
+          Brak aktywności
         </div>
       </div>
     );
@@ -321,15 +281,18 @@ function ActivityList({ items, loading }) {
 
   return (
     <div className="card card-pad">
-      <div className="card-head" style={{ justifyContent: "space-between" }}>
-        <h2>Ostatnia aktywność</h2>
-        <span className="muted">…</span>
-      </div>
+      <h2>Ostatnia aktywność</h2>
 
-      <div style={{ display: "grid", gap: 12, marginTop: 8 }}>
-        {items.map((x, idx) => (
+      <div
+        style={{
+          display: "grid",
+          gap: 12,
+          marginTop: 12,
+        }}
+      >
+        {items.map((x) => (
           <div
-            key={`${x.type}-${x.id}-${idx}`}
+            key={`${x.type}-${x.id}`}
             style={{
               display: "grid",
               gridTemplateColumns: "42px 1fr auto",
@@ -337,7 +300,14 @@ function ActivityList({ items, loading }) {
               alignItems: "center",
             }}
           >
-            <div className="card-ico" style={{ width: 42, height: 42, borderRadius: 999 }}>
+            <div
+              className="card-ico"
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 999,
+              }}
+            >
               {String(x.name || "?")
                 .split(" ")
                 .map((p) => p[0])
@@ -346,24 +316,23 @@ function ActivityList({ items, loading }) {
                 .toUpperCase()}
             </div>
 
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 900 }}>{x.name}</div>
-              <div
-                className="muted"
-                style={{
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
+            <div>
+              <div style={{ fontWeight: 900 }}>
+                {x.name}
+              </div>
+
+              <div className="muted">
                 {x.subtitle || "—"}
               </div>
-              <div className="muted">{x.text}</div>
+
+              <div className="muted">
+                {x.text}
+              </div>
             </div>
 
             <div className="muted">
-  {x.createdAt ? timeAgoPL(x.createdAt) : ""}
-</div>
+              {x.createdAt ? timeAgoPL(x.createdAt) : ""}
+            </div>
           </div>
         ))}
       </div>
@@ -372,46 +341,10 @@ function ActivityList({ items, loading }) {
 }
 
 function OrdersTable({ rows, loading }) {
-  const badge = (s) => {
-  const status = String(s || "").toLowerCase();
-
-  if (status === "pending") {
-    return <span className="badge badge-new">Oczekuje</span>;
-  }
-
-  if (status === "confirmed") {
-    return <span className="badge badge-progress">Potwierdzone</span>;
-  }
-
-  if (status === "completed") {
-    return <span className="badge badge-done">Zakończone</span>;
-  }
-
-  if (status === "cancelled") {
-    return <span className="badge badge-danger">Anulowane</span>;
-  }
-
-  if (status === "open") {
-    return <span className="badge badge-primary">Otwarte</span>;
-  }
-
-  if (status === "in_progress") {
-    return <span className="badge badge-progress">W trakcie</span>;
-  }
-
-  if (status === "no_show") {
-    return <span className="badge badge-muted">Nie odbyła się</span>;
-  }
-
-  return <span className="badge badge-muted">{s || "—"}</span>;
-};
-
   return (
     <div className="card dashboard-table">
-      <div className="card-pad" style={{ paddingBottom: 10 }}>
-        <div className="card-head">
-          <h2>Ostatnie zamówienia</h2>
-        </div>
+      <div className="card-pad">
+        <h2>Ostatnie zamówienia</h2>
       </div>
 
       <div style={{ overflowX: "auto" }}>
@@ -433,7 +366,7 @@ function OrdersTable({ rows, loading }) {
                   Ładowanie...
                 </td>
               </tr>
-            ) : !rows || rows.length === 0 ? (
+            ) : !rows.length ? (
               <tr>
                 <td colSpan={5} className="muted">
                   Brak zamówień
@@ -442,15 +375,23 @@ function OrdersTable({ rows, loading }) {
             ) : (
               rows.map((r) => (
                 <tr key={r.appointmentId}>
-                  <td style={{ fontWeight: 900 }}>#{r.appointmentId}</td>
+                  <td style={{ fontWeight: 900 }}>
+                    #{r.appointmentId}
+                  </td>
+
                   <td>{r.contactName || "—"}</td>
+
                   <td>{r.serviceName || "—"}</td>
+
                   <td>
                     {r.scheduledStart
                       ? formatDateTimePL(r.scheduledStart)
                       : "—"}
                   </td>
-                  <td>{badge(r.status)}</td>
+
+                  <td>
+                    <OrderStatusBadge status={r.status} />
+                  </td>
                 </tr>
               ))
             )}
@@ -458,14 +399,15 @@ function OrdersTable({ rows, loading }) {
         </table>
       </div>
 
-      <div className="card-pad muted" style={{ paddingTop: 10 }}>
-        {rows?.length ? `Wyświetlanie ${rows.length} ostatnich zamówień` : "Brak danych"}
+      <div className="card-pad muted">
+        {rows.length
+          ? `Wyświetlanie ${rows.length} ostatnich zamówień`
+          : "Brak danych"}
       </div>
     </div>
   );
 }
 
-/** ---------- Dashboard ---------- */
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(false);
@@ -477,30 +419,43 @@ export default function Dashboard() {
     newOrders: 0,
     successRate: 0,
   });
+
   const [loadingChart, setLoadingChart] = useState(false);
 
   const [activityItems, setActivityItems] = useState([]);
   const [loadingActivity, setLoadingActivity] = useState(false);
 
   const [recentOrders, setRecentOrders] = useState([]);
-  const [loadingRecentOrders, setLoadingRecentOrders] = useState(false);
+  const [loadingRecentOrders, setLoadingRecentOrders] =
+    useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
-    setLoadingStats(true);
-    setErrorStats("");
+    async function loadStats() {
+      setLoadingStats(true);
+      setErrorStats("");
 
-    getAdminStats()
-      .then((res) => {
-        if (!cancelled) setStats(res);
-      })
-      .catch((e) => {
-        if (!cancelled) setErrorStats(e?.message || "Błąd pobierania statystyk");
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingStats(false);
-      });
+      try {
+        const res = await getAdminStats();
+
+        if (!cancelled) {
+          setStats(res);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setErrorStats(
+            e?.message || "Błąd pobierania statystyk"
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingStats(false);
+        }
+      }
+    }
+
+    loadStats();
 
     return () => {
       cancelled = true;
@@ -510,14 +465,16 @@ export default function Dashboard() {
   useEffect(() => {
     let cancelled = false;
 
-    async function loadChart7d() {
+    async function loadChart() {
       setLoadingChart(true);
 
       try {
         const today = new Date();
+
         today.setHours(0, 0, 0, 0);
 
         const from = new Date(today);
+
         from.setDate(from.getDate() - 6);
 
         const createdFrom = toYMDLocal(from);
@@ -528,43 +485,51 @@ export default function Dashboard() {
           pageSize: 5000,
         });
 
-        const allOrders = res?.items ?? [];
-
-        const orders = allOrders.filter((o) => {
+        const orders = (res?.items ?? []).filter((o) => {
           const key = orderDayKey(o);
-          if (!key) return false;
-          return key >= createdFrom && key <= createdTo;
+
+          return key && key >= createdFrom && key <= createdTo;
         });
 
         const sumByDay = new Map();
-        let total = 0;
-        let newCount = 0;
 
-        for (const o of orders) {
-  const status = String(o.status || "").toLowerCase();
+        let totalRevenue = 0;
+        let newOrders = 0;
 
-  if (status === "pending") {
-    newCount += 1;
-  }
+        for (const order of orders) {
+          const status = String(order.status || "").toLowerCase();
 
-  // TYLKO zakończone wizyty liczą się do przychodu
-  if (status !== "completed") {
-    continue;
-  }
+          if (status === "pending") {
+            newOrders += 1;
+          }
 
-  const v = Number(o.totalPrice ?? 0);
-  total += v;
+          if (status !== "completed") {
+            continue;
+          }
 
-  const key = orderDayKey(o);
-  if (!key) continue;
+          const value = Number(order.totalPrice ?? 0);
 
-  sumByDay.set(key, (sumByDay.get(key) ?? 0) + v);
-}
+          totalRevenue += value;
+
+          const key = orderDayKey(order);
+
+          if (!key) {
+            continue;
+          }
+
+          sumByDay.set(
+            key,
+            (sumByDay.get(key) ?? 0) + value
+          );
+        }
 
         const series = [];
+
         for (let i = 0; i < 7; i++) {
           const d = new Date(from);
+
           d.setDate(from.getDate() + i);
+
           const key = toYMDLocal(d);
 
           series.push({
@@ -575,36 +540,40 @@ export default function Dashboard() {
         }
 
         const finishedOrders = orders.filter((o) =>
-  ["completed", "cancelled", "no_show"].includes(String(o.status).toLowerCase())
-);
+          ["completed", "cancelled", "no_show"].includes(
+            String(o.status).toLowerCase()
+          )
+        );
 
-const completedCount = finishedOrders.filter(
-  (o) => String(o.status).toLowerCase() === "completed"
-).length;
+        const completedOrders = finishedOrders.filter(
+          (o) =>
+            String(o.status).toLowerCase() === "completed"
+        );
 
-const successRate = finishedOrders.length
-  ? Math.round((completedCount / finishedOrders.length) * 100)
-  : 0;
+        const successRate = finishedOrders.length
+          ? Math.round(
+              (completedOrders.length /
+                finishedOrders.length) *
+                100
+            )
+          : 0;
 
         if (!cancelled) {
           setChart({
             series,
-            totalRevenue: Math.round(total),
-            newOrders: newCount,
+            totalRevenue: Math.round(totalRevenue),
+            newOrders,
             successRate,
           });
         }
-      } catch (e) {
-        console.error("Błąd pobierania danych do wykresu:", e);
-        if (!cancelled) {
-          setChart({ series: [], totalRevenue: 0, newOrders: 0, successRate: 0 });
-        }
       } finally {
-        if (!cancelled) setLoadingChart(false);
+        if (!cancelled) {
+          setLoadingChart(false);
+        }
       }
     }
 
-    loadChart7d();
+    loadChart();
 
     return () => {
       cancelled = true;
@@ -615,48 +584,48 @@ const successRate = finishedOrders.length
     let cancelled = false;
 
     async function loadActivity() {
-  setLoadingActivity(true);
+      setLoadingActivity(true);
 
-  try {
-    const ordersRes = await listOrders({ page: 1, pageSize: 10 });
-    const orders = ordersRes?.items ?? [];
-    console.log("ACTIVITY ORDERS:", orders);
-    
-    
-const orderItems = orders.map((o) => {
-  const hasCreatedAt = !!o.createdAt;
+      try {
+        const res = await listOrders({
+          page: 1,
+          pageSize: 10,
+        });
 
-  return {
-  id: o.appointmentId,
-  type: "order",
-  name: o.contactName || "Klient",
-  subtitle: o.serviceName || "—",
+        const items = (res?.items ?? [])
+          .map((o) => ({
+            id: o.appointmentId,
+            type: "order",
+            name: o.contactName || "Klient",
+            subtitle: o.serviceName || "—",
 
-  text: hasCreatedAt
-    ? "Dodano nowe zamówienie"
-    : `Termin wizyty: ${
-        o.scheduledStart
-          ? formatDateTimePL(o.scheduledStart)
-          : "—"
-      }`,
+            text: o.createdAt
+              ? "Dodano nowe zamówienie"
+              : `Termin wizyty: ${
+                  o.scheduledStart
+                    ? formatDateTimePL(o.scheduledStart)
+                    : "—"
+                }`,
 
-  date: hasCreatedAt ? o.createdAt : o.scheduledStart,
-  createdAt: o.createdAt,
-};
-});
-    const merged = orderItems
-      .filter((x) => x.date)
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
-      .slice(0, 5);
+            date: o.createdAt || o.scheduledStart,
+            createdAt: o.createdAt,
+          }))
+          .filter((x) => x.date)
+          .sort(
+            (a, b) =>
+              new Date(b.date) - new Date(a.date)
+          )
+          .slice(0, 5);
 
-    if (!cancelled) setActivityItems(merged);
-  } catch (e) {
-    console.error("Błąd pobierania aktywności:", e);
-    if (!cancelled) setActivityItems([]);
-  } finally {
-    if (!cancelled) setLoadingActivity(false);
-  }
-}
+        if (!cancelled) {
+          setActivityItems(items);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingActivity(false);
+        }
+      }
+    }
 
     loadActivity();
 
@@ -680,11 +649,10 @@ const orderItems = orders.map((o) => {
         if (!cancelled) {
           setRecentOrders(res?.items ?? []);
         }
-      } catch (e) {
-        console.error("Błąd pobierania ostatnich zamówień:", e);
-        if (!cancelled) setRecentOrders([]);
       } finally {
-        if (!cancelled) setLoadingRecentOrders(false);
+        if (!cancelled) {
+          setLoadingRecentOrders(false);
+        }
       }
     }
 
@@ -696,7 +664,9 @@ const orderItems = orders.map((o) => {
   }, []);
 
   const cards = useMemo(() => {
-    if (!stats) return [];
+    if (!stats) {
+      return [];
+    }
 
     return [
       {
@@ -705,12 +675,14 @@ const orderItems = orders.map((o) => {
         hint: "Łączna liczba klientów",
         to: "/users",
       },
+
       {
         title: "Specjaliści",
         value: stats.totalSpecialists ?? 0,
         hint: `Oczekuje: ${stats.pendingSpecialists ?? 0}`,
         to: "/specialists",
       },
+
       {
         title: "Zamówienia",
         value: stats.totalAppointments ?? 0,
@@ -724,12 +696,24 @@ const orderItems = orders.map((o) => {
     <div>
       <h1>Strona główna</h1>
 
-      {loadingStats && <p className="muted">Ładowanie...</p>}
-      {errorStats && <p style={{ color: "tomato" }}>{errorStats}</p>}
+      {loadingStats && (
+        <p className="muted">Ładowanie...</p>
+      )}
+
+      {errorStats && (
+        <p style={{ color: "tomato" }}>
+          {errorStats}
+        </p>
+      )}
 
       <div className="dashboard">
         <div className="dashboard-stats">
-          {stats ? cards.map((c) => <StatCard key={c.title} {...c} />) : null}
+          {cards.map((card) => (
+            <StatCard
+              key={card.title}
+              {...card}
+            />
+          ))}
         </div>
 
         <div className="dashboard-mid">
@@ -740,10 +724,17 @@ const orderItems = orders.map((o) => {
             successRate={chart.successRate}
             loading={loadingChart}
           />
-          <ActivityList items={activityItems} loading={loadingActivity} />
+
+          <ActivityList
+            items={activityItems}
+            loading={loadingActivity}
+          />
         </div>
 
-        <OrdersTable rows={recentOrders} loading={loadingRecentOrders} />
+        <OrdersTable
+          rows={recentOrders}
+          loading={loadingRecentOrders}
+        />
       </div>
     </div>
   );

@@ -1,29 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+
 import {
-  listSpecialists,
   approveSpecialist,
+  listSpecialists,
   rejectSpecialist,
 } from "./api/adminApi";
+
 import StatusBadge from "./components/StatusBadge";
-import LicenseBadge from "./components/LicenseBadge";
-function computeLicenseStatus(licenseStatus, licenseValidUntil) {
-  if (!licenseValidUntil) return licenseStatus || "UNKNOWN";
-
-  const until = new Date(licenseValidUntil);
-  if (Number.isNaN(until.getTime())) return licenseStatus || "UNKNOWN";
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  until.setHours(0, 0, 0, 0);
-
-  const diffMs = until - today;
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays < 0) return "EXPIRED";
-  if (diffDays <= 30) return "EXPIRING_SOON";
-  return "ACTIVE";
-}
 
 const DEFAULT_QUERY = {
   status: "",
@@ -34,6 +18,49 @@ const DEFAULT_QUERY = {
   page: 1,
   pageSize: 20,
 };
+
+const SPECIALIZATION_LABELS = {
+  physiotherapist: "Fizjoterapeuta",
+  fizjoterapia: "Fizjoterapeuta",
+  FIZJOTERAPEUTA: "Fizjoterapeuta",
+
+  nurse: "Pielęgniarz",
+  pielegniarstwo: "Pielęgniarz",
+  pielęgniarstwo: "Pielęgniarz",
+  PIELEGNIARKA: "Pielęgniarz",
+};
+
+function getSpecializationLabel(specialist) {
+  return (
+    SPECIALIZATION_LABELS[specialist.professionalTitle] ||
+    SPECIALIZATION_LABELS[specialist.specialization] ||
+    specialist.professionalTitle ||
+    specialist.specialization ||
+    "-"
+  );
+}
+
+function matchesSpecialization(specialist, specialization) {
+  if (!specialization) {
+    return true;
+  }
+
+  const raw = String(
+    specialist.professionalTitle ||
+      specialist.specialization ||
+      ""
+  ).toLowerCase();
+
+  if (specialization === "physiotherapist") {
+    return raw.includes("physio") || raw.includes("fizjo");
+  }
+
+  if (specialization === "nurse") {
+    return raw.includes("nurse") || raw.includes("piel");
+  }
+
+  return true;
+}
 
 function ListaSpecjalistow() {
   const [query, setQuery] = useState(DEFAULT_QUERY);
@@ -48,18 +75,13 @@ function ListaSpecjalistow() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const loadSpecialists = async () => {
+  async function loadSpecialists() {
     setLoading(true);
     setError("");
 
     try {
       const res = await listSpecialists(query);
       const payload = res?.data ?? res;
-
-      console.log("SPECIALISTS PAYLOAD:", payload);
-      console.log("SPECIALISTS ITEMS:", payload?.items);
-      console.log("FIRST SPECIALIST:", payload?.items?.[0]);
-      console.log("FIRST SPECIALIST KEYS:", Object.keys(payload?.items?.[0] || {}));
 
       setData({
         items: payload?.items ?? [],
@@ -72,86 +94,90 @@ function ListaSpecjalistow() {
     } finally {
       setLoading(false);
     }
-  };
+  }
+
   useEffect(() => {
     loadSpecialists();
   }, [query]);
 
-  const handleApprove = async (id) => {
+  async function handleApprove(id) {
     try {
       await approveSpecialist(id);
+
       alert("Specjalista został zaakceptowany");
+
       await loadSpecialists();
-    } catch (e) {
-      console.error(e);
+    } catch {
       alert("Nie udało się zaakceptować specjalisty");
     }
-  };
-  const handleReject = async (id) => {
-  const reason = prompt("Podaj powód odrzucenia");
+  }
 
-      if (!reason || !reason.trim()) {
-        return;
-      }
+  async function handleReject(id) {
+    const reason = prompt("Podaj powód odrzucenia");
 
-      try {
-        await rejectSpecialist(id, { reason });
-        alert("Specjalista został odrzucony");
-        await loadSpecialists();
-      } catch (e) {
-        console.error(e);
-        alert("Nie udało się odrzucić specjalisty");
-      }
-    };
+    if (!reason?.trim()) {
+      return;
+    }
+
+    try {
+      await rejectSpecialist(id, { reason });
+
+      alert("Specjalista został odrzucony");
+
+      await loadSpecialists();
+    } catch {
+      alert("Nie udało się odrzucić specjalisty");
+    }
+  }
+
+  const filteredItems = useMemo(() => {
+    return data.items.filter((s) =>
+      matchesSpecialization(s, query.specialization)
+    );
+  }, [data.items, query.specialization]);
 
   const canPrev = query.page > 1;
-  const canNext = data.page * data.pageSize < data.total;
+
+  const canNext =
+    data.page * data.pageSize < data.total;
 
   const resultLabel = useMemo(() => {
-    if (loading) return "Ładowanie…";
-    if (error) return "Błąd";
-    if (data.total === 0) return "Brak wyników";
-    return `Strona ${data.page} z ${Math.max(1, Math.ceil(data.total / data.pageSize))} • Wyświetlono ${data.items.length} wyników`;
+    if (loading) {
+      return "Ładowanie…";
+    }
+
+    if (error) {
+      return "Błąd";
+    }
+
+    if (data.total === 0) {
+      return "Brak wyników";
+    }
+
+    return `Strona ${data.page} z ${Math.max(
+      1,
+      Math.ceil(data.total / data.pageSize)
+    )} • Wyświetlono ${data.items.length} wyników`;
   }, [loading, error, data]);
-    const specializationLabels = {
-  physiotherapist: "Fizjoterapeuta",
-  fizjoterapia: "Fizjoterapeuta",
-  FIZJOTERAPEUTA: "Fizjoterapeuta",
-
-  nurse: "Pielęgniarz",
-  pielegniarstwo: "Pielęgniarz",
-  pielęgniarstwo: "Pielęgniarz",
-  PIELEGNIARKA: "Pielęgniarz",
-
-};
-const filteredItems = data.items.filter((s) => {
-  if (!query.specialization) return true;
-
-  const raw = String(s.professionalTitle || s.specialization || "").toLowerCase();
-
-  if (query.specialization === "physiotherapist") {
-    return raw.includes("physio") || raw.includes("fizjo");
-  }
-
-  if (query.specialization === "nurse") {
-    return raw.includes("nurse") || raw.includes("piel");
-  }
-
-  return true;
-});
 
   return (
     <div className="page">
       <h1>Lista specjalistów</h1>
 
-      {/* FILTRY */}
       <div className="card card-pad">
         <div className="filters-grid">
           <label className="field">
             <span>Status</span>
+
             <select
               value={query.status}
-              onChange={(e) => setQuery((q) => ({ ...q, status: e.target.value, page: 1 }))}
+              onChange={(e) =>
+                setQuery((q) => ({
+                  ...q,
+                  status: e.target.value,
+                  page: 1,
+                }))
+              }
             >
               <option value="">Wszystkie</option>
               <option value="PENDING">Oczekuje</option>
@@ -162,107 +188,191 @@ const filteredItems = data.items.filter((s) => {
 
           <label className="field">
             <span>Specjalizacja</span>
+
             <select
               value={query.specialization}
-              onChange={(e) => setQuery((q) => ({ ...q, specialization: e.target.value, page: 1 }))}
+              onChange={(e) =>
+                setQuery((q) => ({
+                  ...q,
+                  specialization: e.target.value,
+                  page: 1,
+                }))
+              }
             >
               <option value="">Wszystkie</option>
-              <option value="physiotherapist">Fizjoterapeuta</option>
-              <option value="nurse">Pielęgniarz</option>
+              <option value="physiotherapist">
+                Fizjoterapeuta
+              </option>
+              <option value="nurse">
+                Pielęgniarz
+              </option>
             </select>
           </label>
 
           <label className="field">
             <span>Data zgłoszenia od</span>
+
             <input
               type="date"
               value={query.createdFrom}
-              onChange={(e) => setQuery((q) => ({ ...q, createdFrom: e.target.value, page: 1 }))}
+              onChange={(e) =>
+                setQuery((q) => ({
+                  ...q,
+                  createdFrom: e.target.value,
+                  page: 1,
+                }))
+              }
             />
           </label>
 
           <label className="field">
             <span>Data zgłoszenia do</span>
+
             <input
               type="date"
               value={query.createdTo}
-              onChange={(e) => setQuery((q) => ({ ...q, createdTo: e.target.value, page: 1 }))}
+              onChange={(e) =>
+                setQuery((q) => ({
+                  ...q,
+                  createdTo: e.target.value,
+                  page: 1,
+                }))
+              }
             />
           </label>
 
           <label className="field">
             <span>Sortowanie</span>
+
             <select
               value={query.sort}
-              onChange={(e) => setQuery((q) => ({ ...q, sort: e.target.value, page: 1 }))}
+              onChange={(e) =>
+                setQuery((q) => ({
+                  ...q,
+                  sort: e.target.value,
+                  page: 1,
+                }))
+              }
             >
               <option value="">Domyślne</option>
-              <option value="CREATED_ASC">Najstarsze</option>
-              <option value="CREATED_DESC">Najnowsze</option>
+              <option value="CREATED_ASC">
+                Najstarsze
+              </option>
+              <option value="CREATED_DESC">
+                Najnowsze
+              </option>
             </select>
           </label>
 
           <div className="filters-actions">
-            <button className="btn" onClick={() => setQuery(DEFAULT_QUERY)}>
+            <button
+              className="btn"
+              onClick={() => setQuery(DEFAULT_QUERY)}
+            >
               Wyczyść
             </button>
           </div>
         </div>
       </div>
 
-      {/* STANY */}
-      {loading && <p className="muted" style={{ marginTop: 12 }}>Ładowanie...</p>}
-      {error && <p className="error" style={{ marginTop: 12 }}>{error}</p>}
+      {loading && (
+        <p
+          className="muted"
+          style={{ marginTop: 12 }}
+        >
+          Ładowanie...
+        </p>
+      )}
 
-      {/* TABELA */}
+      {error && (
+        <p
+          className="error"
+          style={{ marginTop: 12 }}
+        >
+          {error}
+        </p>
+      )}
+
       {!loading && !error && (
-        <>
-          <div className="card table-card">
-            <div className="table-scroll">
-              <table className="table">
-                <thead>
+        <div className="card table-card">
+          <div className="table-scroll">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Imię i nazwisko</th>
+                  <th>Specjalizacja</th>
+                  <th>Email</th>
+                  <th>Status</th>
+                  <th></th>
+                  <th></th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {filteredItems.length === 0 ? (
                   <tr>
-                    <th>Imię i nazwisko</th>
-                    <th>Specjalizacja</th>
-                    <th>Email</th>
-                    <th>Status</th>
-
-                    <th></th>
+                    <td
+                      colSpan={6}
+                      className="muted"
+                    >
+                      Brak wyników
+                    </td>
                   </tr>
-                </thead>
+                ) : (
+                  filteredItems.map((s) => {
+                    const status =
+                      s.status ||
+                      s.verificationStatus;
 
-                <tbody>
-                  {filteredItems.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="muted">
-                        Brak wyników
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredItems.map((s) => (
+                    const isPending =
+                      String(status).toUpperCase() ===
+                      "PENDING";
+
+                    return (
                       <tr key={s.specialistId}>
                         <td className="cell-strong">
                           {s.firstName} {s.lastName}
                         </td>
+
                         <td>
-  {specializationLabels[s.professionalTitle] ||
-    specializationLabels[s.specialization] ||
-    s.professionalTitle ||
-    s.specialization ||
-    "-"}
-</td>
-                        <td>{s.email}</td>
-                        <td>
-                          <StatusBadge status={s.status || s.verificationStatus} />
+                          {getSpecializationLabel(s)}
                         </td>
+
+                        <td>{s.email}</td>
+
                         <td>
-                          {(s.status || s.verificationStatus)?.toUpperCase() === "PENDING" && (
-                            <div style={{ display: "flex", gap: "8px" }}>
-                              <button className="btn" onClick={() => handleApprove(s.specialistId)}>
+                          <StatusBadge
+                            status={status}
+                          />
+                        </td>
+
+                        <td>
+                          {isPending && (
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: 8,
+                              }}
+                            >
+                              <button
+                                className="btn"
+                                onClick={() =>
+                                  handleApprove(
+                                    s.specialistId
+                                  )
+                                }
+                              >
                                 Akceptuj
                               </button>
 
-                              <button className="btn" onClick={() => handleReject(s.specialistId)}>
+                              <button
+                                className="btn"
+                                onClick={() =>
+                                  handleReject(
+                                    s.specialistId
+                                  )
+                                }
+                              >
                                 Odrzuć
                               </button>
                             </div>
@@ -270,40 +380,55 @@ const filteredItems = data.items.filter((s) => {
                         </td>
 
                         <td className="cell-right">
-                          <Link className="table-link" to={`/specialists/${s.specialistId}`}>
+                          <Link
+                            className="table-link"
+                            to={`/specialists/${s.specialistId}`}
+                          >
                             Szczegóły
                           </Link>
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
 
-            <div className="table-footer">
-              <span className="muted">{resultLabel}</span>
+          <div className="table-footer">
+            <span className="muted">
+              {resultLabel}
+            </span>
 
-              <div className="pager">
-                <button
-                  className="btn"
-                  disabled={!canPrev}
-                  onClick={() => setQuery((q) => ({ ...q, page: q.page - 1 }))}
-                >
-                  ← Poprzednia
-                </button>
+            <div className="pager">
+              <button
+                className="btn"
+                disabled={!canPrev}
+                onClick={() =>
+                  setQuery((q) => ({
+                    ...q,
+                    page: q.page - 1,
+                  }))
+                }
+              >
+                ← Poprzednia
+              </button>
 
-                <button
-                  className="btn"
-                  disabled={!canNext}
-                  onClick={() => setQuery((q) => ({ ...q, page: q.page + 1 }))}
-                >
-                  Następna →
-                </button>
-              </div>
+              <button
+                className="btn"
+                disabled={!canNext}
+                onClick={() =>
+                  setQuery((q) => ({
+                    ...q,
+                    page: q.page + 1,
+                  }))
+                }
+              >
+                Następna →
+              </button>
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

@@ -2,12 +2,20 @@ import { apiFetch } from "./httpClient";
 
 function cleanQuery(query) {
   const out = {};
-  Object.entries(query || {}).forEach(([k, v]) => {
-    if (v === undefined || v === null) return;
-    if (typeof v === "string" && v.trim() === "") return;
-    out[k] = v;
+
+  Object.entries(query || {}).forEach(([key, value]) => {
+    if (value === undefined || value === null) return;
+    if (typeof value === "string" && value.trim() === "") return;
+
+    out[key] = value;
   });
+
   return out;
+}
+
+function buildQueryString(params) {
+  const queryString = params.toString();
+  return queryString ? `?${queryString}` : "";
 }
 
 export async function listSpecialists(query) {
@@ -45,10 +53,10 @@ export async function listSpecialists(query) {
     params.set("pageSize", String(cleaned.pageSize));
   }
 
-  const queryString = params.toString();
   const res = await apiFetch(
-    `/api/Admin/specialists${queryString ? `?${queryString}` : ""}`,
+    `/api/Admin/specialists${buildQueryString(params)}`,
   );
+
   const payload = res?.data ?? res;
 
   return {
@@ -60,7 +68,7 @@ export async function listSpecialists(query) {
 export async function getSpecialist(id) {
   const res = await apiFetch(`/api/Admin/specialists/${id}`);
   const payload = res?.data ?? res;
-  console.log("PHYSIO RAW:", payload);
+
   return normalizeSpecialist(payload);
 }
 
@@ -69,18 +77,21 @@ export async function approveSpecialist(id) {
     method: "POST",
   });
 }
-export async function updateLicenseValidity(id, payload) {
-  return apiFetch(`/api/Admin/specialists/${id}/license-validity`, {
-    method: "PUT",
-    body: JSON.stringify(payload),
-  });
-}
+
 export async function rejectSpecialist(id, payload) {
   return apiFetch(`/api/Admin/specialists/${id}/reject`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
+
+export async function updateLicenseValidity(id, payload) {
+  return apiFetch(`/api/Admin/specialists/${id}/license-validity`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function suspendSpecialist(id) {
   return apiFetch(`/api/Admin/specialists/${id}/suspend`, {
     method: "POST",
@@ -92,6 +103,7 @@ export async function unsuspendSpecialist(id) {
     method: "POST",
   });
 }
+
 export async function listUsers(query) {
   const params = new URLSearchParams();
   const cleaned = cleanQuery(query);
@@ -123,11 +135,7 @@ export async function listUsers(query) {
     params.set("pageSize", String(cleaned.pageSize));
   }
 
-  const queryString = params.toString();
-  const res = await apiFetch(
-    `/api/Admin/clients${queryString ? `?${queryString}` : ""}`,
-  );
-
+  const res = await apiFetch(`/api/Admin/clients${buildQueryString(params)}`);
   const payload = res?.data ?? res;
 
   return {
@@ -145,37 +153,40 @@ export async function getUser(id) {
     appointments: payload?.appointments ?? [],
   };
 }
-export async function listOrders(query) {
-  const params = new URLSearchParams();
 
-  if (query.status) params.set("status", query.status);
-  if (query.createdFrom) params.set("fromDate", query.createdFrom);
-  if (query.createdTo) params.set("toDate", query.createdTo);
-  if (query.page) params.set("page", String(query.page));
-  if (query.pageSize) {
-    params.set("pageSize", String(Math.min(query.pageSize || 20, 100)));
+export async function listOrders(query = {}) {
+  const params = new URLSearchParams();
+  const cleaned = cleanQuery(query);
+
+  if (cleaned.status) {
+    params.set("status", cleaned.status);
   }
 
-  const queryString = params.toString();
+  if (cleaned.createdFrom) {
+    params.set("fromDate", cleaned.createdFrom);
+  }
+
+  if (cleaned.createdTo) {
+    params.set("toDate", cleaned.createdTo);
+  }
+
+  if (cleaned.page) {
+    params.set("page", String(cleaned.page));
+  }
+
+  if (cleaned.pageSize) {
+    params.set("pageSize", String(Math.min(cleaned.pageSize, 100)));
+  }
+
   const res = await apiFetch(
-    `/api/Admin/appointments${queryString ? `?${queryString}` : ""}`,
+    `/api/Admin/appointments${buildQueryString(params)}`,
   );
 
   const payload = res?.data?.data ?? res?.data ?? res;
 
   return {
-    items: (payload?.items ?? []).map((item) => ({
-      ...item,
-      id: item?.id ?? item?.appointmentId,
-      appointmentId: item?.appointmentId ?? item?.id,
-      createdAt:
-        item?.createdAt ?? item?.createdDate ?? item?.created_at ?? null,
-      status: item?.status ?? "",
-      totalPrice: item?.totalPrice ?? item?.price ?? 0,
-      contactName: item?.contactName ?? "",
-      specialistName: item?.specialistName ?? "",
-    })),
-    total: payload?.totalCount ?? 0,
+    items: (payload?.items ?? []).map(normalizeOrderListItem),
+    total: payload?.totalCount ?? payload?.total ?? 0,
     page: payload?.page ?? 1,
     pageSize: payload?.pageSize ?? 20,
   };
@@ -185,181 +196,21 @@ export async function getOrder(id) {
   const res = await apiFetch(`/api/Admin/appointments/${id}`);
   const payload = res?.data?.data ?? res?.data ?? res;
 
-  console.log("ORDER DETAILS RAW:", payload);
-
-  return {
-    ...payload,
-
-    id: payload?.appointmentId ?? payload?.id,
-    appointmentId: payload?.appointmentId ?? payload?.id,
-
-    contactName:
-      payload?.contactName ??
-      payload?.clientName ??
-      payload?.customerName ??
-      payload?.fullName ??
-      "—",
-
-    contactEmail:
-      payload?.contactEmail ??
-      payload?.clientEmail ??
-      payload?.customerEmail ??
-      payload?.email ??
-      payload?.client?.email ??
-      payload?.client?.user?.email ??
-      "—",
-
-    serviceName:
-      payload?.serviceName ??
-      payload?.serviceTypeName ??
-      payload?.service?.name ??
-      "—",
-    contactPhoneNumber:
-      payload?.contactPhoneNumber ??
-      payload?.contactPhone ??
-      payload?.phoneNumber ??
-      payload?.phone ??
-      "—",
-
-    specialistId:
-      payload?.specialistId ??
-      payload?.specialist?.specialistId ??
-      payload?.specialist?.id ??
-      null,
-
-    specialistName:
-      payload?.specialistName && payload.specialistName !== "-"
-        ? payload.specialistName
-        : payload?.specialistFullName && payload.specialistFullName !== "-"
-          ? payload.specialistFullName
-          : payload?.specialist?.firstName || payload?.specialist?.lastName
-            ? `${payload?.specialist?.firstName ?? ""} ${payload?.specialist?.lastName ?? ""}`.trim()
-            : (payload?.specialist?.name ??
-              payload?.specialist?.fullName ??
-              "—"),
-
-    totalPrice:
-      payload?.totalPrice ?? payload?.price ?? payload?.totalAmount ?? null,
-
-    clientNotes:
-      payload?.clientNotes ?? payload?.description ?? payload?.notes ?? "",
-
-    createdAt:
-      payload?.createdAt ??
-      payload?.createdDate ??
-      payload?.created_at ??
-      payload?.scheduledStart ??
-      null,
-
-    status: payload?.status ?? payload?.appointmentStatus ?? "",
-  };
+  return normalizeOrderDetails(payload);
 }
 
-export async function getAdminStats() {
-  const res = await apiFetch(`/api/Admin/dashboard/stats`);
+export async function getAppointmentReview(appointmentId) {
+  const res = await apiFetch(
+    `/api/Client/appointments/${appointmentId}/review`,
+  );
+
   return res?.data?.data ?? res?.data ?? res;
 }
 
-function mockListSpecialists(query) {
-  const q = cleanQuery(query);
+export async function getAdminStats() {
+  const res = await apiFetch("/api/Admin/dashboard/stats");
 
-  const page = Number(q.page || 1);
-  const pageSize = Number(q.pageSize || 20);
-
-  let items = [...DB];
-
-  if (q.status) items = items.filter((x) => x.status === q.status);
-
-  if (q.specialization) {
-    items = items.filter((x) => x.specialization === q.specialization);
-  }
-
-  if (q.createdFrom) {
-    const from = new Date(`${q.createdFrom}T00:00:00.000Z`);
-    items = items.filter((x) => new Date(x.createdAt) >= from);
-  }
-
-  if (q.createdTo) {
-    const to = new Date(`${q.createdTo}T23:59:59.999Z`);
-    items = items.filter((x) => new Date(x.createdAt) <= to);
-  }
-
-  items.sort((a, b) => {
-    const diff = new Date(a.createdAt) - new Date(b.createdAt);
-    return q.sort === "CREATED_DESC" ? -diff : diff;
-  });
-
-  const total = items.length;
-
-  const start = (page - 1) * pageSize;
-  const paged = items.slice(start, start + pageSize);
-
-  return Promise.resolve({ items: paged, total, page, pageSize });
-}
-
-function mockGetSpecialist(id) {
-  const found = DB.find((x) => x.id === id);
-  if (!found) return Promise.reject(new Error("NOT_FOUND"));
-  return Promise.resolve(found);
-}
-
-function mockApprove(id) {
-  DB = DB.map((x) => (x.id === id ? { ...x, status: "APPROVED" } : x));
-  return Promise.resolve();
-}
-
-function mockReject(id, payload) {
-  if (!payload?.reasonText) return Promise.reject(new Error("REASON_REQUIRED"));
-  DB = DB.map((x) => (x.id === id ? { ...x, status: "REJECTED" } : x));
-  return Promise.resolve();
-}
-
-/* MOCK USERS */
-function mockListUsers(query) {
-  const q = cleanQuery(query);
-
-  const page = Number(q.page || 1);
-  const pageSize = Number(q.pageSize || 20);
-
-  let items = [...USERS];
-
-  // search
-  if (q.q) {
-    const s = q.q.toLowerCase();
-    items = items.filter((u) =>
-      `${u.firstName} ${u.lastName} ${u.email}`.toLowerCase().includes(s),
-    );
-  }
-
-  // date filters
-  if (q.createdFrom) {
-    const from = new Date(`${q.createdFrom}T00:00:00.000Z`);
-    items = items.filter((u) => new Date(u.createdAt) >= from);
-  }
-
-  if (q.createdTo) {
-    const to = new Date(`${q.createdTo}T23:59:59.999Z`);
-    items = items.filter((u) => new Date(u.createdAt) <= to);
-  }
-
-  // sort
-  items.sort((a, b) => {
-    const diff = new Date(a.createdAt) - new Date(b.createdAt);
-    return q.sort === "CREATED_ASC" ? diff : -diff;
-  });
-
-  const total = items.length;
-
-  const start = (page - 1) * pageSize;
-  const paged = items.slice(start, start + pageSize);
-
-  return Promise.resolve({ items: paged, total, page, pageSize });
-}
-
-function mockGetUser(id) {
-  const found = USERS.find((u) => u.id === id);
-  if (!found) return Promise.reject(new Error("NOT_FOUND"));
-  return Promise.resolve(found);
+  return res?.data?.data ?? res?.data ?? res;
 }
 
 function normalizeSpecialist(item) {
@@ -394,6 +245,7 @@ function normalizeSpecialist(item) {
       null,
   };
 }
+
 function normalizeUser(item) {
   if (!item) return item;
 
@@ -409,4 +261,101 @@ function normalizeUser(item) {
     ordersTotalValue:
       item.ordersTotalValue ?? item.totalOrdersValue ?? item.totalSpent,
   };
+}
+
+function normalizeOrderListItem(item) {
+  return {
+    ...item,
+    id: item?.id ?? item?.appointmentId,
+    appointmentId: item?.appointmentId ?? item?.id,
+    createdAt: item?.createdAt ?? item?.createdDate ?? item?.created_at ?? null,
+    status: item?.status ?? "",
+    totalPrice: item?.totalPrice ?? item?.price ?? 0,
+    contactName: item?.contactName ?? "",
+    specialistName: item?.specialistName ?? "",
+  };
+}
+
+function normalizeOrderDetails(payload) {
+  if (!payload) return payload;
+
+  return {
+    ...payload,
+
+    id: payload.appointmentId ?? payload.id,
+    appointmentId: payload.appointmentId ?? payload.id,
+
+    contactName:
+      payload.contactName ??
+      payload.clientName ??
+      payload.customerName ??
+      payload.fullName ??
+      "—",
+
+    contactEmail:
+      payload.contactEmail ??
+      payload.clientEmail ??
+      payload.customerEmail ??
+      payload.email ??
+      payload.client?.email ??
+      payload.client?.user?.email ??
+      "—",
+
+    contactPhoneNumber:
+      payload.contactPhoneNumber ??
+      payload.contactPhone ??
+      payload.phoneNumber ??
+      payload.phone ??
+      "—",
+
+    serviceName:
+      payload.serviceName ??
+      payload.serviceTypeName ??
+      payload.service?.name ??
+      "—",
+
+    specialistId:
+      payload.specialistId ??
+      payload.specialist?.specialistId ??
+      payload.specialist?.id ??
+      null,
+
+    specialistName: getSpecialistName(payload),
+
+    totalPrice:
+      payload.totalPrice ?? payload.price ?? payload.totalAmount ?? null,
+
+    clientNotes:
+      payload.clientNotes ?? payload.description ?? payload.notes ?? "",
+
+    createdAt:
+      payload.createdAt ??
+      payload.createdDate ??
+      payload.created_at ??
+      payload.scheduledStart ??
+      null,
+
+    status: payload.status ?? payload.appointmentStatus ?? "",
+  };
+}
+
+function getSpecialistName(payload) {
+  if (payload.specialistName && payload.specialistName !== "-") {
+    return payload.specialistName;
+  }
+
+  if (payload.specialistFullName && payload.specialistFullName !== "-") {
+    return payload.specialistFullName;
+  }
+
+  const firstName = payload.specialist?.firstName ?? "";
+  const lastName = payload.specialist?.lastName ?? "";
+  const fullName = `${firstName} ${lastName}`.trim();
+
+  return (
+    fullName ||
+    payload.specialist?.name ||
+    payload.specialist?.fullName ||
+    "—"
+  );
 }
