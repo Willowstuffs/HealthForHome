@@ -56,6 +56,20 @@ namespace H4H_API.Controllers
             return Ok(ApiResponse<ClientProfileDto>.SuccessResponse(updatedProfile, "Profil zaktualizowany"));
         }
 
+        // Upload awatara klienta
+        [HttpPost("profile/avatar")]
+        [Consumes("multipart/form-data")]
+        public async Task<ActionResult<ApiResponse<object>>> UploadAvatar(IFormFile avatar)
+        {
+            if (avatar == null || avatar.Length == 0)
+                return BadRequest(ApiResponse<object>.ErrorResponse("Plik avatara jest wymagany", ErrorCodes.ValidationError));
+
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            var avatarUrl = await _clientService.UploadAvatarAsync(userId, avatar);
+
+            return Ok(ApiResponse<object>.SuccessResponse(new { avatarUrl }, "Awatar został zaktualizowany"));
+        }
+
         // Pobiera listę wizyt klienta z opcjonalnym filtrowaniem po statusie
         [HttpGet("appointments")]
         public async Task<IActionResult> GetAppointments([FromQuery] PagedRequest request, [FromQuery] string? status)

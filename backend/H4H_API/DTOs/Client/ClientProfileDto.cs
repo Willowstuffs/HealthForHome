@@ -17,6 +17,7 @@
         public DateOnly? DateOfBirth { get; set; } // Data urodzenia jako DateOnly
         public string? Address { get; set; }
         public string? EmergencyContact { get; set; }
+        public string? AvatarUrl { get; set; }
         public DateTime CreatedAt { get; set; } // Data utworzenia profilu
         public DateTime UpdatedAt { get; set; } // Data ostatniej aktualizacji
     }

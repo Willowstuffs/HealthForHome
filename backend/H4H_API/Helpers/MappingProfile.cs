@@ -16,6 +16,8 @@ namespace H4H_API.Helpers
                 .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.User.Email))
                 // Mapowanie PhoneNumber z powiązanego obiektu User
                 .ForMember(dest => dest.PhoneNumber, opt => opt.MapFrom(src => src.User.PhoneNumber))
+                // Mapowanie AvatarUrl z powiązanego obiektu User
+                .ForMember(dest => dest.AvatarUrl, opt => opt.MapFrom(src => src.User.AvatarUrl))
                 // Mapowanie UpdatedAt z powiązanego obiektu User
                 .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.User.UpdatedAt));
 
