@@ -27,6 +27,7 @@ namespace H4H_API.Services.Implementations
         private readonly IMapper _mapper;
         private readonly IGeocoder _geocoder;
         private readonly FirebaseNotificationService _firebaseNotificationService;
+        private readonly IFirebaseStorageService _firebaseStorageService;
 
 
         /// <summary>
@@ -36,12 +37,13 @@ namespace H4H_API.Services.Implementations
         /// <param name="context">The database context used to access and manage client data within the application. Cannot be null.</param>
         /// <param name="mapper">The object mapper used to map between domain entities and data transfer objects. Cannot be null.</param>
         /// <param name="geocoder">The geocoding service for address geolocation. Cannot be null.</param>
-        public ClientService(ApplicationDbContext context, IMapper mapper, FirebaseNotificationService firebaseNotificationService, IGeocoder geocoder)
+        public ClientService(ApplicationDbContext context, IMapper mapper, FirebaseNotificationService firebaseNotificationService, IGeocoder geocoder, IFirebaseStorageService firebaseStorageService)
         {
             _context = context;
             _mapper = mapper;
             _firebaseNotificationService = firebaseNotificationService;
             _geocoder = geocoder;
+            _firebaseStorageService = firebaseStorageService;
         }
 
         /// <summary>
@@ -163,6 +165,42 @@ namespace H4H_API.Services.Implementations
                 Console.WriteLine($"Stack Trace: {ex.StackTrace}");
                 throw; // Przekaż wyjątek do ErrorHandlingMiddleware
             }
+        }
+
+        /// <summary>
+        /// Uploads a client avatar to Firebase Storage and updates User.AvatarUrl.
+        /// </summary>
+        public async Task<string> UploadAvatarAsync(Guid userId, IFormFile avatarFile)
+        {
+            if (avatarFile == null || avatarFile.Length == 0)
+                throw new AppException("Plik awatara jest pusty", ErrorCodes.ValidationError);
+
+            var allowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ".jpg", ".jpeg", ".png", ".webp"
+            };
+
+            var extension = Path.GetExtension(avatarFile.FileName);
+            if (!allowedExtensions.Contains(extension))
+                throw new AppException("Dozwolone formaty avatara to: jpg, jpeg, png, webp", ErrorCodes.ValidationError);
+
+            var client = await _context.clients.Include(c => c.User).FirstOrDefaultAsync(c => c.UserId == userId)
+                ?? throw new AppException("Nie znaleziono profilu klienta", ErrorCodes.ClientNotFound);
+
+            if (client.User == null)
+                throw new AppException("Nie znaleziono użytkownika klienta", ErrorCodes.ClientUserNotFound);
+
+            var folderPath = $"avatars/clients/{userId}";
+            var fileName = $"avatar{extension.ToLowerInvariant()}";
+
+            using var stream = avatarFile.OpenReadStream();
+            var avatarUrl = await _firebaseStorageService.UploadAvatarAsync(stream, avatarFile.ContentType, fileName, folderPath);
+
+            client.User.AvatarUrl = avatarUrl;
+            client.User.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
+            await _context.SaveChangesAsync();
+
+            return avatarUrl;
         }
 
         /// <summary>
@@ -834,9 +872,15 @@ namespace H4H_API.Services.Implementations
                     .Select(s => s.TotalReviews)
                     .FirstOrDefaultAsync();
 
+                var specialistAvatar = await _context.users
+                    .Where(u => u.Id == os.Specialist.UserId)
+                    .Select(u => u.AvatarUrl)
+                    .FirstOrDefaultAsync();
+
                 var offerDto = new AppointmentOfferDto
                 {
                     SpecialistId = os.SpecialistId,
+                    AvatarUrl = specialistAvatar,
                     FirstName = os.Specialist.FirstName,
                     LastName = os.Specialist.LastName,
                     ProposedPrice = os.Price,
@@ -977,7 +1021,7 @@ namespace H4H_API.Services.Implementations
 
             return new AppointmentReviewDto
             {
-                Id = review.Id,
+                Id = review!.Id,
                 AppointmentId = review.AppointmentId,
                 ClientId = review.ClientId,
                 SpecialistId = review.SpecialistId,

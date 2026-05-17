@@ -39,6 +39,9 @@ namespace H4H_API.Services.Interfaces
         Task<List<AppointmentOfferDto>> GetOffersForAppointmentAsync(Guid userId, Guid appointmentId);
         Task AcceptSpecialistOfferAsync(Guid userId, Guid appointmentId, Guid specialistId);
 
+        // Awatar
+        Task<string> UploadAvatarAsync(Guid userId, IFormFile avatarFile);
+
         // Oceny specjalistów
         Task RateSpecialistAsync(Guid userId, Guid appointmentId, RateSpecialistDto dto);
         Task<AppointmentReviewDto> GetAppointmentReviewAsync(Guid userId, Guid appointmentId);
