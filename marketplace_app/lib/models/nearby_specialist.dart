@@ -4,17 +4,19 @@ class NearbySpecialist {
   final String lastName;
   final String? professionalTitle;
   final String? avatarUrl;
-  final double? hourlyRate;
-  final double? distanceKm;
+  final String serviceArea;
+  final double distanceKm;
+  final List<String> serviceNames;
 
   NearbySpecialist({
-    required this.id,
-    required this.firstName,
-    required this.lastName,
-    this.professionalTitle,
-    this.avatarUrl,
-    this.hourlyRate,
-    this.distanceKm,
+      required this.id,
+      required this.firstName,
+      required this.lastName,
+      this.professionalTitle,
+      this.avatarUrl,
+      required this.serviceArea,
+      required this.distanceKm,
+      required this.serviceNames,
   });
 
   String get fullName => '$firstName $lastName';
@@ -26,8 +28,9 @@ class NearbySpecialist {
       lastName: json['lastName'] ?? '',
       professionalTitle: json['professionalTitle'],
       avatarUrl: json['avatarUrl'],
-      hourlyRate: (json['hourlyRate'] as num?)?.toDouble(),
-      distanceKm: (json['distanceKm'] as num?)?.toDouble(),
+      serviceArea: json['serviceArea'] ?? '',
+      distanceKm: (json['distanceKm'] as num?)?.toDouble() ?? 0.0,
+      serviceNames: List<String>.from(json['serviceNames'] ?? []),
     );
   }
 }

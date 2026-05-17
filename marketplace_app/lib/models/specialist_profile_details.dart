@@ -31,8 +31,7 @@ class SpecialistProfileDetails {
   final String? professionalTitle;
   final String? bio;
   final String? avatarUrl;
-  final String? phoneNumber;
-  final String? profession;
+  final List<String> qualifications;
   final List<SpecialistProfileArea> areas;
 
   SpecialistProfileDetails({
@@ -42,8 +41,7 @@ class SpecialistProfileDetails {
     this.professionalTitle,
     this.bio,
     this.avatarUrl,
-    this.phoneNumber,
-    this.profession,
+    required this.qualifications,
     required this.areas,
   });
 
@@ -57,8 +55,7 @@ class SpecialistProfileDetails {
       professionalTitle: json['professionalTitle'],
       bio: json['bio'],
       avatarUrl: json['avatarUrl'],
-      phoneNumber: json['phoneNumber'],
-      profession: json['profession'],
+      qualifications: List<String>.from(json['qualifications'] ?? []),
       areas:
           (json['areas'] as List?)
               ?.map((e) => SpecialistProfileArea.fromJson(e))

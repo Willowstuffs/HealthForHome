@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:marketplace_app/widgets/screen_status_bar.dart';
+import 'package:marketplace_app/widgets/specialist_card.dart';
 import '../../services/api_service.dart';
+import '../../services/google_places_service.dart';
 import '../../models/nearby_specialist.dart';
 import '../../models/specialist_profile_details.dart';
 import '../../models/specialist_offer.dart';
 import '../../theme/app_theme.dart';
+import 'package:geolocator/geolocator.dart';
+import '../data/data.dart';
 
 class SearchSpecialistsScreen extends StatefulWidget {
   const SearchSpecialistsScreen({super.key});
@@ -16,6 +20,7 @@ class SearchSpecialistsScreen extends StatefulWidget {
 
 class _SearchSpecialistsScreenState extends State<SearchSpecialistsScreen> {
   final TextEditingController _addressController = TextEditingController();
+  final FocusNode _addressFocusNode = FocusNode();
   final ApiService _apiService = ApiService();
 
   List<NearbySpecialist> _specialists = [];
@@ -28,6 +33,7 @@ class _SearchSpecialistsScreenState extends State<SearchSpecialistsScreen> {
   @override
   void dispose() {
     _addressController.dispose();
+    _addressFocusNode.dispose();
     super.dispose();
   }
 
@@ -37,11 +43,6 @@ class _SearchSpecialistsScreenState extends State<SearchSpecialistsScreen> {
     _performSearch(
       () => _apiService.getNearbySpecialistsByAddressText(address),
     );
-  }
-
-  void _searchByMyAddress() {
-    _addressController.clear();
-    _performSearch(() => _apiService.getNearbySpecialistsMyAddress());
   }
 
   Future<void> _performSearch(
@@ -90,13 +91,75 @@ class _SearchSpecialistsScreenState extends State<SearchSpecialistsScreen> {
     );
   }
 
+  Future<void> _useDeviceLocation() async {
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Usługi lokalizacji są wyłączone. Włącz lokalizację w ustawieniach.')));
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Uprawnienie do lokalizacji zostało odrzucone')));
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Uprawnienie do lokalizacji jest zablokowane. Włącz je w ustawieniach aplikacji.')));
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(locationSettings: LocationSettings(accuracy: LocationAccuracy.high));
+
+      // Use coordinates to fetch nearby specialists
+      if (!mounted) return;
+      _performSearch(() => _apiService.getNearbySpecialists(position.latitude, position.longitude));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Błąd pobierania lokalizacji: ${e.toString()}')));
+    }
+  }
+
+  void _onFabPressed() {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Wyszukaj blisko mnie'),
+        content: const Text('Wybierz źródło lokalizacji:'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _useDeviceLocation();
+            },
+            child: const Text('Użyj lokalizacji telefonu'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _performSearch(() => _apiService.getNearbySpecialistsMyAddress());
+            },
+            child: const Text('Użyj adresu z profilu'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ScreenStatusBar(
       child: Scaffold(
         backgroundColor: Colors.transparent,
         floatingActionButton: FloatingActionButton.extended(
-          onPressed: _searchByMyAddress,
+          onPressed: _onFabPressed,
           icon: const Icon(Icons.my_location_rounded),
           label: const Text('Blisko mnie'),
           backgroundColor: AppColors.primary,
@@ -107,43 +170,54 @@ class _SearchSpecialistsScreenState extends State<SearchSpecialistsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _addressController,
-                      decoration: InputDecoration(
-                        hintText: 'Wpisz miasto lub adres...',
-                        prefixIcon: const Icon(Icons.location_city_rounded),
-                        filled: true,
-                        fillColor: AppColors.surfaceContainerHighest,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 16,
+              RawAutocomplete<String>(
+                textEditingController: _addressController,
+                focusNode: _addressFocusNode,
+                optionsBuilder: (TextEditingValue textEditingValue) async {
+                  if (textEditingValue.text.length < 4) return const Iterable<String>.empty();
+                  return await GooglePlacesService().getAutocompleteSuggestions(textEditingValue.text);
+                },
+                onSelected: (selection) {
+                  _addressController.text = selection;
+                },
+                fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                  return TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    decoration: InputDecoration(
+                      hintText: 'Wpisz miasto lub adres...',
+                      prefixIcon: const Icon(Icons.location_city_rounded),
+                      filled: true,
+                      fillColor: AppColors.surfaceContainerHighest,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      suffixIcon: IconButton(icon: const Icon(Icons.search_rounded), onPressed: _searchByAddress),
+                    ),
+                    onSubmitted: (_) => _searchByAddress(),
+                  );
+                },
+                optionsViewBuilder: (context, onSelected, options) {
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      color: AppColors.surface,
+                      elevation: 4,
+                      borderRadius: BorderRadius.circular(12),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 200, maxWidth: 600),
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          padding: const EdgeInsets.all(8),
+                          itemCount: options.length,
+                          itemBuilder: (context, index) {
+                            final option = options.elementAt(index);
+                            return ListTile(title: Text(option), onTap: () { onSelected(option); _searchByAddress(); });
+                          },
                         ),
                       ),
-                      onSubmitted: (_) => _searchByAddress(),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.search_rounded,
-                        color: Colors.white,
-                      ),
-                      onPressed: _searchByAddress,
-                    ),
-                  ),
-                ],
+                  );
+                },
               ),
               const SizedBox(height: 24),
               if (_isLoading)
@@ -171,6 +245,7 @@ class _SearchSpecialistsScreenState extends State<SearchSpecialistsScreen> {
               else
                 Expanded(
                   child: ListView.separated(
+                    padding: const EdgeInsets.only(bottom: 52),
                     itemCount: _specialists.length,
                     separatorBuilder: (context, index) =>
                         const SizedBox(height: 12),
@@ -190,83 +265,6 @@ class _SearchSpecialistsScreenState extends State<SearchSpecialistsScreen> {
     );
   }
 }
-
-class SpecialistCard extends StatelessWidget {
-  final NearbySpecialist specialist;
-  final VoidCallback onTap;
-
-  const SpecialistCard({
-    super.key,
-    required this.specialist,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.outlineVariant),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.primary.withValues(alpha: 0.1),
-              ),
-              child: ClipOval(
-                child:
-                    specialist.avatarUrl != null &&
-                        specialist.avatarUrl!.isNotEmpty
-                    ? Image.network(
-                        specialist.avatarUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            const Icon(Icons.person, color: AppColors.primary),
-                      )
-                    : const Icon(Icons.person, color: AppColors.primary),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    specialist.fullName,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  if (specialist.professionalTitle != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      specialist.professionalTitle!,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class SpecialistDetailsPopup extends StatefulWidget {
   final String specialistId;
 
@@ -299,6 +297,7 @@ class _SpecialistDetailsPopupState extends State<SpecialistDetailsPopup> {
       );
 
       final results = await Future.wait([profileFuture, offersFuture]);
+      if (!mounted) return;
       setState(() {
         _profile = results[0] as SpecialistProfileDetails;
         _offers = results[1] as List<SpecialistOffer>;
@@ -314,13 +313,157 @@ class _SpecialistDetailsPopupState extends State<SpecialistDetailsPopup> {
     }
   }
 
+  String _formatPrice(double price) {
+    final hasFraction = price % 1 != 0;
+    return hasFraction
+        ? '${price.toStringAsFixed(2).replaceAll('.', ',')} zł'
+        : '${price.toStringAsFixed(0)} zł';
+  }
+
+  Widget _buildSectionCard({
+    required String title,
+    required Widget child,
+    IconData? icon,
+  }) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.secondary.withValues(alpha: 0.25),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 18, color: AppColors.primary),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCoverageAreas(List<SpecialistProfileArea> areas) {
+    if (areas.isEmpty) {
+      return const Text(
+        'Brak zdefiniowanego obszaru działania.',
+        style: TextStyle(color: AppColors.textSecondary),
+      );
+    }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: areas
+          .map(
+            (area) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                [
+                  if (area.city != null && area.city!.isNotEmpty) area.city,
+                  if (area.postalCode != null && area.postalCode!.isNotEmpty)
+                    area.postalCode,
+                  '${area.maxDistanceKm} km',
+                ].whereType<String>().join(' • '),
+                style: const TextStyle(
+                  color: AppColors.onSurface,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  Widget _buildOfferItem(SpecialistOffer offer) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  offer.name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.onSurface,
+                  ),
+                ),
+              ),
+              Text(
+                _formatPrice(offer.price),
+                style: const TextStyle(
+                  color: AppColors.accent,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            (offer.name == Data.localizedProfession(offer.category))
+                ? '${offer.durationMinutes} min'
+                : '${offer.durationMinutes} min • ${Data.localizedProfession(offer.category)}',
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          if (offer.description != null && offer.description!.trim().isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                offer.description!,
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final maxWidth = MediaQuery.of(context).size.width > 640 ? 600.0 : 520.0;
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       backgroundColor: AppColors.surface,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxHeight: 600),
+        constraints: BoxConstraints(maxHeight: 680, maxWidth: maxWidth),
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: _isLoading
@@ -344,24 +487,37 @@ class _SpecialistDetailsPopupState extends State<SpecialistDetailsPopup> {
                         'Błąd ładowania profilu',
                         style: TextStyle(color: AppColors.error),
                       ),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _isLoading = true;
+                            _error = null;
+                          });
+                          _fetchDetails();
+                        },
+                        child: const Text('Spróbuj ponownie'),
+                      ),
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: Text('Zamknij'),
+                        child: const Text('Zamknij'),
                       ),
                     ],
                   ),
                 )
               : Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          width: 72,
-                          height: 72,
+                          width: 78,
+                          height: 78,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: AppColors.primary.withValues(alpha: 0.1),
+                            color: AppColors.primary.withValues(alpha: 0.12),
                           ),
                           child: ClipOval(
                             child:
@@ -370,13 +526,13 @@ class _SpecialistDetailsPopupState extends State<SpecialistDetailsPopup> {
                                 ? Image.network(
                                     _profile!.avatarUrl!,
                                     fit: BoxFit.cover,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            const Icon(
-                                              Icons.person,
-                                              color: AppColors.primary,
-                                              size: 36,
-                                            ),
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Icon(
+                                        Icons.person,
+                                        color: AppColors.primary,
+                                        size: 36,
+                                      );
+                                    },
                                   )
                                 : const Icon(
                                     Icons.person,
@@ -393,23 +549,39 @@ class _SpecialistDetailsPopupState extends State<SpecialistDetailsPopup> {
                               Text(
                                 _profile!.fullName,
                                 style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight: FontWeight.w800,
                                   fontSize: 20,
+                                  color: AppColors.onSurface,
                                 ),
                               ),
-                              if (_profile!.professionalTitle != null)
-                                Text(
-                                  _profile!.professionalTitle!,
-                                  style: const TextStyle(
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              if (_profile!.profession != null)
-                                Text(
-                                  _profile!.profession!,
-                                  style: const TextStyle(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w500,
+                              const SizedBox.shrink(),
+                              if (_profile!.qualifications.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Wrap(
+                                    spacing: 8,
+                                    runSpacing: 6,
+                                    children: _profile!.qualifications
+                                        .take(3)
+                                        .map(
+                                          (q) => Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 10, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.primary.withValues(alpha: 0.12),
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                            child: Text(
+                                              Data.localizedProfessionalTitle(q),
+                                              style: const TextStyle(
+                                                color: AppColors.primary,
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
                                   ),
                                 ),
                             ],
@@ -418,79 +590,51 @@ class _SpecialistDetailsPopupState extends State<SpecialistDetailsPopup> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    if (_profile!.phoneNumber != null)
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.phone,
-                            size: 16,
-                            color: AppColors.textSecondary,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _profile!.phoneNumber!,
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    const SizedBox(height: 16),
-                    if (_profile!.bio != null) ...[
-                      const Text(
-                        'O specjaliście:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 4),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          child: Text(
-                            _profile!.bio!,
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ] else
-                      const Expanded(child: SizedBox()),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Dostępne usługi:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    if (_offers!.isEmpty)
-                      const Text(
-                        'Brak usług w ofercie.',
-                        style: TextStyle(color: AppColors.textSecondary),
-                      )
-                    else
-                      SizedBox(
-                        height: 120,
-                        child: ListView.builder(
-                          shrinkWrap: true,
-                          itemCount: _offers!.length,
-                          itemBuilder: (context, index) {
-                            final offer = _offers![index];
-                            return ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text(offer.name),
-                              subtitle: Text(
-                                '${offer.durationMinutes} min • ${offer.category}',
-                              ),
-                              trailing: Text(
-                                '${offer.price} zł',
+                    Flexible(
+                      fit: FlexFit.loose,
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            _buildSectionCard(
+                              title: 'O specjaliście',
+                              icon: Icons.info_outline_rounded,
+                              child: Text(
+                                (_profile!.bio != null &&
+                                        _profile!.bio!.trim().isNotEmpty)
+                                    ? _profile!.bio!
+                                    : 'Specjalista nie dodał jeszcze opisu profilu.',
                                 style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.accent,
+                                  color: AppColors.textSecondary,
+                                  height: 1.45,
                                 ),
                               ),
-                            );
-                          },
+                            ),
+                            _buildSectionCard(
+                              title: 'Obszar działania',
+                              icon: Icons.location_on_outlined,
+                              child: _buildCoverageAreas(_profile!.areas),
+                            ),
+                            _buildSectionCard(
+                              title: 'Dostępne usługi',
+                              icon: Icons.medical_services_outlined,
+                              child: _offers!.isEmpty
+                                  ? const Text(
+                                      'Brak usług w ofercie.',
+                                      style: TextStyle(
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    )
+                                  : Column(
+                                      children: _offers!
+                                          .map((offer) => _buildOfferItem(offer))
+                                          .toList(),
+                                    ),
+                            ),
+                          ],
                         ),
                       ),
-                    const SizedBox(height: 24),
+                    ),
+                    const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [

@@ -20,11 +20,31 @@ class Data {
     'Rehabilitant': 'rehabilitator',
   };
 
+  static const Map<String, String> localizedCategoryMapping = {
+    'physiotherapy': 'Fizjoterapia',
+    'nursing': 'Pielęgniarstwo',
+    'rehabilitation': 'Rehabilitacja',
+  };
+
+  static const Map<String, String> localizedProfessionMapping = {
+    'physiotherapist': 'Fizjoterapeuta',
+    'nurse': 'Pielęgniarka',
+    'rehabilitator': 'Rehabilitant',
+  };
+
   static List<Category> getCategories() {
     return [
       Category(title: 'Fizjoterapia', icon: Icons.accessibility_new),
       Category(title: 'Pielęgniarstwo', icon: Icons.medical_services),
       Category(title: 'Rehabilitacja', icon: Icons.fitness_center),
     ];
+  }
+
+  static String localizedProfessionalTitle(String? key) {
+    return localizedProfessionMapping[key] ?? 'Specjalista';
+  }
+
+  static String localizedProfession(String? key) {
+    return localizedCategoryMapping[key] ?? 'Usługa';
   }
 }
