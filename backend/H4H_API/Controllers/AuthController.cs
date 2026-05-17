@@ -1,14 +1,15 @@
-﻿using H4H_API.DTOs.Auth;
+﻿using FirebaseAdmin.Auth;
+using H4H.Core.Models;
+using H4H_API.DTOs.Auth;
 using H4H_API.DTOs.Client;
 using H4H_API.DTOs.Common;
 using H4H_API.DTOs.Specialist;
+using H4H_API.Helpers;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using H4H.Core.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using H4H_API.Helpers;
 
 
 namespace H4H_API.Controllers
@@ -189,6 +190,5 @@ namespace H4H_API.Controllers
             await _authService.VerifyCodeAsync(request);
             return Ok(ApiResponse.SuccessResponse("Konto zostało pomyślnie zweryfikowane i aktywowane. Możesz się teraz zalogować."));
         }
-
     }
 }

@@ -67,6 +67,14 @@ namespace H4H_API.Services.Implementations
                 "rating",
                 true
             );
+            await _firebase.SendNotificationToManyAsync(
+               tokens,
+               "Wizyta zakończona",
+               "Twoja wizyta została zakończona. Oceń pacjenta ⭐",
+               appointment.Id.ToString(),
+               "rating",
+               false
+           );
         }
     }
 }
