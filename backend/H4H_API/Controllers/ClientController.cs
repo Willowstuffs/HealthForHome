@@ -149,13 +149,13 @@ namespace H4H_API.Controllers
         /// </summary>
         [HttpGet("specialist/{id}/profile")]
         [AllowAnonymous] //TODO: poprawić aby tylko zalogowani klienci mogli widzieć profil specjalisty (nie dla gości)
-        public async Task<ActionResult<ApiResponse<SpecialistProfileDto>>> GetSpecialistProfile(Guid id)
+        public async Task<ActionResult<ApiResponse<SpecialistProfileTruncatedDto>>> GetSpecialistProfile(Guid id)
         {
             var profile = await _specialistService.GetPublicProfileAsync(id); // Używamy poprawionej metody z poprzedniego kroku
             if (profile == null)
-                return NotFound(ApiResponse<SpecialistProfileDto>.ErrorResponse("Specjalista nie istnieje"));
+                return NotFound(ApiResponse<SpecialistProfileTruncatedDto>.ErrorResponse("Specjalista nie istnieje"));
 
-            return Ok(ApiResponse<SpecialistProfileDto>.SuccessResponse(profile));
+            return Ok(ApiResponse<SpecialistProfileTruncatedDto>.SuccessResponse(profile));
         }
 
         /// <summary>

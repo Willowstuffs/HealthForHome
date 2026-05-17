@@ -76,7 +76,7 @@ namespace H4H_API.Services.Interfaces
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        Task<SpecialistProfileDto?> GetPublicProfileAsync(Guid id);
+        Task<SpecialistProfileTruncatedDto?> GetPublicProfileAsync(Guid id);
         Task<List<SpecialistOfferDto>> GetPublicServicesAsync(Guid id);
         Task<List<NearbySpecialistDto>> GetNearbySpecialistsAsync(double lat, double lng);
 

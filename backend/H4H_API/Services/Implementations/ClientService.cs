@@ -961,7 +961,7 @@ namespace H4H_API.Services.Implementations
 
             return new AppointmentReviewDto
             {
-                Id = review.Id,
+                Id = review!.Id,
                 AppointmentId = review.AppointmentId,
                 ClientId = review.ClientId,
                 SpecialistId = review.SpecialistId,
