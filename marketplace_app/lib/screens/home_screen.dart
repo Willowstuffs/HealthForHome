@@ -1330,7 +1330,8 @@ class HomeScreenState extends State<HomeScreen> {
             children: [
               CircleAvatar(
                 backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                child: Icon(Icons.person, color: AppColors.primary),
+                radius: 20,
+                child: _buildSpecialistAvatar(offer),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -1521,6 +1522,25 @@ class HomeScreenState extends State<HomeScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildSpecialistAvatar(AppointmentOffer offer) {
+    final avatarUrl = offer.avatarUrl;
+    if (avatarUrl == null || avatarUrl.trim().isEmpty) {
+      return Icon(Icons.person, color: AppColors.primary);
+    }
+
+    return ClipOval(
+      child: Image.network(
+        avatarUrl,
+        width: 40,
+        height: 40,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) {
+          return Icon(Icons.person, color: AppColors.primary);
+        },
+      ),
     );
   }
 

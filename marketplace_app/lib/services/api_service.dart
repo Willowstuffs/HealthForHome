@@ -14,7 +14,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/review.dart';
 
 class ApiService {
-  static const bool isDev = false;
+  static const bool isDev = true;
   static const String _baseUrl = isDev
       ? 'https://10.0.2.2:7026'
       : 'https://h4h.makolino.com';
@@ -198,6 +198,19 @@ class ApiService {
     await storage.write(key: 'user', value: jsonEncode(response.user.toJson()));
   }
 
+  void updateLocalAvatar(String url) {
+    if (_currentUser == null) return;
+    _currentUser = UserInfoDto(
+      id: _currentUser!.id,
+      email: _currentUser!.email,
+      userType: _currentUser!.userType,
+      firstName: _currentUser!.firstName,
+      lastName: _currentUser!.lastName,
+      phoneNumber: _currentUser!.phoneNumber,
+      avatarUrl: url,
+    );
+  }
+
   Future<void> clearToken() async {
     _accessToken = null;
     _refreshToken = null;
@@ -339,6 +352,45 @@ class ApiService {
       throw _handleDioError(e);
     } catch (_) {
       throw Exception('Błąd aktualizacji profilu');
+    }
+  }
+
+  Future<String> uploadAvatar(File file) async {
+    try {
+      final filename = file.path.split(Platform.pathSeparator).last;
+      final form = FormData.fromMap({
+        'avatar': await MultipartFile.fromFile(file.path, filename: filename),
+      });
+
+      final response = await _dio.post(
+        '/api/Client/profile/avatar',
+        data: form,
+        options: Options(
+          contentType: 'multipart/form-data',
+          validateStatus: (status) => true,
+        ),
+      );
+
+      if (response.statusCode == 200 &&
+          response.data != null &&
+          response.data['success'] == true &&
+          response.data['data'] != null) {
+        final avatarUrl = response.data['data']['avatarUrl']?.toString();
+        if (avatarUrl != null && avatarUrl.isNotEmpty) {
+          updateLocalAvatar(avatarUrl);
+          return avatarUrl;
+        }
+        throw Exception('Brak URL awatara w odpowiedzi serwera');
+      } else {
+        final msg = response.data is Map<String, dynamic>
+            ? (response.data['message'] ?? 'Błąd podczas przesyłania awatara')
+            : 'Błąd podczas przesyłania awatara';
+        throw Exception(msg);
+      }
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (e) {
+      rethrow;
     }
   }
 

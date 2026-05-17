@@ -6,6 +6,7 @@ import '../models/client_profile.dart';
 import '../models/client_update_dto.dart';
 import '../theme/app_theme.dart';
 import '../services/google_places_service.dart';
+import '../services/storage_service.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
@@ -18,6 +19,7 @@ class _AccountScreenState extends State<AccountScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _isUploading = false;
   ClientProfile? _profile;
 
   late TextEditingController _firstNameController;
@@ -135,6 +137,43 @@ class _AccountScreenState extends State<AccountScreen> {
     }
   }
 
+  Future<void> _pickAndUploadAvatar() async {
+    setState(() => _isUploading = true);
+    try {
+      final file = await StorageService().pickAvatarFile();
+      if (file == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nie wybrano pliku')),
+        );
+        return;
+      }
+
+      final avatarUrl = await ApiService().uploadAvatar(file);
+      if (avatarUrl.isNotEmpty) {
+        if (!mounted) return;
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Awatar zaktualizowany')),
+        );
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nie udało się zaktualizować awatara')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Błąd przesyłania awatara: ${e.toString().replaceAll('Exception: ', '')}')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -162,20 +201,56 @@ class _AccountScreenState extends State<AccountScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Avatar section (placeholder)
+                // Avatar section
                 Center(
-                  child: CircleAvatar(
-                    radius: 50,
-                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                    child: Text(
-                      _profile?.firstName.isNotEmpty == true
-                          ? _profile!.firstName[0].toUpperCase()
-                          : '?',
-                      style: TextStyle(
-                        fontSize: 40,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  child: GestureDetector(
+                    onTap: _isUploading ? null : _pickAndUploadAvatar,
+                    child: Stack(
+                      alignment: Alignment.bottomRight,
+                      children: [
+                        CircleAvatar(
+                          radius: ApiService().currentUser?.avatarUrl != null ? 72 : 50,
+                          backgroundColor:
+                              AppColors.primary.withValues(alpha: 0.1),
+                          backgroundImage: ApiService().currentUser?.avatarUrl !=
+                                  null
+                              ? NetworkImage(
+                                  ApiService().currentUser!.avatarUrl!)
+                              as ImageProvider
+                              : null,
+                          child: ApiService().currentUser?.avatarUrl == null
+                              ? Text(
+                                  _profile?.firstName.isNotEmpty == true
+                                      ? _profile!.firstName[0].toUpperCase()
+                                      : '?',
+                                  style: TextStyle(
+                                    fontSize: 40,
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                )
+                              : null,
+                        ),
+                        Positioned(
+                          right: 0,
+                          bottom: 0,
+                          child: CircleAvatar(
+                            radius: 16,
+                            backgroundColor: Colors.white,
+                            child: _isUploading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Icon(
+                                    Icons.edit,
+                                    size: 20,
+                                    color: AppColors.primary,
+                                  ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
