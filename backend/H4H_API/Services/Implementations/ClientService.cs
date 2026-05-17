@@ -912,7 +912,7 @@ namespace H4H_API.Services.Implementations
                 .Select(a => a.IsRated)
                 .FirstOrDefaultAsync();
 
-            if (!appointmentIsRated)
+            if (!appointmentIsRated && review != null)
                 throw new AppException("Wizyta nie jest oznaczona jako oceniona, ale opinia istnieje. Proszę skontaktować się z supportem.", ErrorCodes.DataConflict);
 
             return new AppointmentReviewDto

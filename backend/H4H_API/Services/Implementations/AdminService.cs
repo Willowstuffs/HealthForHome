@@ -2,10 +2,10 @@
 using H4H.Data;
 using H4H_API.DTOs.Admin;
 using H4H_API.DTOs.Common;
-using H4H_API.Services.Interfaces;
-using H4H_API.Helpers; //Do bledow
-using Microsoft.EntityFrameworkCore;
 using H4H_API.Exceptions;
+using H4H_API.Helpers; //Do bledow
+using H4H_API.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace H4H_API.Services.Implementations
 {
@@ -90,7 +90,7 @@ namespace H4H_API.Services.Implementations
                 .Include(s => s.Appointments)
                     .ThenInclude(a => a.ServiceType)
                 .FirstOrDefaultAsync(s => s.Id == specialistId)
-                ?? throw new AppException ("Nie znaleziono specjalisty.", ErrorCodes.SpecialistNotFound);
+                ?? throw new AppException("Nie znaleziono specjalisty.", ErrorCodes.SpecialistNotFound);
 
             var qualifications = await _context.specialist_qualifications
                 .FirstOrDefaultAsync(q => q.SpecialistId == specialistId && q.IsActive);
@@ -117,7 +117,7 @@ namespace H4H_API.Services.Implementations
                     Id = a.Id,
                     Type = "appointment_added",
                     Description = $"Dodano nowe zamówienie: {a.ServiceType?.Name ?? "Wizyta"}",
-                    CreatedAt = a.CreatedAt 
+                    CreatedAt = a.CreatedAt
                 }).ToList();
 
             return new AdminSpecialistDetailsDto
@@ -233,7 +233,7 @@ namespace H4H_API.Services.Implementations
             //Pobieramy klientów z bazy danych, sortujemy po dacie rejestracji malejąco, a następnie stosujemy paginację
             var items = await query
                 .OrderByDescending(c => c.CreatedAt)
-                .Skip((filter.Page - 1) * filter.PageSize) 
+                .Skip((filter.Page - 1) * filter.PageSize)
                 .Take(filter.PageSize)
                 .Select(c => new AdminClientListItemDto
                 {
@@ -457,6 +457,9 @@ namespace H4H_API.Services.Implementations
                 .FirstOrDefaultAsync(a => a.Id == appointmentId)
                 ?? throw new AppException("Nie znaleziono wizyty.", ErrorCodes.AppointmentNotFound);
 
+            var review = await _context.reviews
+                .FirstOrDefaultAsync(r => r.AppointmentId == appointmentId && r.ClientId == appointment.Client.Id);
+
             return new AdminAppointmentDetailsDto
             {
                 AppointmentId = appointment.Id,
@@ -483,6 +486,14 @@ namespace H4H_API.Services.Implementations
                     FirstName = appointment.Specialist.FirstName,
                     LastName = appointment.Specialist.LastName,
                     Email = appointment.Specialist.User?.Email ?? string.Empty
+                } : null,
+
+                Review = review != null ? new AdminAppointmentReviewDto
+                {
+                    Id = review.Id,
+                    Rating = review.Rating,
+                    Comment = review.Comment,
+                    IsVerified = review.IsVerified,
                 } : null,
 
                 ServiceName = appointment.ServiceType?.Name ?? "Brak danych"
