@@ -4,10 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import AdminHeader from "./components/AdminHeader";
 import OrderStatusBadge from "./components/OrderStatusBadge";
 
-import {
-  getAppointmentReview,
-  getOrder,
-} from "./api/adminApi";
+import { getOrder } from "./api/adminApi";
 
 import "./styles/zamowienieSzczegoly.css";
 
@@ -69,17 +66,8 @@ function SzczegolyZamowienia() {
   const navigate = useNavigate();
 
   const [data, setData] = useState(null);
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  const [review, setReview] = useState(null);
-
-  const [reviewLoading, setReviewLoading] =
-    useState(false);
-
-  const [reviewError, setReviewError] =
-    useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -94,36 +82,11 @@ function SzczegolyZamowienia() {
         if (!cancelled) {
           setData(res);
         }
-
-        try {
-          setReviewLoading(true);
-          setReviewError("");
-
-          const reviewRes =
-            await getAppointmentReview(
-              res.appointmentId || res.id
-            );
-
-          if (!cancelled) {
-            setReview(reviewRes);
-          }
-        } catch {
-          if (!cancelled) {
-            setReview(null);
-            setReviewError(
-              "Brak opinii dla tej wizyty"
-            );
-          }
-        } finally {
-          if (!cancelled) {
-            setReviewLoading(false);
-          }
-        }
       } catch (e) {
         if (!cancelled) {
           setError(
             e?.message ||
-              "Błąd pobierania zamówienia"
+            "Błąd pobierania zamówienia"
           );
         }
       } finally {
@@ -171,20 +134,20 @@ function SzczegolyZamowienia() {
 
   const customerName =
     typeof data.contactName === "string" &&
-    data.contactName.trim() !== ""
+      data.contactName.trim() !== ""
       ? data.contactName
       : "—";
 
   const customerEmail =
     typeof data.contactEmail === "string" &&
-    data.contactEmail.trim() !== ""
+      data.contactEmail.trim() !== ""
       ? data.contactEmail
       : "—";
 
   const customerPhone =
     typeof data.contactPhoneNumber ===
       "string" &&
-    data.contactPhoneNumber.trim() !== ""
+      data.contactPhoneNumber.trim() !== ""
       ? data.contactPhoneNumber
       : "—";
 
@@ -337,12 +300,7 @@ function SzczegolyZamowienia() {
                     <div className="order-label">
                       Ocena wizyty
                     </div>
-
-                    {reviewLoading ? (
-                      <div className="order-value">
-                        Ładowanie opinii...
-                      </div>
-                    ) : review ? (
+                    {typeof data.rating === "number" ? (
                       <div className="order-kv">
                         <div
                           className="order-value"
@@ -350,29 +308,21 @@ function SzczegolyZamowienia() {
                             fontWeight: 900,
                           }}
                         >
-                          {stars(
-                            review.rating
-                          )}{" "}
-                          {review.rating}/5
+                          {stars(data.rating)} {data.rating}/5
                         </div>
 
                         <div
                           className="order-value"
                           style={{
-                            color:
-                              "rgba(15,23,42,0.65)",
+                            color: "rgba(15,23,42,0.65)",
                             fontWeight: 700,
                           }}
                         >
-                          {review.comment ||
-                            "Brak komentarza"}
+                          {data.comment || "Brak komentarza"}
                         </div>
                       </div>
                     ) : (
-                      <div className="order-value">
-                        {reviewError ||
-                          "Brak opinii"}
-                      </div>
+                      <div className="order-value">Brak opinii</div>
                     )}
                   </div>
                 )}

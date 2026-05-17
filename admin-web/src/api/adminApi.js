@@ -328,6 +328,12 @@ function normalizeOrderDetails(payload) {
     clientNotes:
       payload.clientNotes ?? payload.description ?? payload.notes ?? "",
 
+    rating:
+      payload.review?.rating ?? payload.rating ?? null,
+
+    comment:
+      payload.review?.comment ?? payload.comment ?? "",
+
     createdAt:
       payload.createdAt ??
       payload.createdDate ??
