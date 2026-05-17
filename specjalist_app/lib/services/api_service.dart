@@ -4,7 +4,7 @@ import 'package:dio/io.dart';
 import '../services/login_response.dart';
 import '../services/token_storage.dart';
 import '../services/specjalist_service.dart';
-import 'package:http_parser/http_parser.dart';
+//import 'package:http_parser/http_parser.dart';
 
 // class ApiService {
 //   static const String _baseUrl = 'https://h4h.makolino.com';
@@ -122,7 +122,32 @@ class ApiService {
       throw _handleDioError(e);
     }
   }
+  //token firebase
+Future<String> getFirebaseToken() async {
+  try {
+    // 1. Pobieramy aktualny token dostępowy (upewnij się, że UserSession.token nie jest nullem)
+    final accessToken = await TokenStorage.getAccessToken();
 
+    final response = await _dio.post(
+      '/api/auth/firebase-token',
+      options: Options(
+        headers: {
+          // 🔥 Dodajemy nagłówek wymagany przez [Authorize] na backendzie
+          'Authorization': 'Bearer $accessToken', 
+        },
+      ),
+    );
+    
+    // 2. Bezpieczne wyciągnięcie tokenu z odpowiedzi JSON
+    if (response.data != null && response.data['token'] != null) {
+      return response.data['token'].toString(); 
+    } else {
+      throw Exception('Serwer zwrócił pomyślny status, ale brak pola "token" w odpowiedzi.');
+    }
+  } on DioException catch (e) {
+    throw _handleDioError(e);
+  }
+}
   //pobieranie danych do logowania
   Future<Map<String, dynamic>> getProfile() async {
     final response = await _dio.get('/api/specialist/profile');
@@ -375,7 +400,7 @@ final data = raw as List<dynamic>;
     await _dio.post('/api/auth/device-token', data: {"token": token});
   }
   
-  Future<void> updateProfile({
+ Future<void> updateProfile({
     required String firstName,
     required String lastName,
     required String email,
@@ -390,18 +415,7 @@ final data = raw as List<dynamic>;
       "LastName": lastName,
       "Email": email,
       if (phoneNumber != null) "PhoneNumber": phoneNumber,
-      if (professionalTitle != null) "ProfessionalTitle": professionalTitle,
-      if (bio != null) "Bio": bio,
-      if (hourlyRate != null) "HourlyRate": hourlyRate,
     };
-
-    if (avatar != null) {
-      formDataMap["Avatar"] = await MultipartFile.fromFile(
-        avatar.path,
-        filename: "avatar.jpg",
-        contentType: MediaType("image", "jpeg"),
-      );
-    }
 
     final formData = FormData.fromMap(formDataMap);
 
@@ -424,6 +438,28 @@ final data = raw as List<dynamic>;
       print('Error updating profile: $e');
     }
   }
+  Future<void> updateAvatar(String avatarUrl) async {
+  final body = {
+    "AvatarUrl": avatarUrl,
+  };
+
+  try {
+    final response = await _dio.put(
+      '/api/specialist/profile/avatar', // Ścieżka dopasowana do Twojego wzorca URL
+      data: body,
+    );
+
+    if (response.statusCode == 200) {
+      print('Avatar updated successfully!');
+    } else {
+      print('Failed to update avatar: ${response.statusCode}');
+      throw Exception('Nie udało się zapisać awatara w bazie.');
+    }
+  } catch (e) {
+    print('Error updating avatar: $e');
+    rethrow; // Przekazuje błąd dalej, aby widok (UI) mógł wyświetlić SnackBar
+  }
+}
 
   // POST: wyślij kod ponownie
   Future<void> sendVerificationCode(String email) async {

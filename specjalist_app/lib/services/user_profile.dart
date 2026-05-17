@@ -36,7 +36,7 @@ class UserProfile {
   final String email;
   final String? phone;
   final String? postalCode;
-  final String? avatarUrl; 
+  String? avatarUrl; 
   final List<ServiceArea>? serviceAreas;
   final List<String> specializations; 
 

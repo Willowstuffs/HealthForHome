@@ -96,13 +96,16 @@ void _goToProfileFix() {
   return hasCity && hasService;
 }
 Future<void> _loadProfile() async {
-  try {
-    final profileJson = await ApiService().getProfile();
-    UserSession.setProfileFromApi(profileJson, UserSession.token ?? '');
-  } catch (e) {
-    debugPrint("Profile load error: $e");
+    try {
+      final profileJson = await ApiService().getProfile();
+      UserSession.setProfileFromApi(profileJson, UserSession.token ?? '');
+
+
+      
+    } catch (e) {
+      debugPrint("Profile/Firebase load error: $e");
+    }
   }
-}
  Future<void> _loadReadStatus() async {
     final prefs = await SharedPreferences.getInstance();
     final List<String>? savedIds = prefs.getStringList('read_appointments');

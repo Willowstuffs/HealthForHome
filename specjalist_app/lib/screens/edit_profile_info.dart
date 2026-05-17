@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:specjalist_app/screens/main_screens/maintoolbar_screen.dart';
+import 'package:specjalist_app/services/Firebase_storage_service.dart';
 import 'package:specjalist_app/services/user_profile.dart';
 import '../../theme/app_theme.dart';
 import '../services/api_service.dart';
@@ -57,15 +58,50 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
     }
   }
   Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+  final picker = ImagePicker();
+  final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
 
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImage = File(pickedFile.path);
-      });
-    }
+  if (pickedFile == null) return;
+
+  final file = File(pickedFile.path);
+  final userId = UserSession.profile?.id; // Pobierz ID użytkownika z sesji
+
+  if (userId == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Błąd: Nie znaleziono ID użytkownika.')),
+    );
+    return;
   }
+
+  try {
+    setState(() => isLoading = true);
+
+    // 1. Wysyłanie do Firebase Storage
+    final String downloadUrl = await FirebaseStorageService.uploadAvatar(file, userId.toString());
+
+    // 2. Wysyłanie otrzymanego String URL do Twojego backendu
+    final api = ApiService();
+    await api.updateAvatar(downloadUrl);
+
+    // 3. Aktualizacja lokalnego stanu sesji, aby UI od razu pokazało nowe zdjęcie
+    UserSession.profile?.avatarUrl = downloadUrl;
+    
+    // Jeśli chcesz zachować referencję lokalną do pliku (opcjonalnie)
+    setState(() {
+      _selectedImage = file;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Zdjęcie profilowe zostało zaktualizowane!')),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Błąd podczas zapisu zdjęcia: $e')),
+    );
+  } finally {
+    setState(() => isLoading = false);
+  }
+}
   Future<void> _saveProfile() async {
     
     if (!_formKey.currentState!.validate()) {
@@ -104,8 +140,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
         firstName: firstNameController.text.trim(),
         lastName: lastNameController.text.trim(),
         email: emailController.text.trim(),
-        phoneNumber: phoneController.text.trim(),
-        avatar: _selectedImage, // przesyłamy wybrane zdjęcie
+        phoneNumber: phoneController.text.trim()
       );
       print("Profil zapisany!");
       // Aktualizacja obszaru

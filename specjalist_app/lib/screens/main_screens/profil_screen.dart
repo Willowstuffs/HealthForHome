@@ -129,16 +129,10 @@ Widget _buildProfileCard() {
   final lastName = UserSession.lastName ?? '';
   final email = UserSession.email ?? '';
   final areas = UserSession.profile?.serviceAreas;
-  final avatarPath = UserSession.profile?.avatarUrl;
+  final avatarUrl = UserSession.profile?.avatarUrl;
 
-  const baseUrl = "https://192.168.100.24:7026";
 
-  final String? fullAvatarUrl =
-      (avatarPath != null && avatarPath.isNotEmpty)
-          ? (avatarPath.startsWith('http')
-              ? avatarPath
-              : '$baseUrl$avatarPath')
-          : null;
+
 
   return Container(
     padding: const EdgeInsets.all(24),
@@ -151,13 +145,16 @@ Widget _buildProfileCard() {
       children: [
 
         CircleAvatar(
-          radius: 48,
-          backgroundImage:
-              fullAvatarUrl != null ? NetworkImage(fullAvatarUrl) : null,
-          child: fullAvatarUrl == null
-              ? const Icon(Icons.person, size: 48)
-              : null,
-        ),
+            radius: 48,
+            backgroundImage: avatarUrl != null
+                ? NetworkImage(
+                    "$avatarUrl?v=${DateTime.now().millisecondsSinceEpoch}",
+                  )
+                : null,
+            child: avatarUrl == null
+                ? const Icon(Icons.person, size: 48)
+                : null,
+          ),
 
         const SizedBox(height: 24),
 
