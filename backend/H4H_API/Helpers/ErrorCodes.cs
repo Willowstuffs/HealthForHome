@@ -15,6 +15,7 @@
 
         public const string SpecialistNotFound = "SPEC_001";
         public const string SpecialistQualificationNotFound = "SPEC_002";
+        public const string SpecialistAccountSuspended = "SPEC_003";
 
         // Walidacja danych
         public const string ValidationError = "VAL_001";
@@ -30,7 +31,9 @@
         public const string AppointmentNotFound = "APPT_001";
         public const string AppointmentStatusNotPending = "APPT_002";
         public const string AppointmentAlreadyRated = "APPT_003";
-        public const string AppointmentStatusNotCompleted = "APPT_004";
+        public const string NoOfferForAppointment = "APPT_004";
+        public const string AppointmentStatusNotCompleted = "APPT_005";
+
 
         // Geokodowanie
         public const string GeocodingFailed = "GEO_001";

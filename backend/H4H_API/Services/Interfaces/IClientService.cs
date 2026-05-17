@@ -23,6 +23,7 @@ namespace H4H_API.Services.Interfaces
         Task<PagedResponse<AppointmentDto>> GetAppointmentsAsync(Guid userId, PagedRequest request, string? status = null);
         Task<AppointmentDto> GetAppointmentDetailsAsync(Guid userId, Guid appointmentId);
         Task<bool> CancelAppointmentAsync(Guid userId, Guid appointmentId);
+        Task<bool> CompleteAppointmentAsync(Guid userId, Guid appointmentId);
 
         // Wyszukiwanie specjalistów
         Task<PagedResponse<SpecialistDto>> SearchSpecialistsAsync(SearchSpecialistsDto filters, PagedRequest request);

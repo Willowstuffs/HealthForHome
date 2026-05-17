@@ -10,17 +10,21 @@ using NetTopologySuite;
 using ErrorCodes = H4H_API.Helpers.ErrorCodes;
 using SpecialistServiceEntity = H4H.Core.Models.SpecialistService;
 
+
 namespace H4H_API.Services.Implementations
 {
     public class SpecialistService : ISpecialistService
     {
         private readonly ApplicationDbContext _context;
         private readonly FirebaseNotificationService _firebaseNotificationService;
+        private readonly IAppointmentsLifeCycleServer _lifecycle;
 
         public SpecialistService(ApplicationDbContext context, FirebaseNotificationService firebaseNotificationService)
         {
             _context = context;
             _firebaseNotificationService = firebaseNotificationService;
+            //Jest lekki to może być wstrzykiwany bezpośrednio
+            _lifecycle = new AppointmentsLifeCycleService(context, firebaseNotificationService);
         }
 
         public async Task<SpecialistDto> GetProfileAsync(Guid userId)
@@ -66,6 +70,16 @@ namespace H4H_API.Services.Implementations
         {
             var specialist = await _context.specialists
                 .FirstOrDefaultAsync(s => s.UserId == userId) ?? throw new AppException("Profil specjalisty nie istnieje.", ErrorCodes.SpecialistNotFound);
+
+            // --- Dodane sprawdzenie, czy specjalista jest zawieszony (suspended) - jeśli tak, nie pozwalamy na pobieranie zapytań ---
+            if (specialist.IsSuspended)
+            {
+                // Możemy zwrócić pustą listę zamiast błędu, żeby aplikacja się nie wywaliła na starcie, 
+                // ale specjalista nie zobaczy żadnych ofert.
+                return new List<InquiryListItemDto>();
+            }
+            // -----------------------
+
             var area = await _context.service_areas
                 .Where(a => a.Specialist.UserId == userId)
                 .OrderByDescending(a => a.IsPrimary)
@@ -407,6 +421,12 @@ namespace H4H_API.Services.Implementations
             var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
                 ?? throw new AppException("Profil nie istnieje.", ErrorCodes.SpecialistNotFound);
 
+            // --- Sprawdzenie, czy mozna dodac oferte (czy konto nie jest zawieszone) ---
+            if (specialist.IsSuspended)
+            {
+                throw new AppException("Twoje konto jest zawieszone przez administratora. Nie możesz wysyłać nowych ofert.", ErrorCodes.SpecialistAccountSuspended);
+            }
+            // -----------------------
 
             var appointment = await _context.appointments
                 .FirstOrDefaultAsync(a => a.Id == appointmentId);
@@ -718,6 +738,71 @@ namespace H4H_API.Services.Implementations
                 })
                 .OrderBy(s => s.DistanceKm)
                 .ToListAsync();
+        }
+        /// <summary>Pozwala specjaliście zrezygnować z potwierdzonej wizyty. Jeśli wizyta była już potwierdzona, metoda usuwa ofertę 
+        /// specjalisty z tej wizyty i przywraca status wizyty do "open", umożliwiając klientowi wybór innego specjalisty. 
+        /// Dodatkowo, jeśli wizyta była potwierdzona, wysyła powiadomienie do klienta informujące o rezygnacji specjalisty i ponownym 
+        /// otwarciu ogłoszenia. Jeśli wizyta nie była jeszcze potwierdzona, metoda po prostu usuwa ofertę specjalisty bez zmiany statusu wizyty.</summary>
+        public async Task ResignFromAppointmentAsync(Guid userId, Guid appointmentId)
+        {
+            var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
+                ?? throw new AppException("Nie znaleziono profilu specjalisty.", ErrorCodes.SpecialistNotFound);
+
+            var appointment = await _context.appointments.FindAsync(appointmentId)
+                ?? throw new AppException("Wizyta nie istnieje.", ErrorCodes.AppointmentNotFound);
+            // Sprawdzanie czy specjalista ma oferte w tej wizycie
+            var hasOffer = await _context.Set<AppointmentSpecialist>()
+                .AnyAsync(os => os.AppointmentId == appointmentId && os.SpecialistId == specialist.Id);
+
+            if (!hasOffer)
+                throw new AppException("Nie posiadasz oferty w tym zleceniu.", ErrorCodes.NoOfferForAppointment);
+
+            //Wariant B - wizyta potwierdzona, rezygnacja specjalisty.
+            if (appointment.AppointmentStatus == "confirmed")
+            {
+                
+                if (appointment.SpecialistId != specialist.Id)
+                    throw new AppException("Nie jesteś przypisanym specjalistą.", ErrorCodes.NoOfferForAppointment);
+
+                // Najpierw usuwamy ofertę specjalisty, żeby nie mógł być wybrany ponownie
+                await _lifecycle.RemoveSpecialistOfferAsync(appointmentId, specialist.Id);
+                // Potem przywracamy wizytę do statusu 'open'
+                await _lifecycle.ResetAppointmentToOpenAsync(appointment);
+
+                // Wysyłamy powiadomienie do klienta o rezygnacji specjalisty i ponownym otwarciu ogłoszenia
+                await SendSpecialistResignedNotification(appointment);
+            }
+            else
+            {
+                // Jeśli wizyta nie była confirmed, tylko usuwamy ofertę
+                await _lifecycle.RemoveSpecialistOfferAsync(appointmentId, specialist.Id);
+            }
+        }
+
+        /// <summary>
+        /// Wysyła powiadomienie do klienta, informujące o rezygnacji specjalisty z potwierdzonej wizyty i ponownym otwarciu ogłoszenia.
+        /// </summary>
+        private async Task SendSpecialistResignedNotification(Appointment appointment)
+        {
+            var clientUserId = await _context.clients
+                .Where(c => c.Id == appointment.ClientId)
+                .Select(c => c.UserId)
+                .FirstAsync();
+
+            var tokens = await _context.device_tokens
+                .Where(t => t.UserId == clientUserId)
+                .Select(t => t.FcmToken)
+                .ToListAsync();
+
+            if (tokens.Any())
+            {
+                await _firebaseNotificationService.SendNotificationToManyAsync(
+                    tokens,
+                    "Zmiana w Twojej wizycie",
+                    "Specjalista musiał zrezygnować. Twoje ogłoszenie jest znów otwarte – wybierz innego specjalistę.",
+                    appointment.Id.ToString()
+                );
+            }
         }
 
 

@@ -10,7 +10,6 @@ using H4H_API.Exceptions;
 using H4H_API.Helpers;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
 
 namespace H4H_API.Services.Implementations
 {
@@ -307,8 +306,9 @@ namespace H4H_API.Services.Implementations
             var query = _context.appointments
                 .Include(a => a.Client) // Ważne dla ClientName
                 .Include(a => a.Specialist) // Ważne dla SpecialistName
-                                            //.Include(a => a.SpecialistService) // Ważne dla ServiceName, usuwam bo teraz mam listę usług, a nie pojedynczą
-                                            //    .ThenInclude(ss => ss!.ServiceType) //usuwam bo teraz mam listę usług, a nie pojedynczą
+                .Include(a => a.ServiceType) // Ważne dla ServiceTypeName
+                                             //.Include(a => a.SpecialistService) // Ważne dla ServiceName, usuwam bo teraz mam listę usług, a nie pojedynczą
+                                             //    .ThenInclude(ss => ss!.ServiceType) //usuwam bo teraz mam listę usług, a nie pojedynczą
                 .Where(a => a.ClientId == client.Id)
                 .AsQueryable();
 
@@ -326,6 +326,23 @@ namespace H4H_API.Services.Implementations
             // Mapujemy listę modeli na listę DTO za pomocą AutoMappera
             var items = _mapper.Map<List<AppointmentDto>>(appointments);
 
+            // Uzupełniamy numer telefonu specjalisty tylko dla wizyt o statusie "confirmed"
+            foreach (var item in items)
+            {
+                if (item.AppointmentStatus == "confirmed")
+                {
+                    var specialist = await _context.specialists.FindAsync(item.SpecialistId);
+                    if (specialist == null)
+                        throw new AppException($"Nie znaleziono specjalisty.", ErrorCodes.SpecialistNotFound);
+
+                    var user = await _context.users.FindAsync(specialist.UserId);
+                    if (user == null)
+                        throw new AppException($"Nie znaleziono użytkownika specjalisty.", ErrorCodes.SpecialistNotFound);
+
+                    item.SpecialistPhoneNumber = user?.PhoneNumber;
+                }
+            }
+
             // Pobieramy wszystkie unikalne ID usług specjalisty z pobranych wizyt
             var allServiceIds = appointments.SelectMany(a => a.SpecialistServiceIds).Distinct().ToList();
 
@@ -341,10 +358,7 @@ namespace H4H_API.Services.Implementations
                 foreach (var item in items)
                 {
                     var original = appointments.First(a => a.Id == item.Id);
-                    item.ServiceNames = original.SpecialistServiceIds
-                        .Where(id => serviceNamesMap.ContainsKey(id))
-                        .Select(id => serviceNamesMap[id])
-                        .ToList();
+                    item.ServiceNames = original.ServiceNamesSnapshot?.Split(", ").ToList() ?? new List<string>();
                 }
             }
 
@@ -432,6 +446,61 @@ namespace H4H_API.Services.Implementations
             var now = DateTime.Now;
             appointment.CancelledAt = DateTime.SpecifyKind(now, DateTimeKind.Unspecified);
             appointment.UpdatedAt = DateTime.SpecifyKind(now, DateTimeKind.Unspecified);
+
+            // Zapisz zmiany w bazie danych
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> CompleteAppointmentAsync(Guid userId, Guid appointmentId)
+        {
+            // Pobierz profil klienta
+            var client = await _context.clients
+                .FirstOrDefaultAsync(c => c.UserId == userId);
+
+            if (client == null)
+                return false;
+
+            // Pobierz wizytę i sprawdź, czy należy do klienta
+            var appointment = await _context.appointments
+                .FirstOrDefaultAsync(a => a.Id == appointmentId && a.ClientId == client.Id);
+
+            // Sprawdź, czy wizyta jest potwierdzona i nie jest przed datą rozpoczęcia
+            if (appointment == null)
+                return false;
+            if (appointment.AppointmentStatus.ToLower() != "confirmed")
+                return false;
+            if (appointment.FinalDate > DateTime.Now)
+                return false;
+
+            appointment.AppointmentStatus = "completed";
+
+            // Zmiana na DateTime.Now i zapewnienie braku "Kind"
+            var now = DateTime.Now;
+            appointment.UpdatedAt = DateTime.SpecifyKind(now, DateTimeKind.Unspecified);
+
+            // Wyślij powiadomienie do klienta o zakończeniu wizyty
+            var clientUserId = await _context.clients
+                .Where(c => c.Id == appointment.ClientId)
+                .Select(c => c.UserId)
+                .FirstAsync();
+
+            // Pobierz tokeny FCM klienta
+            var tokens = await _context.device_tokens
+                .Where(t => t.UserId == clientUserId)
+                .Select(t => t.FcmToken)
+                .ToListAsync();
+
+            // Jeśli klient ma zarejestrowane tokeny, wyślij powiadomienie
+            if (tokens.Count != 0)
+                await _firebaseNotificationService.SendNotificationToManyAsync(
+                    tokens,
+                    "Wizyta zakończona",
+                    "Twoja wizyta została zakończona. Oceń specjalistę ⭐",
+                    appointment.Id.ToString(),
+                    "rating",
+                    true
+                );
 
             // Zapisz zmiany w bazie danych
             await _context.SaveChangesAsync();
@@ -755,6 +824,16 @@ namespace H4H_API.Services.Implementations
             // Mapujemy każde zgłoszenie na DTO, w tym pobieramy nazwy usług, które specjalista zaznaczył w tej ofercie
             foreach (var os in offers)
             {
+                var specialistAvgRating = await _context.specialists
+                    .Where(s => s.Id == os.SpecialistId)
+                    .Select(s => s.AverageRating)
+                    .FirstOrDefaultAsync();
+
+                var totalReviews = await _context.specialists
+                    .Where(s => s.Id == os.SpecialistId)
+                    .Select(s => s.TotalReviews)
+                    .FirstOrDefaultAsync();
+
                 var offerDto = new AppointmentOfferDto
                 {
                     SpecialistId = os.SpecialistId,
@@ -763,7 +842,9 @@ namespace H4H_API.Services.Implementations
                     ProposedPrice = os.Price,
                     ProposedDate = os.ProposedDate,
                     Bio = os.Specialist.Bio,
-                    SelectedServiceIds = os.ServiceTypeIds?.ToList() ?? new List<Guid>()
+                    SelectedServiceIds = os.ServiceTypeIds?.ToList() ?? new List<Guid>(),
+                    SpecialistRating = specialistAvgRating,
+                    TotalReviews = totalReviews
                 };
 
                 // Pobieramy nazwy usług, które specjalista zaznaczył w tej konkretnej ofercie
@@ -863,7 +944,7 @@ namespace H4H_API.Services.Implementations
 
             await _context.SaveChangesAsync();
         }
-        
+
         /// <summary>
         /// Asynchronously retrieves the review for a specified appointment belonging to the specified user.
         /// </summary>
@@ -891,7 +972,7 @@ namespace H4H_API.Services.Implementations
                 .Select(a => a.IsRated)
                 .FirstOrDefaultAsync();
 
-            if (!appointmentIsRated)
+            if (!appointmentIsRated && review != null)
                 throw new AppException("Wizyta nie jest oznaczona jako oceniona, ale opinia istnieje. Proszę skontaktować się z supportem.", ErrorCodes.DataConflict);
 
             return new AppointmentReviewDto

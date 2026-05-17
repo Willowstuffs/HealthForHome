@@ -10,5 +10,7 @@
         public string? Bio { get; set; }
         public List<Guid> SelectedServiceIds { get; set; } = new();
         public List<string> SelectedServiceNames { get; set; } = new();
+        public decimal SpecialistRating { get; set; }
+        public int TotalReviews { get; set; }
     }
 }

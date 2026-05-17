@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace H4H_API.DTOs.Appointments
+﻿namespace H4H_API.DTOs.Appointments
 {
     /// <summary>
     /// Represents the data transfer object for an appointment, including scheduling, participant, and status
@@ -28,10 +26,12 @@ namespace H4H_API.DTOs.Appointments
         public DateTime? CancelledAt { get; set; }                      // Data anulowania (jeśli anulowane)
         public DateTime? FinalDate { get; set; }
         public bool IsRated { get; set; }
+        public string? SpecialistPhoneNumber { get; set; }              // Numer telefonu specjalisty (opcjonalnie, tylko dla `confirmed`)
 
         // Właściwości nawigacyjne (opcjonalne - do wypełnienia jeśli potrzebne)
         public string? SpecialistName { get; set; }
         public string? ClientName { get; set; }
+        public string? ServiceTypeName { get; set; }
         public List<string> ServiceNames { get; set; } = new();
     }
 }

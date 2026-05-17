@@ -2,10 +2,10 @@
 using H4H.Data;
 using H4H_API.DTOs.Admin;
 using H4H_API.DTOs.Common;
-using H4H_API.Services.Interfaces;
-using H4H_API.Helpers; //Do bledow
-using Microsoft.EntityFrameworkCore;
 using H4H_API.Exceptions;
+using H4H_API.Helpers; //Do bledow
+using H4H_API.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace H4H_API.Services.Implementations
 {
@@ -63,7 +63,8 @@ namespace H4H_API.Services.Implementations
                     Email = s.User.Email,
                     ProfessionalTitle = s.ProfessionalTitle ?? string.Empty, //CS8601 fix
                     VerificationStatus = s.VerificationStatus,
-                    CreatedAt = s.CreatedAt
+                    CreatedAt = s.CreatedAt,
+                    IsSuspended = s.IsSuspended //dodany, aby pokazać czy specjalista jest zawieszony
                 })
                 .ToListAsync();
 
@@ -92,7 +93,7 @@ namespace H4H_API.Services.Implementations
                 .Include(s => s.Appointments)
                     .ThenInclude(a => a.ServiceType)
                 .FirstOrDefaultAsync(s => s.Id == specialistId)
-                ?? throw new AppException ("Nie znaleziono specjalisty.", ErrorCodes.SpecialistNotFound);
+                ?? throw new AppException("Nie znaleziono specjalisty.", ErrorCodes.SpecialistNotFound);
 
             var qualifications = await _context.specialist_qualifications
                 .FirstOrDefaultAsync(q => q.SpecialistId == specialistId && q.IsActive);
@@ -108,7 +109,7 @@ namespace H4H_API.Services.Implementations
                     FirstName = c.FirstName,
                     LastName = c.LastName,
                     Email = c?.User?.Email ?? "Brak",
-                    CreatedAt = c.CreatedAt
+                    CreatedAt = c?.CreatedAt ?? DateTime.MinValue
                 }).ToList();
 
             // Generowanie activity w locie z dat dodania wizyt
@@ -119,7 +120,7 @@ namespace H4H_API.Services.Implementations
                     Id = a.Id,
                     Type = "appointment_added",
                     Description = $"Dodano nowe zamówienie: {a.ServiceType?.Name ?? "Wizyta"}",
-                    CreatedAt = a.CreatedAt 
+                    CreatedAt = a.CreatedAt
                 }).ToList();
 
             return new AdminSpecialistDetailsDto
@@ -138,6 +139,10 @@ namespace H4H_API.Services.Implementations
                 LicensePhotoUrl = qualifications?.LicensePhotoUrl,
                 IdCardPhotoUrl = qualifications?.IdCardPhotoUrl,
                 VerificationNotes = qualifications?.VerificationNotes,
+
+                // Dodane pola do zarządzania statusem specjalisty
+                IsSuspended = specialist.IsSuspended,
+                LicenseValidUntil = qualifications?.LicenseValidUntil,
 
                 // Nowe pola zawierające liste wizyt specjalisty zmapowanych na AdminClientAppointmentDto
                 Appointments = specialist.Appointments.Select(a => new AdminClientAppointmentDto
@@ -254,7 +259,7 @@ namespace H4H_API.Services.Implementations
             //Pobieramy klientów z bazy danych, sortujemy po dacie rejestracji malejąco, a następnie stosujemy paginację
             var items = await query
                 .OrderByDescending(c => c.CreatedAt)
-                .Skip((filter.Page - 1) * filter.PageSize) 
+                .Skip((filter.Page - 1) * filter.PageSize)
                 .Take(filter.PageSize)
                 .Select(c => new AdminClientListItemDto
                 {
@@ -394,6 +399,9 @@ namespace H4H_API.Services.Implementations
             var specialist = await _context.specialists.FindAsync(specialistId)
                 ?? throw new AppException("Nie znaleziono profilu specjalisty.", ErrorCodes.SpecialistNotFound);
 
+            // Wymuszenie rodzaju daty, żeby Postgres nie marudził bo Ania chce YYYY-MM-DD
+            var dateToSave = DateTime.SpecifyKind(validUntil, DateTimeKind.Utc);
+
             //Szukanie kwalifikacji
             var qualification = await _context.specialist_qualifications
                 .FirstOrDefaultAsync(q => q.SpecialistId == specialistId && q.IsActive);
@@ -401,7 +409,7 @@ namespace H4H_API.Services.Implementations
             if (qualification != null)
             {
                 // Jeśli istnieje, aktualizowanie daty
-                qualification.LicenseValidUntil = validUntil;
+                qualification.LicenseValidUntil = dateToSave;
             }
             else
             {
@@ -418,12 +426,11 @@ namespace H4H_API.Services.Implementations
                     SpecialistId = specialistId,
                     Profession = profession,
                     LicenseNumber = "PENDING", // Wypełniamy tymczasowo, bo baza wymaga NOT NULL
-                    LicenseValidUntil = validUntil,
+                    LicenseValidUntil = dateToSave,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
                 });
             }
-
             await _context.SaveChangesAsync();
         }
 
@@ -440,7 +447,7 @@ namespace H4H_API.Services.Implementations
                 throw new AppException("Specjalista jest już zawieszony.", ErrorCodes.ValidationError);
 
             specialist.IsSuspended = true;
-            specialist.SuspendedAt = DateTime.UtcNow;
+            specialist.SuspendedAt = DateTime.UtcNow; // Ustawiamy datę zawieszenia na aktualny czas
 
             await _context.SaveChangesAsync();
         }
@@ -458,7 +465,7 @@ namespace H4H_API.Services.Implementations
                 throw new AppException("Specjalista nie jest zawieszony.", ErrorCodes.ValidationError);
 
             specialist.IsSuspended = false;
-            specialist.SuspendedAt = null;
+            specialist.SuspendedAt = null; // Usuwamy datę zawieszenia, ponieważ konto jest już aktywne
 
             await _context.SaveChangesAsync();
         }
@@ -472,11 +479,14 @@ namespace H4H_API.Services.Implementations
             var appointment = await _context.appointments
                 .Include(a => a.Client)
                     .ThenInclude(c => c.User)
-                .Include(a => a.Specialist)
+                .Include(a => a.Specialist!) //fix nullability
                     .ThenInclude(s => s.User)
                 .Include(a => a.ServiceType)
                 .FirstOrDefaultAsync(a => a.Id == appointmentId)
                 ?? throw new AppException("Nie znaleziono wizyty.", ErrorCodes.AppointmentNotFound);
+
+            var review = await _context.reviews
+                .FirstOrDefaultAsync(r => r.AppointmentId == appointmentId && r.ClientId == appointment.Client.Id);
 
             return new AdminAppointmentDetailsDto
             {
@@ -504,6 +514,14 @@ namespace H4H_API.Services.Implementations
                     FirstName = appointment.Specialist.FirstName,
                     LastName = appointment.Specialist.LastName,
                     Email = appointment.Specialist.User?.Email ?? string.Empty
+                } : null,
+
+                Review = review != null ? new AdminAppointmentReviewDto
+                {
+                    Id = review.Id,
+                    Rating = review.Rating,
+                    Comment = review.Comment,
+                    IsVerified = review.IsVerified,
                 } : null,
 
                 ServiceName = appointment.ServiceType?.Name ?? "Brak danych"

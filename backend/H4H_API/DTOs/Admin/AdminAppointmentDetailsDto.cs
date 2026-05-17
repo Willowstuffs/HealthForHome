@@ -15,5 +15,6 @@
 
         public AdminClientListItemDto? Client { get; set; }
         public AdminSpecialistListItemDto? Specialist { get; set; }
+        public AdminAppointmentReviewDto? Review { get; set; }
     }
 }
