@@ -7,7 +7,6 @@ using H4H_API.Helpers;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 
@@ -86,6 +85,19 @@ namespace H4H_API.Controllers
                 return Ok(ApiResponse.SuccessResponse("Wizyta została anulowana"));
 
             return BadRequest(ApiResponse.ErrorResponse("Nie można anulować tej wizyty"));
+        }
+
+        // Zakończ wizytę (manulanie po wykonaniu usługi)
+        [HttpPost("appointments/{id}/complete")]
+        public async Task<ActionResult<ApiResponse>> Complete(Guid id)
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            var success = await _clientService.CompleteAppointmentAsync(userId, id);
+
+            if (success)
+                return Ok(ApiResponse.SuccessResponse("Wizyta została oznaczona jako zakończona"));
+
+            return BadRequest(ApiResponse.ErrorResponse("Nie można zakończyć tej wizyty"));
         }
 
         // Tworzy nową prośbę o usługę (ogłoszenie) - dostępne również dla gości (niezalogowanych)

@@ -306,8 +306,9 @@ namespace H4H_API.Services.Implementations
             var query = _context.appointments
                 .Include(a => a.Client) // Ważne dla ClientName
                 .Include(a => a.Specialist) // Ważne dla SpecialistName
-                                            //.Include(a => a.SpecialistService) // Ważne dla ServiceName, usuwam bo teraz mam listę usług, a nie pojedynczą
-                                            //    .ThenInclude(ss => ss!.ServiceType) //usuwam bo teraz mam listę usług, a nie pojedynczą
+                .Include(a => a.ServiceType) // Ważne dla ServiceTypeName
+                                             //.Include(a => a.SpecialistService) // Ważne dla ServiceName, usuwam bo teraz mam listę usług, a nie pojedynczą
+                                             //    .ThenInclude(ss => ss!.ServiceType) //usuwam bo teraz mam listę usług, a nie pojedynczą
                 .Where(a => a.ClientId == client.Id)
                 .AsQueryable();
 
@@ -445,6 +446,61 @@ namespace H4H_API.Services.Implementations
             var now = DateTime.Now;
             appointment.CancelledAt = DateTime.SpecifyKind(now, DateTimeKind.Unspecified);
             appointment.UpdatedAt = DateTime.SpecifyKind(now, DateTimeKind.Unspecified);
+
+            // Zapisz zmiany w bazie danych
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> CompleteAppointmentAsync(Guid userId, Guid appointmentId)
+        {
+            // Pobierz profil klienta
+            var client = await _context.clients
+                .FirstOrDefaultAsync(c => c.UserId == userId);
+
+            if (client == null)
+                return false;
+
+            // Pobierz wizytę i sprawdź, czy należy do klienta
+            var appointment = await _context.appointments
+                .FirstOrDefaultAsync(a => a.Id == appointmentId && a.ClientId == client.Id);
+
+            // Sprawdź, czy wizyta jest potwierdzona i nie jest przed datą rozpoczęcia
+            if (appointment == null)
+                return false;
+            if (appointment.AppointmentStatus.ToLower() != "confirmed")
+                return false;
+            if (appointment.FinalDate > DateTime.Now)
+                return false;
+
+            appointment.AppointmentStatus = "completed";
+
+            // Zmiana na DateTime.Now i zapewnienie braku "Kind"
+            var now = DateTime.Now;
+            appointment.UpdatedAt = DateTime.SpecifyKind(now, DateTimeKind.Unspecified);
+
+            // Wyślij powiadomienie do klienta o zakończeniu wizyty
+            var clientUserId = await _context.clients
+                .Where(c => c.Id == appointment.ClientId)
+                .Select(c => c.UserId)
+                .FirstAsync();
+
+            // Pobierz tokeny FCM klienta
+            var tokens = await _context.device_tokens
+                .Where(t => t.UserId == clientUserId)
+                .Select(t => t.FcmToken)
+                .ToListAsync();
+
+            // Jeśli klient ma zarejestrowane tokeny, wyślij powiadomienie
+            if (tokens.Count != 0)
+                await _firebaseNotificationService.SendNotificationToManyAsync(
+                    tokens,
+                    "Wizyta zakończona",
+                    "Twoja wizyta została zakończona. Oceń specjalistę ⭐",
+                    appointment.Id.ToString(),
+                    "rating",
+                    true
+                );
 
             // Zapisz zmiany w bazie danych
             await _context.SaveChangesAsync();
@@ -856,7 +912,7 @@ namespace H4H_API.Services.Implementations
                 .Select(a => a.IsRated)
                 .FirstOrDefaultAsync();
 
-            if (!appointmentIsRated)
+            if (!appointmentIsRated && review != null)
                 throw new AppException("Wizyta nie jest oznaczona jako oceniona, ale opinia istnieje. Proszę skontaktować się z supportem.", ErrorCodes.DataConflict);
 
             return new AppointmentReviewDto
