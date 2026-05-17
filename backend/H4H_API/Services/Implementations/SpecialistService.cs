@@ -141,28 +141,59 @@ namespace H4H_API.Services.Implementations
                 .Where(a => a.Location != null)
                 .Where(a => a.Location!.Distance(area.Location) <= maxMeters);
 
+            // DANE DO PAMIĘCI
+            var appointments = await query.ToListAsync();
 
-            //Pobranie danych i mapowanie na DTO
-            var result = await query
-                .OrderBy(a => a.Location!.Distance(area.Location))
-                .Select(a => new InquiryListItemDto
+            // STATYSTYKI 
+            var clientStats = await _context.appointments
+                .Where(a => a.ClientId != null && a.ClientRating != null)
+                .GroupBy(a => a.ClientId)
+                .Select(g => new
                 {
-                    AppointmentId = a.Id,
-                    ScheduledStart = a.ScheduledStart,
-                    ScheduledEnd = a.ScheduledEnd,
-                    PatientName = a.Client.FirstName + " " + a.Client.LastName,
-                    // Pobieramy nazwę z ServiceType przypisanego do ogłoszenia
-                    ServiceName = a.ServiceType != null ? a.ServiceType.Name : "Nieznana kategoria",
-                    Status = a.AppointmentStatus,
-                    PatientAddress = a.ClientAddress ?? a.Client.Address ?? "Brak adresu",
-                    Price = a.TotalPrice ?? 0,
-                    Description = a.ClientNotes,
-
-                    DistanceKm = Math.Round(a.Location!.Distance(area.Location) / 1000, 2)
+                    ClientId = g.Key,
+                    Ratings = g.GroupBy(x => x.ClientRating)
+                        .Select(r => new
+                        {
+                            Rating = r.Key,
+                            Count = r.Count()
+                        })
                 })
                 .ToListAsync();
+
+            var statsDict = clientStats.ToDictionary(
+                x => x.ClientId,
+                x => new ClientStatsDto
+                {
+                    GoodCount = x.Ratings.FirstOrDefault(r => r.Rating == "good")?.Count ?? 0,
+                    NeutralCount = x.Ratings.FirstOrDefault(r => r.Rating == "neutral")?.Count ?? 0,
+                    BadCount = x.Ratings.FirstOrDefault(r => r.Rating == "bad")?.Count ?? 0
+                }
+            );
+
+            //LOKALIZACJA 
+            var result = await query
+               .OrderBy(a => a.Location!.Distance(area.Location))
+               .Select(a => new InquiryListItemDto
+               {
+                   AppointmentId = a.Id,
+                   ScheduledStart = a.ScheduledStart,
+                   ScheduledEnd = a.ScheduledEnd,
+                   PatientName = a.Client.FirstName + " " + a.Client.LastName,
+                   ServiceName = a.ServiceType != null ? a.ServiceType.Name : "Nieznana kategoria",
+                   Status = a.AppointmentStatus,
+                   PatientAddress = a.ClientAddress ?? a.Client.Address ?? "Brak adresu",
+                   Price = a.TotalPrice ?? 0,
+                   Description = a.ClientNotes,
+                   reviews = a.ClientId != null && statsDict.ContainsKey(a.ClientId)
+                        ? statsDict[a.ClientId]
+                        : new ClientStatsDto(),
+
+                   DistanceKm = Math.Round(a.Location!.Distance(area.Location) / 1000, 2)
+               })
+               .ToListAsync();
             return result;
         }
+        
         public async Task UpdateLicenseNumberAsync(Guid userId, string licenseNumber)
         {
             var specialist = await _context.specialists
@@ -509,6 +540,7 @@ namespace H4H_API.Services.Implementations
             return appointments.Select(a => new InquiryListItemDto
             {
                 AppointmentId = a.Id,
+                ClientId = a.ClientId,
                 FinalDate = a.FinalDate,
                 PatientName = a.Client.FirstName + " " + a.Client.LastName,
                 ServiceName = a.ServiceNamesSnapshot?? "Brak usługi",
@@ -574,6 +606,16 @@ namespace H4H_API.Services.Implementations
 
             return result;
         }
+        public async Task UpdateAvatarAsync(Guid userId, string avatarUrl)
+        {
+            var user = await _context.users.FirstOrDefaultAsync(u => u.Id == userId)
+                ?? throw new KeyNotFoundException("Użytkownik nie istnieje.");
+
+            user.AvatarUrl = avatarUrl;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+        }
         public async Task UpdateProfileAsync(Guid userId, UpdateSpecialistProfileDto dto)
         {
             // Pobranie specjalisty wraz z obszarami działania
@@ -589,39 +631,14 @@ namespace H4H_API.Services.Implementations
             user.Email = dto.Email;
             user.PhoneNumber = dto.PhoneNumber;
             user.UpdatedAt = DateTime.UtcNow;
-
-            // Obsługa uploadu avataru
-            if (dto.Avatar != null && dto.Avatar.Length > 0)
-            {
-                // Tworzymy nazwę pliku z GUIDem, zachowując rozszerzenie
-                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(dto.Avatar.FileName)}";
-
-                // Tworzymy folder wwwroot/avatars jeśli nie istnieje
-                var folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "avatars");
-                if (!Directory.Exists(folderPath))
-                    Directory.CreateDirectory(folderPath);
-
-                var filePath = Path.Combine(folderPath, fileName);
-
-                // Zapis pliku na dysku
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                {
-                    await dto.Avatar.CopyToAsync(stream);
-                }
-
-                // Zapisujemy ścieżkę do bazy (relative URL)
-                user.AvatarUrl = $"/avatars/{fileName}";
-            }
             // Aktualizacja danych specjalisty
             specialist.FirstName = dto.FirstName;
             specialist.LastName = dto.LastName;
-            specialist.ProfessionalTitle = dto.ProfessionalTitle;
-            specialist.Bio = dto.Bio;
-            specialist.HourlyRate = dto.HourlyRate;
             // Zapis wszystkich zmian w jednej transakcji
             await _context.SaveChangesAsync();
 
         }
+
 
 
         /// <summary>

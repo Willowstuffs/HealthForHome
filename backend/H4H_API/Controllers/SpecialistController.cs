@@ -194,11 +194,24 @@ namespace H4H_API.Controllers
         public async Task<ActionResult<ApiResponse<object>>> UpdateProfile([FromForm] UpdateSpecialistProfileDto dto)
         {
             var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
-
+            Console.WriteLine("----------------------------------------------------------------------------");
+            Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(dto));
             await _specialistService.UpdateProfileAsync(userId, dto);
 
             return Ok(ApiResponse<object?>
                 .SuccessResponse(null, "Profil został zaktualizowany."));
+        }
+        [HttpPut("profile/avatar")]
+        public async Task<ActionResult<ApiResponse<object>>> UpdateAvatar([FromBody] UpdateAvatarDto dto)
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+
+            if (string.IsNullOrEmpty(dto.AvatarUrl))
+                return BadRequest(ApiResponse<object>.ErrorResponse("Adres URL awatara nie może być pusty."));
+
+            await _specialistService.UpdateAvatarAsync(userId, dto.AvatarUrl);
+
+            return Ok(ApiResponse<object?>.SuccessResponse(null, "Zdjęcie profilowe zostało zaktualizowane."));
         }
 
         /// <summary>

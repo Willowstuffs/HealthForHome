@@ -92,5 +92,6 @@ namespace H4H_API.Services.Interfaces
         /// <param name="dto"></param>
         /// <returns></returns>
         Task RateClientAsync(Guid specialistUserId, Guid appointmentId, RateClientDto dto);
+        Task UpdateAvatarAsync(Guid userId, string avatarUrl);
     }
 }

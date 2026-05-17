@@ -680,24 +680,84 @@ namespace H4H_API.Services.Implementations
 
             _context.appointments.Add(appointment);
             await _context.SaveChangesAsync();
-            var specialistTokens = await _context.device_tokens
-                .Where(t => t.User.UserType == "specialist")
-                .Select(t => t.FcmToken)
-                .ToListAsync();
+            var specialistTokens =
+            await FindMatchingSpecialistTokensAsync(appointment);
 
             if (specialistTokens.Any())
             {
                 await _firebaseNotificationService.SendNotificationToManyAsync(
                     specialistTokens,
                     "Nowa oferta!",
-                    $"Nowe zapytanie: {appointment.ServiceType}," +
-                    $"od: {appointment.ScheduledStart} do: {appointment.ScheduledEnd}",
-                    appointment.Id.ToString()
+                    $"Pacjent: {appointment.ContactName} od: {appointment.ScheduledStart} do: {appointment.ScheduledEnd}",
+                    appointment.Id.ToString(),
+                    screen: "offer",
+                    isClientApp: false
                 );
             }
             return appointment.Id;
         }
+        private async Task<List<string>> FindMatchingSpecialistTokensAsync(Appointment appointment)
+        {
+            var specialists = await _context.specialists
+                .Include(s => s.User)
+                .Include(s => s.ServiceAreas)
+                .Include(s => s.Qualifications)
+                .ToListAsync();
 
+            var resultTokens = new List<string>();
+
+            foreach (var specialist in specialists)
+            {
+
+                if (specialist.IsSuspended)
+                {
+                    continue;
+                }
+
+                var area = specialist.ServiceAreas
+                    .OrderByDescending(a => a.IsPrimary)
+                    .FirstOrDefault();
+
+                if (area?.Location == null || appointment.Location == null)
+                {
+                    continue;
+                }
+
+                var distance =
+                    appointment.Location.Distance(area.Location);
+
+                var maxMeters = area.MaxDistanceKm * 1000;
+
+                if (distance > maxMeters)
+                {
+                    continue;
+                }
+
+                var profession = specialist.Qualifications
+                    .FirstOrDefault(q => q.IsActive)?.Profession;
+
+                var category = appointment.ServiceType?.Category;
+
+
+                var match =
+                    (profession == "nurse" && category == "nursing") ||
+                    (profession == "physiotherapist" && category == "physiotherapy");
+
+                if (!match)
+                {
+                    continue;
+                }
+
+                var tokens = await _context.device_tokens
+                    .Where(t => t.UserId == specialist.UserId)
+                    .Select(t => t.FcmToken)
+                    .ToListAsync();
+
+                resultTokens.AddRange(tokens);
+            }
+
+            return resultTokens;
+        }
         /// <summary>
         /// Asynchronicznie pobiera listę ogłoszeń serwisowych (prośby o usługę) utworzonych przez zalogowanego klienta.
         /// </summary>

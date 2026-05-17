@@ -87,6 +87,9 @@ public class UpdateSpecialistProfileDto
     public string? ProfessionalTitle { get; set; }
     public string? Bio { get; set; }
     public decimal? HourlyRate { get; set; }
-    public IFormFile? Avatar { get; set; }
 }
 
+public class UpdateAvatarDto
+{
+    public string AvatarUrl { get; set; } = string.Empty;
+}

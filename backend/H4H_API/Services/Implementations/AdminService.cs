@@ -12,9 +12,12 @@ namespace H4H_API.Services.Implementations
     public class AdminService : IAdminService
     {
         private readonly ApplicationDbContext _context;
-        public AdminService(ApplicationDbContext context)
+        private readonly FirebaseNotificationService _firebaseNotificationService;
+
+        public AdminService(ApplicationDbContext context,FirebaseNotificationService firebaseNotificationService)
         {
             _context = context; //kontekst bazy danych
+            _firebaseNotificationService = firebaseNotificationService;
         }
         /// <summary>
         /// Otrzymuje liste specjalistow z mozliwoscia filtrowania po statusie weryfikacji i dacie rejestracji,
@@ -174,8 +177,19 @@ namespace H4H_API.Services.Implementations
                 Action = "approved",
                 CreatedAt = DateTime.UtcNow
             });
-
             await _context.SaveChangesAsync();
+            //firebase
+            var specialistTokens = await _context.device_tokens
+               .Where(dt => dt.UserId == specialist.Id)
+               .Select(dt => dt.FcmToken)
+               .ToListAsync();
+
+            await _firebaseNotificationService.SendNotificationAsync(
+                specialistTokens,
+                $"{specialist.FirstName} {specialist.LastName}",
+                "Twoja weryfikacja przebiegła pomyślie możesz się już zalogować",
+                isClientApp: false
+            );
         }
 
         /// <summary>Odrzuca specjaliste zmieniajac status weryfikacji na rejected i logujac akcje wykonana przez admina z powodem odrzucenia.</summary>
@@ -199,6 +213,18 @@ namespace H4H_API.Services.Implementations
             });
 
             await _context.SaveChangesAsync();
+            //firebase
+            var specialistTokens = await _context.device_tokens
+               .Where(dt => dt.UserId == specialist.Id)
+               .Select(dt => dt.FcmToken)
+               .ToListAsync();
+
+            await _firebaseNotificationService.SendNotificationAsync(
+                specialistTokens,
+                $"{specialist.FirstName} {specialist.LastName}",
+                $"Twoja weryfikacja została odrzucona {reason}",
+                isClientApp: false
+            );
         }
 
 
