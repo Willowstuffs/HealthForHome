@@ -6,7 +6,6 @@ using H4H_API.DTOs.Specialist;
 using H4H_API.Exceptions;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using NetTopologySuite.Geometries;
 using ErrorCodes = H4H_API.Helpers.ErrorCodes;
 
@@ -61,7 +60,7 @@ namespace H4H_API.Services.Implementations
             var user = await _context.users
                 .Include(u => u.Client)
                 .Include(u => u.Specialist)
-                .FirstOrDefaultAsync(u => u.Email == request.Email && u.IsActive);
+                .FirstOrDefaultAsync(u => u.Email == request.Email);
 
             // Sprawdź czy użytkownik istnieje i czy hasło jest poprawne
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
@@ -229,7 +228,7 @@ namespace H4H_API.Services.Implementations
                     Email = request.Email,
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
                     UserType = "specialist",
-                    IsActive = false, 
+                    IsActive = false,
                     CreatedAt = DateTime.Now,
                     UpdatedAt = DateTime.Now
                 };
@@ -245,7 +244,7 @@ namespace H4H_API.Services.Implementations
                     FirstName = request.FirstName,
                     LastName = request.LastName,
                     ProfessionalTitle = request.Specialization,
-                    
+
                     //DEFAULTOWE dla nowej rejestracji
                     IsVerified = false,
                     VerificationStatus = "pending",
@@ -269,7 +268,8 @@ namespace H4H_API.Services.Implementations
                     RequiresEmailVerification = true, //tylko dla funkcji usera!
                 };
 
-            } catch (Exception)
+            }
+            catch (Exception)
             {
                 await transaction.RollbackAsync(); //w przypadku bledu, wycofaj zmiany
                 throw; //przekaz dalej wyjatek do middleware error handling
@@ -569,7 +569,7 @@ namespace H4H_API.Services.Implementations
                 .Where(vc => vc.UserId == user.Id && vc.Code == request.Code && !vc.IsUsed && vc.Purpose == "registration")
                 .OrderByDescending(vc => vc.CreatedAt)
                 .FirstOrDefaultAsync();
-            
+
 
             if (verificationCode != null)
             {
