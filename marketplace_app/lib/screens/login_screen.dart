@@ -4,6 +4,7 @@ import 'package:marketplace_app/widgets/screen_status_bar.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import 'register_account_screen.dart';
+import 'verification_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -49,6 +50,15 @@ class _LoginScreenState extends State<LoginScreen> {
       ).showSnackBar(const SnackBar(content: Text('Zalogowano pomyślnie')));
 
       Navigator.of(context).popUntil((route) => route.isFirst);
+    } on AccountNotVerifiedException {
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              VerificationScreen(email: emailController.text.trim()),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

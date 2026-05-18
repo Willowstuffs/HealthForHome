@@ -275,6 +275,11 @@ class ApiService {
       await saveSession(loginResponse);
       return loginResponse;
     } on DioException catch (e) {
+      if (e.response?.statusCode == 401 &&
+          e.response?.data is Map<String, dynamic> &&
+          e.response?.data['errorCode'] == 'AUTH_009') {
+        throw AccountNotVerifiedException();
+      }
       throw _handleDioError(e);
     } catch (e) {
       if (e.toString().contains('Tylko klienci')) {
@@ -692,4 +697,12 @@ class ApiService {
       }
     }
   }
+}
+
+class AccountNotVerifiedException implements Exception {
+  final String message;
+  AccountNotVerifiedException([this.message = 'Konto nie zostało zweryfikowane.']);
+  
+  @override
+  String toString() => message;
 }
