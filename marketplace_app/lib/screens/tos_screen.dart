@@ -1,9 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import '../theme/app_theme.dart';
 import '../widgets/screen_status_bar.dart';
 
-class TosScreen extends StatelessWidget {
+class TosScreen extends StatefulWidget {
   const TosScreen({super.key});
+
+  @override
+  State<TosScreen> createState() => _TosScreenState();
+}
+
+class _TosScreenState extends State<TosScreen> {
+  late final WebViewController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..loadRequest(Uri.parse('https://admin.makolino.com/legal/terms-user'));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,29 +34,7 @@ class TosScreen extends StatelessWidget {
             style: TextStyle(color: AppColors.onSurface),
           ),
         ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Warunki korzystania',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.onSurface,
-                    ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Work in progress... Tutaj będą znajdować się szczegółowe warunki korzystania z aplikacji Health for Home.',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-              ),
-              // TODO: Add full ToS content
-            ],
-          ),
-        ),
+        body: WebViewWidget(controller: _controller),
       ),
     );
   }
