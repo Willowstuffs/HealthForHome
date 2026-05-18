@@ -6,5 +6,7 @@ namespace H4H_API.Services.Interfaces
     {
         Task CompleteAppointmentAsync(Appointment appointment);
         Task CancelAppointmentAsync(Appointment appointment);
+        Task RemoveSpecialistOfferAsync(Guid appointmentId, Guid specialistId);
+        Task ResetAppointmentToOpenAsync(Appointment appointment);
     }
 }
