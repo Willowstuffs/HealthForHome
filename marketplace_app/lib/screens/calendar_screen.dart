@@ -611,7 +611,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   ),
                 ),
               if (appt.appointmentStatus != 'cancelled' &&
-                  appt.appointmentStatus != 'open')
+                  appt.appointmentStatus != 'open' &&
+                  appt.appointmentStatus != 'pending')
                 _buildDetailRow(
                   Icons.medical_services,
                   'Usługa:',

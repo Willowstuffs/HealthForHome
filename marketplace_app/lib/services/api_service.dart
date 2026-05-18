@@ -14,7 +14,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/review.dart';
 
 class ApiService {
-  static const bool isDev = true;
+  static const bool isDev = false;
   static const String _baseUrl = isDev
       ? 'https://10.0.2.2:7026'
       : 'https://h4h.makolino.com';
@@ -44,7 +44,6 @@ class ApiService {
       ),
     );
 
-    // TODO: usunac w produkcji (samo podpisany certyfikat)
     _dio.httpClientAdapter = IOHttpClientAdapter(
       createHttpClient: () {
         final client = HttpClient();
@@ -701,8 +700,10 @@ class ApiService {
 
 class AccountNotVerifiedException implements Exception {
   final String message;
-  AccountNotVerifiedException([this.message = 'Konto nie zostało zweryfikowane.']);
-  
+  AccountNotVerifiedException([
+    this.message = 'Konto nie zostało zweryfikowane.',
+  ]);
+
   @override
   String toString() => message;
 }
