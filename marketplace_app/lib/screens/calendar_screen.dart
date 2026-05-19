@@ -29,17 +29,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   final List<String> _availableStatuses = [
     'open',
-    'confirmed',
-    'cancelled',
-    'completed',
     'pending',
+    'confirmed',
+    'completed',
+    'cancelled',
   ];
   final Set<String> _selectedStatuses = {
     'open',
-    'confirmed',
-    'cancelled',
-    'completed',
     'pending',
+    'confirmed',
+    'completed',
+    'cancelled',
   };
 
   @override
@@ -776,7 +776,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       ),
                     ),
                     child: Text(
-                      'Anuluj wizytę',
+                      (appt.appointmentStatus == 'confirmed') ? 'Anuluj wizytę' : 'Anuluj ogłoszenie',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,

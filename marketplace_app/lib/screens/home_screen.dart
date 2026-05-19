@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:marketplace_app/widgets/screen_status_bar.dart';
 import '../../screens/login_register_screen.dart';
 import '../../screens/request_form_screen.dart';
@@ -792,7 +793,7 @@ class HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
-                    Icons.calendar_today_rounded,
+                    Icons.event_available_rounded,
                     color: AppColors.getStatusColor('confirmed'),
                     size: 20,
                   ),
@@ -839,10 +840,7 @@ class HomeScreenState extends State<HomeScreen> {
                 return AppointmentCard(
                   appointment: appointments[index],
                   onTap: () {
-                    _showCalendar(
-                      appointments[index].id,
-                      appointments[index].scheduledStart,
-                    );
+                    _showConfirmedAppointmentDialog(context, appointments[index]);
                   },
                 );
               },
@@ -1047,47 +1045,55 @@ class HomeScreenState extends State<HomeScreen> {
                               ],
                             ),
                           ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.calendar_today_rounded,
+                              color: AppColors.primary,
+                            ),
+                            tooltip: 'Pokaż w kalendarzu',
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              _showCalendar(
+                                request.id,
+                                request.dateFrom,
+                              );
+                            },
+                          ),
                         ],
                       ),
                       const SizedBox(height: 16),
-                      if (request.description.isNotEmpty) ...[
-                        const Text(
-                          'Opis:',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          constraints: const BoxConstraints(maxHeight: 160),
-                          child: RawScrollbar(
-                            thumbVisibility: true,
-                            thumbColor: AppColors.primary.withValues(
-                              alpha: 0.5,
-                            ),
-                            radius: const Radius.circular(4),
-                            thickness: 4,
-                            child: SingleChildScrollView(
-                              child: Padding(
-                                padding: const EdgeInsets.only(right: 8.0),
-                                child: Text(
+                      Flexible(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (request.description.isNotEmpty) ...[
+                                const Text(
+                                  'Opis:',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
                                   request.description,
                                   style: const TextStyle(
                                     color: AppColors.textSecondary,
                                   ),
                                 ),
+                                const SizedBox(height: 16),
+                              ],
+                              const Text(
+                                'Adres:',
+                                style: TextStyle(fontWeight: FontWeight.bold),
                               ),
-                            ),
+                              const SizedBox(height: 8),
+                              Text(
+                                request.address,
+                                style: const TextStyle(color: AppColors.textSecondary),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 16),
-                      ],
-                      const Text(
-                        'Adres:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        request.address,
-                        style: const TextStyle(color: AppColors.textSecondary),
                       ),
                       const SizedBox(height: 24),
                       Row(
@@ -1162,12 +1168,324 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _showConfirmedAppointmentDialog(BuildContext context, Appointment appt) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        bool isCancelling = false;
+        return StatefulBuilder(
+          builder: (context, setLocalState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              backgroundColor: AppColors.surface,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 600),
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.getStatusColor('confirmed').withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.event_available_rounded,
+                              color: AppColors.getStatusColor('confirmed'),
+                              size: 28,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  appt.serviceTypeName ?? (appt.serviceNames?.isNotEmpty == true ? appt.serviceNames!.first : 'Wizyta'),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 20,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.access_time_rounded,
+                                      size: 14,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        appt.finalDate != null
+                                            ? '${appt.finalDate!.day.toString().padLeft(2, '0')}.${appt.finalDate!.month.toString().padLeft(2, '0')}.${appt.finalDate!.year} ${appt.finalDate!.hour.toString().padLeft(2, '0')}:${appt.finalDate!.minute.toString().padLeft(2, '0')}'
+                                            : '${appt.scheduledStart.day.toString().padLeft(2, '0')}.${appt.scheduledStart.month.toString().padLeft(2, '0')}.${appt.scheduledStart.year} ${appt.scheduledStart.hour.toString().padLeft(2, '0')}:${appt.scheduledStart.minute.toString().padLeft(2, '0')}',
+                                        style: TextStyle(
+                                          color: AppColors.textSecondary,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.calendar_today_rounded,
+                              color: AppColors.primary,
+                            ),
+                            tooltip: 'Pokaż w kalendarzu',
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              _showCalendar(
+                                appt.id,
+                                appt.finalDate ?? appt.scheduledStart,
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      Flexible(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (appt.specialistName != null) ...[
+                                const Text(
+                                  'Specjalista:',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  appt.specialistName!,
+                                  style: const TextStyle(color: AppColors.textSecondary),
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+                              if (appt.specialistPhoneNumber != null) ...[
+                                const Text(
+                                  'Kontakt:',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                Row(
+                                  children: [
+                                    Text(
+                                      appt.specialistPhoneNumber!,
+                                      style: const TextStyle(color: AppColors.textSecondary),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.copy, size: 16, color: AppColors.primary),
+                                      onPressed: () {
+                                        Clipboard.setData(ClipboardData(text: appt.specialistPhoneNumber!));
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Skopiowano numer telefonu')),
+                                        );
+                                      },
+                                      constraints: const BoxConstraints(),
+                                      padding: EdgeInsets.zero,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                              if (appt.serviceNames != null && appt.serviceNames!.isNotEmpty) ...[
+                                const Text(
+                                  'Usługi:',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  appt.serviceNames!.join(', '),
+                                  style: const TextStyle(color: AppColors.textSecondary),
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+                              if (appt.clientAddress != null && appt.clientAddress!.isNotEmpty) ...[
+                                const Text(
+                                  'Adres:',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  appt.clientAddress!,
+                                  style: const TextStyle(color: AppColors.textSecondary),
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+                              if (appt.clientNotes != null && appt.clientNotes!.isNotEmpty) ...[
+                                const Text(
+                                  'Opis:',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  appt.clientNotes!,
+                                  style: const TextStyle(color: AppColors.textSecondary),
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+                              if (appt.totalPrice != null) ...[
+                                const Text(
+                                  'Cena:',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '${appt.totalPrice!.toStringAsFixed(0)} zł',
+                                  style: const TextStyle(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text(
+                              'Zamknij',
+                              style: TextStyle(color: AppColors.textSecondary),
+                            ),
+                          ),
+                          isCancelling
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : (appt.finalDate != null &&
+                                      DateTime(
+                                        appt.finalDate!.year,
+                                        appt.finalDate!.month,
+                                        appt.finalDate!.day,
+                                        appt.finalDate!.hour,
+                                        appt.finalDate!.minute,
+                                      ).isBefore(DateTime.now()))
+                                  ? FilledButton(
+                                      onPressed: () async {
+                                        final confirm = await showDialog<bool>(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: const Text('Zakończ wizytę'),
+                                            content: const Text(
+                                              'Czy na pewno chcesz oznaczyć tę wizytę jako zakończoną?',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(context, false),
+                                                child: const Text('Nie'),
+                                              ),
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(context, true),
+                                                child: const Text('Tak'),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+
+                                        if (confirm == true) {
+                                          setLocalState(() => isCancelling = true);
+                                          try {
+                                            await ApiService().completeAppointment(appt.id);
+                                            if (context.mounted) {
+                                              Navigator.pop(context);
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text('Wizyta została zakończona.'),
+                                                ),
+                                              );
+                                              _refreshData();
+                                            }
+                                          } catch (e) {
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(content: Text('Błąd: $e')),
+                                              );
+                                              setLocalState(() => isCancelling = false);
+                                            }
+                                          }
+                                        }
+                                      },
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: AppColors.statusCompleted,
+                                      ),
+                                      child: const Text(
+                                        'Zakończ wizytę',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                    )
+                                  : FilledButton(
+                                      onPressed: () async {
+                                        setLocalState(() => isCancelling = true);
+                                        try {
+                                          await ApiService().cancelAppointment(appt.id);
+                                          if (context.mounted) {
+                                            Navigator.pop(context);
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(
+                                                content: Text('Wizyta została anulowana'),
+                                              ),
+                                            );
+                                            _refreshData();
+                                          }
+                                        } catch (e) {
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(content: Text('Błąd: $e')),
+                                            );
+                                            setLocalState(() => isCancelling = false);
+                                          }
+                                        }
+                                      },
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: AppColors.error,
+                                      ),
+                                      child: const Text(
+                                        'Anuluj wizytę',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                    ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _showSpecialistSelectionDialog(
-    BuildContext context,
+    BuildContext mainContext,
     ServiceRequest request,
   ) {
     showModalBottomSheet(
-      context: context,
+      context: mainContext,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
@@ -1283,7 +1601,7 @@ class HomeScreenState extends State<HomeScreen> {
                     children: offers
                         .map(
                           (offer) =>
-                              _buildSpecialistTile(context, offer, request.id),
+                              _buildSpecialistTile(context, mainContext, offer, request.id),
                         )
                         .toList(),
                   );
@@ -1311,6 +1629,7 @@ class HomeScreenState extends State<HomeScreen> {
 
   Widget _buildSpecialistTile(
     BuildContext context,
+    BuildContext mainContext,
     AppointmentOffer offer,
     String appointmentId,
   ) {
@@ -1482,20 +1801,25 @@ class HomeScreenState extends State<HomeScreen> {
                                 appointmentId,
                                 offer.specialistId,
                               );
-                              if (context.mounted) {
+                              if (mainContext.mounted) {
                                 Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                ScaffoldMessenger.of(mainContext).showSnackBar(
                                   const SnackBar(
                                     content: Text(
                                       'Wybrano specjalistę pomyślnie',
                                     ),
                                   ),
                                 );
-                                // refresh dashboard after a small delay
-                                await Future.delayed(
-                                  const Duration(milliseconds: 500),
-                                );
-                                _refreshData();
+                                
+                                try {
+                                  final updatedAppt = await ApiService().getAppointmentDetails(appointmentId);
+                                  _refreshData();
+                                  if (mainContext.mounted) {
+                                    _showConfirmedAppointmentDialog(mainContext, updatedAppt);
+                                  }
+                                } catch (e) {
+                                  _refreshData();
+                                }
                               }
                             } catch (e) {
                               if (context.mounted) {
