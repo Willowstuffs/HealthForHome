@@ -11,7 +11,19 @@ import 'package:geolocator/geolocator.dart';
 import '../data/data.dart';
 
 class SearchSpecialistsScreen extends StatefulWidget {
-  const SearchSpecialistsScreen({super.key});
+  final Future<List<NearbySpecialist>> Function(String address)? addressSearch;
+  final Future<List<NearbySpecialist>> Function(double lat, double lng)?
+      locationSearch;
+  final Future<List<NearbySpecialist>> Function()? profileAddressSearch;
+  final Future<List<String>> Function(String query)? autocompleteSearch;
+
+  const SearchSpecialistsScreen({
+    super.key,
+    this.addressSearch,
+    this.locationSearch,
+    this.profileAddressSearch,
+    this.autocompleteSearch,
+  });
 
   @override
   State<SearchSpecialistsScreen> createState() =>
@@ -40,8 +52,10 @@ class _SearchSpecialistsScreenState extends State<SearchSpecialistsScreen> {
   void _searchByAddress() {
     final address = _addressController.text.trim();
     if (address.isEmpty) return;
+    final search =
+        widget.addressSearch ?? _apiService.getNearbySpecialistsByAddressText;
     _performSearch(
-      () => _apiService.getNearbySpecialistsByAddressText(address),
+      () => search(address),
     );
   }
 
@@ -120,7 +134,8 @@ class _SearchSpecialistsScreenState extends State<SearchSpecialistsScreen> {
 
       // Use coordinates to fetch nearby specialists
       if (!mounted) return;
-      _performSearch(() => _apiService.getNearbySpecialists(position.latitude, position.longitude));
+      final search = widget.locationSearch ?? _apiService.getNearbySpecialists;
+      _performSearch(() => search(position.latitude, position.longitude));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Błąd pobierania lokalizacji: ${e.toString()}')));
@@ -144,7 +159,9 @@ class _SearchSpecialistsScreenState extends State<SearchSpecialistsScreen> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              _performSearch(() => _apiService.getNearbySpecialistsMyAddress());
+              final search = widget.profileAddressSearch ??
+                  _apiService.getNearbySpecialistsMyAddress;
+              _performSearch(() => search());
             },
             child: const Text('Użyj adresu z profilu'),
           ),
@@ -175,7 +192,9 @@ class _SearchSpecialistsScreenState extends State<SearchSpecialistsScreen> {
                 focusNode: _addressFocusNode,
                 optionsBuilder: (TextEditingValue textEditingValue) async {
                   if (textEditingValue.text.length < 4) return const Iterable<String>.empty();
-                  return await GooglePlacesService().getAutocompleteSuggestions(textEditingValue.text);
+                  final autocomplete = widget.autocompleteSearch ??
+                      GooglePlacesService().getAutocompleteSuggestions;
+                  return await autocomplete(textEditingValue.text);
                 },
                 onSelected: (selection) {
                   _addressController.text = selection;

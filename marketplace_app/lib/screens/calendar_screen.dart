@@ -11,8 +11,14 @@ import '../../widgets/appointment_card.dart';
 class CalendarScreen extends StatefulWidget {
   final String? initialEventId;
   final DateTime? initialDate;
+  final Future<List<Appointment>> Function()? appointmentsLoader;
 
-  const CalendarScreen({super.key, this.initialEventId, this.initialDate});
+  const CalendarScreen({
+    super.key,
+    this.initialEventId,
+    this.initialDate,
+    this.appointmentsLoader,
+  });
 
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
@@ -60,7 +66,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
 
     try {
-      final list = await ApiService().getAppointments(page: 1, pageSize: 100);
+      final loader = widget.appointmentsLoader;
+      final list = loader != null
+          ? await loader()
+          : await ApiService().getAppointments(page: 1, pageSize: 100);
       _allAppointments = list;
       _updateAppointmentsMap();
     } catch (e) {
