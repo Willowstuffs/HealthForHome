@@ -1,14 +1,15 @@
-﻿using H4H_API.DTOs.Auth;
+﻿using FirebaseAdmin.Auth;
+using H4H.Core.Models;
+using H4H_API.DTOs.Auth;
 using H4H_API.DTOs.Client;
 using H4H_API.DTOs.Common;
 using H4H_API.DTOs.Specialist;
+using H4H_API.Exceptions;
+using H4H_API.Helpers;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using H4H.Core.Models;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using H4H_API.Helpers;
 
 
 namespace H4H_API.Controllers
@@ -36,13 +37,13 @@ namespace H4H_API.Controllers
             _authService = authService;
         }
 
-    ////Rejestracja specjalisty - endpoint publiczny
-    [HttpPost("register/specialist")]
-    public async Task<ActionResult<ApiResponse<RegisterResponse>>> RegisterSpecialist([FromBody] SpecialistRegisterDto request)
-    {
-        var result = await _authService.RegisterSpecialistAsync(request);
-        return Ok(ApiResponse<RegisterResponse>.SuccessResponse(result, "Zarejestrowano pomyślnie. Oczekiwanie na weryfikacje."));
-    }
+        ////Rejestracja specjalisty - endpoint publiczny
+        [HttpPost("register/specialist")]
+        public async Task<ActionResult<ApiResponse<RegisterResponse>>> RegisterSpecialist([FromBody] SpecialistRegisterDto request)
+        {
+            var result = await _authService.RegisterSpecialistAsync(request);
+            return Ok(ApiResponse<RegisterResponse>.SuccessResponse(result, "Zarejestrowano pomyślnie. Oczekiwanie na weryfikacje."));
+        }
 
 
         /// <summary>
@@ -87,9 +88,13 @@ namespace H4H_API.Controllers
                 var result = await _authService.LoginAsync(request);
                 return Ok(ApiResponse<LoginResponse>.SuccessResponse(result));
             }
-            catch (UnauthorizedAccessException ex) // Błąd autoryzacji - niepoprawne dane
+            catch (AppException ex) when (ex.ErrorCode == ErrorCodes.UserInactive) // Konto nieaktywne (niezweryfikowane)
             {
-                return Unauthorized(ApiResponse<LoginResponse>.ErrorResponse(ex.Message));
+                return Unauthorized(ApiResponse<LoginResponse>.ErrorResponse(ex.Message, ex.ErrorCode));
+            }
+            catch (AppException ex) when (ex.ErrorCode == ErrorCodes.InvalidCredentials) // Nieprawidłowe dane logowania
+            {
+                return Unauthorized(ApiResponse<LoginResponse>.ErrorResponse(ex.Message, ex.ErrorCode));
             }
             catch (Exception ex) // Inne błędy
             {
@@ -189,6 +194,5 @@ namespace H4H_API.Controllers
             await _authService.VerifyCodeAsync(request);
             return Ok(ApiResponse.SuccessResponse("Konto zostało pomyślnie zweryfikowane i aktywowane. Możesz się teraz zalogować."));
         }
-
     }
 }

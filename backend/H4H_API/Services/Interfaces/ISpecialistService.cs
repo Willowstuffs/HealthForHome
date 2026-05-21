@@ -76,9 +76,10 @@ namespace H4H_API.Services.Interfaces
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        Task<SpecialistProfileDto?> GetPublicProfileAsync(Guid id);
+        Task<SpecialistProfileTruncatedDto?> GetPublicProfileAsync(Guid id);
         Task<List<SpecialistOfferDto>> GetPublicServicesAsync(Guid id);
         Task<List<NearbySpecialistDto>> GetNearbySpecialistsAsync(double lat, double lng);
+        Task ResignFromAppointmentAsync(Guid userId, Guid appointmentId);
 
         /// <summary>
         /// Pozwala specjaliście ocenić klienta po zakończonej wizycie. Specjalista może wystawić ocenę i opcjonalny komentarz, 
@@ -91,5 +92,6 @@ namespace H4H_API.Services.Interfaces
         /// <param name="dto"></param>
         /// <returns></returns>
         Task RateClientAsync(Guid specialistUserId, Guid appointmentId, RateClientDto dto);
+        Task UpdateAvatarAsync(Guid userId, string avatarUrl);
     }
 }

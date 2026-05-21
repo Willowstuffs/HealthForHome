@@ -2,19 +2,22 @@
 using H4H.Data;
 using H4H_API.DTOs.Admin;
 using H4H_API.DTOs.Common;
-using H4H_API.Services.Interfaces;
-using H4H_API.Helpers; //Do bledow
-using Microsoft.EntityFrameworkCore;
 using H4H_API.Exceptions;
+using H4H_API.Helpers; //Do bledow
+using H4H_API.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace H4H_API.Services.Implementations
 {
     public class AdminService : IAdminService
     {
         private readonly ApplicationDbContext _context;
-        public AdminService(ApplicationDbContext context)
+        private readonly FirebaseNotificationService _firebaseNotificationService;
+
+        public AdminService(ApplicationDbContext context,FirebaseNotificationService firebaseNotificationService)
         {
             _context = context; //kontekst bazy danych
+            _firebaseNotificationService = firebaseNotificationService;
         }
         /// <summary>
         /// Otrzymuje liste specjalistow z mozliwoscia filtrowania po statusie weryfikacji i dacie rejestracji,
@@ -90,7 +93,7 @@ namespace H4H_API.Services.Implementations
                 .Include(s => s.Appointments)
                     .ThenInclude(a => a.ServiceType)
                 .FirstOrDefaultAsync(s => s.Id == specialistId)
-                ?? throw new AppException ("Nie znaleziono specjalisty.", ErrorCodes.SpecialistNotFound);
+                ?? throw new AppException("Nie znaleziono specjalisty.", ErrorCodes.SpecialistNotFound);
 
             var qualifications = await _context.specialist_qualifications
                 .FirstOrDefaultAsync(q => q.SpecialistId == specialistId && q.IsActive);
@@ -117,7 +120,7 @@ namespace H4H_API.Services.Implementations
                     Id = a.Id,
                     Type = "appointment_added",
                     Description = $"Dodano nowe zamówienie: {a.ServiceType?.Name ?? "Wizyta"}",
-                    CreatedAt = a.CreatedAt 
+                    CreatedAt = a.CreatedAt
                 }).ToList();
 
             return new AdminSpecialistDetailsDto
@@ -174,8 +177,19 @@ namespace H4H_API.Services.Implementations
                 Action = "approved",
                 CreatedAt = DateTime.UtcNow
             });
-
             await _context.SaveChangesAsync();
+            //firebase
+            var specialistTokens = await _context.device_tokens
+               .Where(dt => dt.UserId == specialist.Id)
+               .Select(dt => dt.FcmToken)
+               .ToListAsync();
+
+            await _firebaseNotificationService.SendNotificationAsync(
+                specialistTokens,
+                $"{specialist.FirstName} {specialist.LastName}",
+                "Twoja weryfikacja przebiegła pomyślie możesz się już zalogować",
+                isClientApp: false
+            );
         }
 
         /// <summary>Odrzuca specjaliste zmieniajac status weryfikacji na rejected i logujac akcje wykonana przez admina z powodem odrzucenia.</summary>
@@ -199,6 +213,18 @@ namespace H4H_API.Services.Implementations
             });
 
             await _context.SaveChangesAsync();
+            //firebase
+            var specialistTokens = await _context.device_tokens
+               .Where(dt => dt.UserId == specialist.Id)
+               .Select(dt => dt.FcmToken)
+               .ToListAsync();
+
+            await _firebaseNotificationService.SendNotificationAsync(
+                specialistTokens,
+                $"{specialist.FirstName} {specialist.LastName}",
+                $"Twoja weryfikacja została odrzucona {reason}",
+                isClientApp: false
+            );
         }
 
 
@@ -233,7 +259,7 @@ namespace H4H_API.Services.Implementations
             //Pobieramy klientów z bazy danych, sortujemy po dacie rejestracji malejąco, a następnie stosujemy paginację
             var items = await query
                 .OrderByDescending(c => c.CreatedAt)
-                .Skip((filter.Page - 1) * filter.PageSize) 
+                .Skip((filter.Page - 1) * filter.PageSize)
                 .Take(filter.PageSize)
                 .Select(c => new AdminClientListItemDto
                 {
@@ -373,6 +399,9 @@ namespace H4H_API.Services.Implementations
             var specialist = await _context.specialists.FindAsync(specialistId)
                 ?? throw new AppException("Nie znaleziono profilu specjalisty.", ErrorCodes.SpecialistNotFound);
 
+            // Wymuszenie rodzaju daty, żeby Postgres nie marudził bo Ania chce YYYY-MM-DD
+            var dateToSave = DateTime.SpecifyKind(validUntil, DateTimeKind.Utc);
+
             //Szukanie kwalifikacji
             var qualification = await _context.specialist_qualifications
                 .FirstOrDefaultAsync(q => q.SpecialistId == specialistId && q.IsActive);
@@ -380,7 +409,7 @@ namespace H4H_API.Services.Implementations
             if (qualification != null)
             {
                 // Jeśli istnieje, aktualizowanie daty
-                qualification.LicenseValidUntil = validUntil;
+                qualification.LicenseValidUntil = dateToSave;
             }
             else
             {
@@ -397,12 +426,11 @@ namespace H4H_API.Services.Implementations
                     SpecialistId = specialistId,
                     Profession = profession,
                     LicenseNumber = "PENDING", // Wypełniamy tymczasowo, bo baza wymaga NOT NULL
-                    LicenseValidUntil = validUntil,
+                    LicenseValidUntil = dateToSave,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
                 });
             }
-
             await _context.SaveChangesAsync();
         }
 
@@ -457,6 +485,9 @@ namespace H4H_API.Services.Implementations
                 .FirstOrDefaultAsync(a => a.Id == appointmentId)
                 ?? throw new AppException("Nie znaleziono wizyty.", ErrorCodes.AppointmentNotFound);
 
+            var review = await _context.reviews
+                .FirstOrDefaultAsync(r => r.AppointmentId == appointmentId && r.ClientId == appointment.Client.Id);
+
             return new AdminAppointmentDetailsDto
             {
                 AppointmentId = appointment.Id,
@@ -483,6 +514,14 @@ namespace H4H_API.Services.Implementations
                     FirstName = appointment.Specialist.FirstName,
                     LastName = appointment.Specialist.LastName,
                     Email = appointment.Specialist.User?.Email ?? string.Empty
+                } : null,
+
+                Review = review != null ? new AdminAppointmentReviewDto
+                {
+                    Id = review.Id,
+                    Rating = review.Rating,
+                    Comment = review.Comment,
+                    IsVerified = review.IsVerified,
                 } : null,
 
                 ServiceName = appointment.ServiceType?.Name ?? "Brak danych"

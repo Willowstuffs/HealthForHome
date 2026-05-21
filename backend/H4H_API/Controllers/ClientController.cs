@@ -7,7 +7,6 @@ using H4H_API.Helpers;
 using H4H_API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 
@@ -57,6 +56,20 @@ namespace H4H_API.Controllers
             return Ok(ApiResponse<ClientProfileDto>.SuccessResponse(updatedProfile, "Profil zaktualizowany"));
         }
 
+        // Upload awatara klienta
+        [HttpPost("profile/avatar")]
+        [Consumes("multipart/form-data")]
+        public async Task<ActionResult<ApiResponse<object>>> UploadAvatar(IFormFile avatar)
+        {
+            if (avatar == null || avatar.Length == 0)
+                return BadRequest(ApiResponse<object>.ErrorResponse("Plik avatara jest wymagany", ErrorCodes.ValidationError));
+
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            var avatarUrl = await _clientService.UploadAvatarAsync(userId, avatar);
+
+            return Ok(ApiResponse<object>.SuccessResponse(new { avatarUrl }, "Awatar został zaktualizowany"));
+        }
+
         // Pobiera listę wizyt klienta z opcjonalnym filtrowaniem po statusie
         [HttpGet("appointments")]
         public async Task<IActionResult> GetAppointments([FromQuery] PagedRequest request, [FromQuery] string? status)
@@ -86,6 +99,19 @@ namespace H4H_API.Controllers
                 return Ok(ApiResponse.SuccessResponse("Wizyta została anulowana"));
 
             return BadRequest(ApiResponse.ErrorResponse("Nie można anulować tej wizyty"));
+        }
+
+        // Zakończ wizytę (manulanie po wykonaniu usługi)
+        [HttpPost("appointments/{id}/complete")]
+        public async Task<ActionResult<ApiResponse>> Complete(Guid id)
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            var success = await _clientService.CompleteAppointmentAsync(userId, id);
+
+            if (success)
+                return Ok(ApiResponse.SuccessResponse("Wizyta została oznaczona jako zakończona"));
+
+            return BadRequest(ApiResponse.ErrorResponse("Nie można zakończyć tej wizyty"));
         }
 
         // Tworzy nową prośbę o usługę (ogłoszenie) - dostępne również dla gości (niezalogowanych)
@@ -123,13 +149,13 @@ namespace H4H_API.Controllers
         /// </summary>
         [HttpGet("specialist/{id}/profile")]
         [AllowAnonymous] //TODO: poprawić aby tylko zalogowani klienci mogli widzieć profil specjalisty (nie dla gości)
-        public async Task<ActionResult<ApiResponse<SpecialistProfileDto>>> GetSpecialistProfile(Guid id)
+        public async Task<ActionResult<ApiResponse<SpecialistProfileTruncatedDto>>> GetSpecialistProfile(Guid id)
         {
             var profile = await _specialistService.GetPublicProfileAsync(id); // Używamy poprawionej metody z poprzedniego kroku
             if (profile == null)
-                return NotFound(ApiResponse<SpecialistProfileDto>.ErrorResponse("Specjalista nie istnieje"));
+                return NotFound(ApiResponse<SpecialistProfileTruncatedDto>.ErrorResponse("Specjalista nie istnieje"));
 
-            return Ok(ApiResponse<SpecialistProfileDto>.SuccessResponse(profile));
+            return Ok(ApiResponse<SpecialistProfileTruncatedDto>.SuccessResponse(profile));
         }
 
         /// <summary>

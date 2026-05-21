@@ -10,17 +10,21 @@ using NetTopologySuite;
 using ErrorCodes = H4H_API.Helpers.ErrorCodes;
 using SpecialistServiceEntity = H4H.Core.Models.SpecialistService;
 
+
 namespace H4H_API.Services.Implementations
 {
     public class SpecialistService : ISpecialistService
     {
         private readonly ApplicationDbContext _context;
         private readonly FirebaseNotificationService _firebaseNotificationService;
+        private readonly IAppointmentsLifeCycleServer _lifecycle;
 
         public SpecialistService(ApplicationDbContext context, FirebaseNotificationService firebaseNotificationService)
         {
             _context = context;
             _firebaseNotificationService = firebaseNotificationService;
+            //Jest lekki to może być wstrzykiwany bezpośrednio
+            _lifecycle = new AppointmentsLifeCycleService(context, firebaseNotificationService);
         }
 
         public async Task<SpecialistDto> GetProfileAsync(Guid userId)
@@ -137,28 +141,59 @@ namespace H4H_API.Services.Implementations
                 .Where(a => a.Location != null)
                 .Where(a => a.Location!.Distance(area.Location) <= maxMeters);
 
+            // DANE DO PAMIĘCI
+            var appointments = await query.ToListAsync();
 
-            //Pobranie danych i mapowanie na DTO
-            var result = await query
-                .OrderBy(a => a.Location!.Distance(area.Location))
-                .Select(a => new InquiryListItemDto
+            // STATYSTYKI 
+            var clientStats = await _context.appointments
+                .Where(a => a.ClientId != null && a.ClientRating != null)
+                .GroupBy(a => a.ClientId)
+                .Select(g => new
                 {
-                    AppointmentId = a.Id,
-                    ScheduledStart = a.ScheduledStart,
-                    ScheduledEnd = a.ScheduledEnd,
-                    PatientName = a.Client.FirstName + " " + a.Client.LastName,
-                    // Pobieramy nazwę z ServiceType przypisanego do ogłoszenia
-                    ServiceName = a.ServiceType != null ? a.ServiceType.Name : "Nieznana kategoria",
-                    Status = a.AppointmentStatus,
-                    PatientAddress = a.ClientAddress ?? a.Client.Address ?? "Brak adresu",
-                    Price = a.TotalPrice ?? 0,
-                    Description = a.ClientNotes,
-
-                    DistanceKm = Math.Round(a.Location!.Distance(area.Location) / 1000, 2)
+                    ClientId = g.Key,
+                    Ratings = g.GroupBy(x => x.ClientRating)
+                        .Select(r => new
+                        {
+                            Rating = r.Key,
+                            Count = r.Count()
+                        })
                 })
                 .ToListAsync();
+
+            var statsDict = clientStats.ToDictionary(
+                x => x.ClientId,
+                x => new ClientStatsDto
+                {
+                    GoodCount = x.Ratings.FirstOrDefault(r => r.Rating == "good")?.Count ?? 0,
+                    NeutralCount = x.Ratings.FirstOrDefault(r => r.Rating == "neutral")?.Count ?? 0,
+                    BadCount = x.Ratings.FirstOrDefault(r => r.Rating == "bad")?.Count ?? 0
+                }
+            );
+
+            //LOKALIZACJA 
+            var result = await query
+               .OrderBy(a => a.Location!.Distance(area.Location))
+               .Select(a => new InquiryListItemDto
+               {
+                   AppointmentId = a.Id,
+                   ScheduledStart = a.ScheduledStart,
+                   ScheduledEnd = a.ScheduledEnd,
+                   PatientName = a.Client.FirstName + " " + a.Client.LastName,
+                   ServiceName = a.ServiceType != null ? a.ServiceType.Name : "Nieznana kategoria",
+                   Status = a.AppointmentStatus,
+                   PatientAddress = a.ClientAddress ?? a.Client.Address ?? "Brak adresu",
+                   Price = a.TotalPrice ?? 0,
+                   Description = a.ClientNotes,
+                   reviews = a.ClientId != null && statsDict.ContainsKey(a.ClientId)
+                        ? statsDict[a.ClientId]
+                        : new ClientStatsDto(),
+
+                   DistanceKm = Math.Round(a.Location!.Distance(area.Location) / 1000, 2)
+               })
+               .ToListAsync();
             return result;
         }
+        
         public async Task UpdateLicenseNumberAsync(Guid userId, string licenseNumber)
         {
             var specialist = await _context.specialists
@@ -505,9 +540,10 @@ namespace H4H_API.Services.Implementations
             return appointments.Select(a => new InquiryListItemDto
             {
                 AppointmentId = a.Id,
+                ClientId = a.ClientId,
                 FinalDate = a.FinalDate,
                 PatientName = a.Client.FirstName + " " + a.Client.LastName,
-                ServiceName = a.ServiceNamesSnapshot?? "Brak usługi",
+                ServiceName = a.ServiceNamesSnapshot ?? "Brak usługi",
                 Status = a.AppointmentStatus,
                 PatientAddress = a.ClientAddress ?? a.Client.Address ?? "Brak adresu",
                 Price = a.TotalPrice ?? 0
@@ -566,9 +602,19 @@ namespace H4H_API.Services.Implementations
                 Price = a.TotalPrice ?? 0,
                 ClientRating = a.ClientRating
             }).ToList();
-            
+
 
             return result;
+        }
+        public async Task UpdateAvatarAsync(Guid userId, string avatarUrl)
+        {
+            var user = await _context.users.FirstOrDefaultAsync(u => u.Id == userId)
+                ?? throw new KeyNotFoundException("Użytkownik nie istnieje.");
+
+            user.AvatarUrl = avatarUrl;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
         }
         public async Task UpdateProfileAsync(Guid userId, UpdateSpecialistProfileDto dto)
         {
@@ -585,39 +631,14 @@ namespace H4H_API.Services.Implementations
             user.Email = dto.Email;
             user.PhoneNumber = dto.PhoneNumber;
             user.UpdatedAt = DateTime.UtcNow;
-
-            // Obsługa uploadu avataru
-            if (dto.Avatar != null && dto.Avatar.Length > 0)
-            {
-                // Tworzymy nazwę pliku z GUIDem, zachowując rozszerzenie
-                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(dto.Avatar.FileName)}";
-
-                // Tworzymy folder wwwroot/avatars jeśli nie istnieje
-                var folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "avatars");
-                if (!Directory.Exists(folderPath))
-                    Directory.CreateDirectory(folderPath);
-
-                var filePath = Path.Combine(folderPath, fileName);
-
-                // Zapis pliku na dysku
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                {
-                    await dto.Avatar.CopyToAsync(stream);
-                }
-
-                // Zapisujemy ścieżkę do bazy (relative URL)
-                user.AvatarUrl = $"/avatars/{fileName}";
-            }
             // Aktualizacja danych specjalisty
             specialist.FirstName = dto.FirstName;
             specialist.LastName = dto.LastName;
-            specialist.ProfessionalTitle = dto.ProfessionalTitle;
-            specialist.Bio = dto.Bio;
-            specialist.HourlyRate = dto.HourlyRate;
             // Zapis wszystkich zmian w jednej transakcji
             await _context.SaveChangesAsync();
 
         }
+
 
 
         /// <summary>
@@ -625,7 +646,7 @@ namespace H4H_API.Services.Implementations
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        public async Task<SpecialistProfileDto?> GetPublicProfileAsync(Guid id)
+        public async Task<SpecialistProfileTruncatedDto?> GetPublicProfileAsync(Guid id)
         {
             // 1. Pobieramy dane z bazy (bez mapowania współrzędnych w SQL)
             var specialist = await _context.specialists
@@ -635,14 +656,14 @@ namespace H4H_API.Services.Implementations
 
             if (specialist == null) return null;
 
-            // 2. Pobieramy profesję osobnym zapytaniem (prostsze i bezpieczniejsze)
-            var profession = await _context.specialist_qualifications
-                .Where(q => q.SpecialistId == id && q.IsActive)
+            // 2. Pobieramy kwalifikacje specjalisty
+            var qualifications = await _context.specialist_qualifications
+                .Where(q => q.SpecialistId == specialist.Id && q.IsActive)
                 .Select(q => q.Profession)
-                .FirstOrDefaultAsync();
+                .ToListAsync();
 
             // 3. Mapujemy na DTO w pamięci (tutaj .Y i .X zadziałają bez błędu bazy)
-            return new SpecialistProfileDto
+            return new SpecialistProfileTruncatedDto
             {
                 Id = specialist.Id,
                 FirstName = specialist.FirstName,
@@ -650,14 +671,12 @@ namespace H4H_API.Services.Implementations
                 ProfessionalTitle = specialist.ProfessionalTitle,
                 Bio = specialist.Bio,
                 AvatarUrl = specialist.User?.AvatarUrl,
-                PhoneNumber = specialist.User?.PhoneNumber,
-                Profession = profession,
+                Qualifications = qualifications,
                 Areas = specialist.ServiceAreas.Select(a => new ServiceAreaManageDto
                 {
                     City = a.City,
                     PostalCode = a.PostalCode,
                     MaxDistanceKm = (int)a.MaxDistanceKm,
-                    // Tutaj procesor C# obsłuży to poprawnie, bo dane są już pobrane z bazy
                     Latitude = a.Location?.Y,
                     Longitude = a.Location?.X
                 }).ToList()
@@ -709,14 +728,86 @@ namespace H4H_API.Services.Implementations
                     LastName = s.LastName,
                     ProfessionalTitle = s.ProfessionalTitle,
                     AvatarUrl = s.User.AvatarUrl,
-                    HourlyRate = s.HourlyRate ?? 0,
+                    ServiceNames = s.Services
+                        .Where(srv => srv.IsActive)
+                        .Select(srv => srv.ServiceType.Name)
+                        .ToList(),
+                    ServiceArea = s.ServiceAreas // select closest area to client
+                        .Where(sa => sa.Location != null)
+                        .OrderBy(sa => sa.Location!.Distance(clientPoint))
+                        .Select(sa => sa.City)
+                        .FirstOrDefault() ?? "Brak obszaru",
                     DistanceKm = s.ServiceAreas
                         .Where(sa => sa.Location != null)
                         .Select(sa => sa.Location!.Distance(clientPoint) / 1000)
                         .Min()
                 })
-                .OrderBy(s => s.DistanceKm)
                 .ToListAsync();
+        }
+        /// <summary>Pozwala specjaliście zrezygnować z potwierdzonej wizyty. Jeśli wizyta była już potwierdzona, metoda usuwa ofertę 
+        /// specjalisty z tej wizyty i przywraca status wizyty do "open", umożliwiając klientowi wybór innego specjalisty. 
+        /// Dodatkowo, jeśli wizyta była potwierdzona, wysyła powiadomienie do klienta informujące o rezygnacji specjalisty i ponownym 
+        /// otwarciu ogłoszenia. Jeśli wizyta nie była jeszcze potwierdzona, metoda po prostu usuwa ofertę specjalisty bez zmiany statusu wizyty.</summary>
+        public async Task ResignFromAppointmentAsync(Guid userId, Guid appointmentId)
+        {
+            var specialist = await _context.specialists.FirstOrDefaultAsync(s => s.UserId == userId)
+                ?? throw new AppException("Nie znaleziono profilu specjalisty.", ErrorCodes.SpecialistNotFound);
+
+            var appointment = await _context.appointments.FindAsync(appointmentId)
+                ?? throw new AppException("Wizyta nie istnieje.", ErrorCodes.AppointmentNotFound);
+            // Sprawdzanie czy specjalista ma oferte w tej wizycie
+            var hasOffer = await _context.Set<AppointmentSpecialist>()
+                .AnyAsync(os => os.AppointmentId == appointmentId && os.SpecialistId == specialist.Id);
+
+            if (!hasOffer)
+                throw new AppException("Nie posiadasz oferty w tym zleceniu.", ErrorCodes.NoOfferForAppointment);
+
+            //Wariant B - wizyta potwierdzona, rezygnacja specjalisty.
+            if (appointment.AppointmentStatus == "confirmed")
+            {
+                
+                if (appointment.SpecialistId != specialist.Id)
+                    throw new AppException("Nie jesteś przypisanym specjalistą.", ErrorCodes.NoOfferForAppointment);
+
+                // Najpierw usuwamy ofertę specjalisty, żeby nie mógł być wybrany ponownie
+                await _lifecycle.RemoveSpecialistOfferAsync(appointmentId, specialist.Id);
+                // Potem przywracamy wizytę do statusu 'open'
+                await _lifecycle.ResetAppointmentToOpenAsync(appointment);
+
+                // Wysyłamy powiadomienie do klienta o rezygnacji specjalisty i ponownym otwarciu ogłoszenia
+                await SendSpecialistResignedNotification(appointment);
+            }
+            else
+            {
+                // Jeśli wizyta nie była confirmed, tylko usuwamy ofertę
+                await _lifecycle.RemoveSpecialistOfferAsync(appointmentId, specialist.Id);
+            }
+        }
+
+        /// <summary>
+        /// Wysyła powiadomienie do klienta, informujące o rezygnacji specjalisty z potwierdzonej wizyty i ponownym otwarciu ogłoszenia.
+        /// </summary>
+        private async Task SendSpecialistResignedNotification(Appointment appointment)
+        {
+            var clientUserId = await _context.clients
+                .Where(c => c.Id == appointment.ClientId)
+                .Select(c => c.UserId)
+                .FirstAsync();
+
+            var tokens = await _context.device_tokens
+                .Where(t => t.UserId == clientUserId)
+                .Select(t => t.FcmToken)
+                .ToListAsync();
+
+            if (tokens.Any())
+            {
+                await _firebaseNotificationService.SendNotificationToManyAsync(
+                    tokens,
+                    "Zmiana w Twojej wizycie",
+                    "Specjalista musiał zrezygnować. Twoje ogłoszenie jest znów otwarte – wybierz innego specjalistę.",
+                    appointment.Id.ToString()
+                );
+            }
         }
 
 

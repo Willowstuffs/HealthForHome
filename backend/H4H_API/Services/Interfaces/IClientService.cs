@@ -23,6 +23,7 @@ namespace H4H_API.Services.Interfaces
         Task<PagedResponse<AppointmentDto>> GetAppointmentsAsync(Guid userId, PagedRequest request, string? status = null);
         Task<AppointmentDto> GetAppointmentDetailsAsync(Guid userId, Guid appointmentId);
         Task<bool> CancelAppointmentAsync(Guid userId, Guid appointmentId);
+        Task<bool> CompleteAppointmentAsync(Guid userId, Guid appointmentId);
 
         // Wyszukiwanie specjalistów
         Task<PagedResponse<SpecialistDto>> SearchSpecialistsAsync(SearchSpecialistsDto filters, PagedRequest request);
@@ -37,6 +38,9 @@ namespace H4H_API.Services.Interfaces
         // Zarządzanie odpowiedziami specjalistów na prośby o usługę
         Task<List<AppointmentOfferDto>> GetOffersForAppointmentAsync(Guid userId, Guid appointmentId);
         Task AcceptSpecialistOfferAsync(Guid userId, Guid appointmentId, Guid specialistId);
+
+        // Awatar
+        Task<string> UploadAvatarAsync(Guid userId, IFormFile avatarFile);
 
         // Oceny specjalistów
         Task RateSpecialistAsync(Guid userId, Guid appointmentId, RateSpecialistDto dto);
