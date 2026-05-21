@@ -13,6 +13,7 @@ System wspiera obsługę wizyt domowych pielęgniarek i fizjoterapeutów, w tym 
     * `users` - główna tabela użytkowników systemu.
     * `refresh_tokens` - przechowywanie tokenów sesji (bezpieczne odświeżanie Access Tokenów).
     * `device_tokens` - tokeny FCM dla powiadomień push (Android).
+	* `revoked_tokens` - czarna lista unieważnionych tokenów JWT (np. po wylogowaniu użytkownika przed upływem czasu ekspiracji).
     * `verification_codes` - 6-cyfrowe kody weryfikacyjne (OTP) do rejestracji i resetu haseł.
 * **Profile:**
     * `clients` - dane pacjentów wraz z adresem domowym.
@@ -57,7 +58,7 @@ psql -U postgres -d health4home -f schema/health4home_tabele.sql
 
 # 3. Sprawdź czy wszystkie tabele zostały utworzone
 SELECT COUNT(*) FROM information_schema.tables 
-WHERE table_schema = 'public';  -- powinno zwrócić 21
+WHERE table_schema = 'public';  -- powinno zwrócić 22
 </code> </pre>
 
 ### Używając pgAdmin:
@@ -102,8 +103,7 @@ healthforhome-database/
 * **Recenzje 1:1**: System ocen powiązany bezpośrednio z unikalnym ID wizyty
 
 ### Komunikacja
-* Możliwość wymiany wiadomości między pacjentami a specjalistami
-* System powiadomień o nowych wiadomościach oraz nadchodzących wizytach
+* System powiadomień o nowych statusach wizyt oraz nadchodzących wizytach
 
 ### Geolokalizacja (PostGIS)
 * Przechowywanie współrzędnych geograficznych klientów i specjalistów
@@ -126,16 +126,3 @@ healthforhome-database/
 * Każda wizyta może mieć wielu potencjalnych specjalistów (appointments_specialists)
 * Każda wizyta ma dokładnie jednego wybranego specjalistę (selected_specialist_id)
 * Administratorzy mogą weryfikować kwalifikacje specjalistów
-
-# Możliwe rozszerzenia
-## Krótkoterminowe:
-* ?
-## Długoterminowe
-* ?
-
-# Znane ograniczenia
-* ?
-
-# Przykładowe zapytania:
-(będą kiedyś)
-
