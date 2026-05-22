@@ -75,6 +75,7 @@ class ApiService {
     required String password,
     required String firstName,
     required String lastName,
+    required String fcmToken,
   }) async {
     try {
       await _dio.post(
@@ -85,6 +86,7 @@ class ApiService {
           "firstName": firstName,
           "lastName": lastName,
           "specialization": specialization,
+          "fcmToken": fcmToken,
         },
       );
     } on DioException catch (e) {
@@ -285,6 +287,7 @@ final data = raw as List<dynamic>;
     String? serviceName,
     String? patientAddress,
     String? price,
+    
   }) async {
     try {
       final queryParams = <String, dynamic>{};

@@ -17,85 +17,30 @@ class MainBottomBar extends StatelessWidget {
       type: BottomNavigationBarType.fixed,
       currentIndex: currentIndex,
       onTap: onTap,
-      backgroundColor: AppColors.onSurface,
-      selectedItemColor: AppColors.outline,
-      unselectedItemColor: Colors.white70,
-      items: [
-        BottomNavigationBarItem(
-          icon: Image.asset(
-            'lib/images/ikona1.png',
-            width: 24,
-            height: 24,
-            color: Colors.white70,
-          ),
-          activeIcon: Image.asset(
-            'lib/images/ikona1.png',
-            width: 24,
-            height: 24,
-            color: AppColors.outline,
-          ),
-          label: 'Home',
-        ),
-        BottomNavigationBarItem(
-          icon: Image.asset(
-            'lib/images/ikona2.png',
-            width: 24,
-            height: 24,
-            color: Colors.white70,
-          ),
-          activeIcon: Image.asset(
-            'lib/images/ikona2.png',
-            width: 24,
-            height: 24,
-            color: AppColors.outline,
-          ),
-          label: 'Usługi',
-        ),
-        BottomNavigationBarItem(
-          icon: Image.asset(
-            'lib/images/ikona3.png',
-            width: 24,
-            height: 24,
-            color: Colors.white70,
-          ),
-          activeIcon: Image.asset(
-            'lib/images/ikona3.png',
-            width: 24,
-            height: 24,
-            color: AppColors.outline,
-          ),
-          label: 'Mapy',
-        ),
-        BottomNavigationBarItem(
-          icon: Image.asset(
-            'lib/images/ikona4.png',
-            width: 24,
-            height: 24,
-            color: Colors.white70,
-          ),
-          activeIcon: Image.asset(
-            'lib/images/ikona4.png',
-            width: 24,
-            height: 24,
-            color: AppColors.outline,
-          ),
-          label: 'Nadchodzące',
-        ),
-        BottomNavigationBarItem(
-          icon: Image.asset(
-            'lib/images/ikona5.png',
-            width: 24,
-            height: 24,
-            color: Colors.white70,
-          ),
-          activeIcon: Image.asset(
-            'lib/images/ikona5.png',
-            width: 24,
-            height: 24,
-            color: AppColors.outline,
-          ),
-          label: 'Profil',
-        ),
+      backgroundColor: AppColors.primary,
+          selectedItemColor: AppColors.outline,
+          unselectedItemColor: Colors.white70,
+      items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.work),
+              label: 'Usługi',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.map),
+              label: 'Mapy',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_today),
+              label: 'Nadchodzące',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person),
+              label: 'Profil',
+            ),
       ],
     );
   }

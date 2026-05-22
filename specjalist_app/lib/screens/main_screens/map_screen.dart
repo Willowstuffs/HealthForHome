@@ -307,7 +307,7 @@ class _MapScreenState extends State<MapScreen> {
         widthFactor: 1,
         child: Container(
           width: double.infinity,
-          padding: EdgeInsets.fromLTRB(24, 20, 24, 32 + MediaQuery.of(context).padding.bottom,),
+          padding: EdgeInsets.fromLTRB(24, 20, 24, 40 + MediaQuery.of(context).padding.bottom,),
           decoration: BoxDecoration(
             color: AppColors.surfaceContainer,
             borderRadius: const BorderRadius.vertical(

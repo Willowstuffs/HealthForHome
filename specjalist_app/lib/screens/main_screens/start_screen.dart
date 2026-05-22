@@ -377,7 +377,7 @@ Widget _buildHeader() {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Masz $newCount nowych zapytań',
+                  'Ilość nowych zapytań: $newCount',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],

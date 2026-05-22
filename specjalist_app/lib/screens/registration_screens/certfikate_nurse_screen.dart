@@ -132,8 +132,8 @@ Widget _buildTextField(
       child: ElevatedButton(
         onPressed: isLoading ? null : _register,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.onSurface,
-          foregroundColor: AppColors.surface,
+          backgroundColor: AppColors.secondary, 
+          foregroundColor: AppColors.livingColor10, 
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),

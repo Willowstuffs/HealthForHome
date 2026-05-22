@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:specjalist_app/services/notification_services.dart';
 import '../registration_screens/verify_code_scren.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/widgets/auth_scaffold.dart';
 import '../../services/api_service.dart';
-
+import 'package:url_launcher/url_launcher.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -24,11 +26,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController repeatPasswordController = TextEditingController();
+  bool acceptedPrivacy = false;
   bool acceptedTerms = false;
+  bool acceptedLocation = false;  
 
   bool isLoading = false;
 
   Future<void> _register() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final fcmToken = prefs.getString('fcm_token');
+
+    if (fcmToken == null || fcmToken.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nie udało się pobrać tokena powiadomień'),
+        ),
+      );
+      return;
+    }
+    await NotificationService().uploadTokenToServer();
     if (!_formKey.currentState!.validate()) return;
     if (passwordController.text != repeatPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -36,9 +53,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       return;
     }
-    if (!acceptedTerms) {
+    if (!acceptedPrivacy || !acceptedTerms || !acceptedLocation) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Musisz zaakceptować regulamin')),
+        const SnackBar(
+          content: Text('Musisz zaakceptować wszystkie zgody'),
+        ),
       );
       return;
     }
@@ -47,12 +66,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       await apiService.registerSpecialist(
-      email: emailController.text.trim(),
-      password: passwordController.text,
-      firstName: firstNameController.text.trim(),
-      lastName: lastNameController.text.trim(),
-      specialization: mapSpecializationToProfession(selectedSpecialization!),
-    );
+        email: emailController.text.trim(),
+        password: passwordController.text,
+        firstName: firstNameController.text.trim(),
+        lastName: lastNameController.text.trim(),
+        specialization: mapSpecializationToProfession(
+          selectedSpecialization!,
+        ),
+        fcmToken: fcmToken,
+      );
     
 
       if (!mounted) return;
@@ -79,46 +101,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (mounted) setState(() => isLoading = false);
     }
   }
-  void _showTermsDialog() {
-  showDialog(
-    context: context,
-    builder: (_) => Dialog(
-      insetPadding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text(
-              'Regulamin',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
+  Future<void> _openUrl(String url) async {
+  final uri = Uri.parse(url);
 
-          /// SCROLL
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(_termsText),
-            ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                setState(() => acceptedTerms = true);
-              },
-              child: const Text('Akceptuję'),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
+  if (!await launchUrl(
+    uri,
+    mode: LaunchMode.externalApplication,
+  )) {
+    throw Exception('Nie można otworzyć strony');
+  }
 }
 @override
 Widget build(BuildContext context) {
@@ -162,7 +153,7 @@ Widget build(BuildContext context) {
               obscureText: true,
             ),
             const SizedBox(height: 16),
-            _buildTermsCheckbox(),
+            _buildLegalCheckboxes(),
             const SizedBox(height: 24),
             SizedBox(
               width: 250,
@@ -262,35 +253,65 @@ Widget build(BuildContext context) {
       throw Exception('Nieobsługiwana specjalizacja: $specialization');
   }
 }
-Widget _buildTermsCheckbox() {
+Widget _buildLegalCheckboxes() {
+  return Column(
+    children: [
+
+      /// PRIVACY
+      _legalCheckbox(
+        value: acceptedPrivacy,
+        onChanged: (v) => setState(() => acceptedPrivacy = v ?? false),
+        text: 'Polityką prywatności',
+        url: 'https://admin.makolino.com/legal/privacy',
+      ),
+
+      /// TERMS
+      _legalCheckbox(
+        value: acceptedTerms,
+        onChanged: (v) => setState(() => acceptedTerms = v ?? false),
+        text: 'Regulaminem specjalisty',
+        url: 'https://admin.makolino.com/legal/terms-specialist',
+      ),
+
+      /// LOCATION
+      _legalCheckbox(
+        value: acceptedLocation,
+        onChanged: (v) => setState(() => acceptedLocation = v ?? false),
+        text: 'Zasadami lokalizacji',
+        url: 'https://admin.makolino.com/legal/location',
+      ),
+    ],
+  );
+}
+Widget _legalCheckbox({
+  required bool value,
+  required ValueChanged<bool?> onChanged,
+  required String text,
+  required String url,
+}) {
   return Row(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Checkbox(
-        value: acceptedTerms,
-        onChanged: (value) {
-          setState(() {
-            acceptedTerms = value ?? false;
-          });
-        },
+        value: value,
+        onChanged: onChanged,
       ),
       Expanded(
         child: GestureDetector(
-          onTap: _showTermsDialog,
+          onTap: () => _openUrl(url),
           child: RichText(
             text: TextSpan(
               style: const TextStyle(color: Colors.black87),
               children: [
                 const TextSpan(text: 'Zapoznałem się z '),
                 TextSpan(
-                  text: 'Regulaminem',
+                  text: text,
                   style: TextStyle(
                     color: AppColors.onSurface,
                     fontWeight: FontWeight.bold,
                     decoration: TextDecoration.underline,
                   ),
                 ),
-                const TextSpan(text: ' i akceptuję jego treść.'),
               ],
             ),
           ),
@@ -299,45 +320,7 @@ Widget _buildTermsCheckbox() {
     ],
   );
 }
-static const String _termsText = '''
-REGULAMIN PLATFORMY MEDYCZNEJ
 
-§1 Postanowienia ogólne
-1. Platforma umożliwia kontakt pomiędzy specjalistami medycznymi a pacjentami.
-2. Rejestrując konto, użytkownik potwierdza prawdziwość podanych danych.
-3. Platforma nie świadczy usług medycznych – umożliwia jedynie ich organizację.
-
-§2 Konto specjalisty
-1. Konto mogą zakładać wyłącznie osoby posiadające wymagane kwalifikacje zawodowe.
-2. Specjalista odpowiada za legalność wykonywanych usług.
-3. Specjalista zobowiązuje się do aktualizacji danych profilu.
-
-§3 Realizacja wizyt
-1. Wizyty realizowane są bezpośrednio pomiędzy specjalistą a pacjentem.
-2. Platforma nie ponosi odpowiedzialności za przebieg wizyty.
-3. Specjalista odpowiada za jakość oraz bezpieczeństwo usług.
-
-§4 Płatności
-1. Wynagrodzenie ustalane jest indywidualnie pomiędzy stronami.
-2. Platforma może pobierać prowizję zgodnie z cennikiem.
-
-§5 Dane osobowe
-1. Dane przetwarzane są zgodnie z RODO.
-2. Dane udostępniane są wyłącznie w celu realizacji wizyty.
-3. Użytkownik ma prawo dostępu, poprawiania oraz usunięcia danych.
-
-§6 Bezpieczeństwo
-1. Zabronione jest udostępnianie konta osobom trzecim.
-2. Platforma może zablokować konto w przypadku naruszenia regulaminu.
-
-§7 Odpowiedzialność
-1. Platforma pełni rolę pośrednika technologicznego.
-2. Odpowiedzialność za świadczenie usług medycznych ponosi specjalista.
-
-§8 Postanowienia końcowe
-1. Regulamin może być aktualizowany.
-2. Korzystanie z aplikacji oznacza akceptację aktualnej wersji regulaminu.
-''';
   @override
   void dispose() {
     firstNameController.dispose();
