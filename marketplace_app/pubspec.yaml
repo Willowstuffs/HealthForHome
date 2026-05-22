@@ -24,6 +24,8 @@ dependencies:
   image_picker: ^1.2.2
   geolocator: ^14.0.2
   webview_flutter: ^4.10.0
+  flutter_localizations:
+    sdk: flutter
 
 dev_dependencies:
   flutter_test:

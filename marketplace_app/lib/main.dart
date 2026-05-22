@@ -9,6 +9,7 @@ import 'theme/app_theme.dart';
 import 'services/api_service.dart';
 import 'services/notification_service.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 @pragma(
   'vm:entry-point',
@@ -27,6 +28,8 @@ void main() async {
       statusBarBrightness: Brightness.light,
     ),
   );
+
+
 
   await initializeDateFormatting('pl_PL', null);
 
@@ -75,7 +78,17 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Health4Home',
+      title: 'HealthForHome',
+      localizationsDelegates: const [
+        // AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('pl', 'PL'),
+        Locale('en', 'US'),
+      ],
       theme: AppTheme.lightTheme,
       home: HomeScreen(),
       debugShowCheckedModeBanner: false,

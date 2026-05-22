@@ -129,7 +129,7 @@ class LoginRegisterScreen extends StatelessWidget {
           Image.asset('lib/images/logo.png', width: 120, height: 120),
           SizedBox(height: 16),
           Text(
-            'Health for Home',
+            'HealthForHome',
             style: Theme.of(context).textTheme.headlineLarge!.copyWith(
               fontSize: 36,
               color: AppColors.onSurface,

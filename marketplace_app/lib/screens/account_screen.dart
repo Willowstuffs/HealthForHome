@@ -128,6 +128,7 @@ class _AccountScreenState extends State<AccountScreen> {
   Future<void> _selectDate() async {
     final picked = await showDatePicker(
       context: context,
+      locale: const Locale('pl', 'PL'),
       initialDate: _dateOfBirth ?? DateTime(2000),
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
@@ -322,7 +323,7 @@ class _AccountScreenState extends State<AccountScreen> {
                 const SizedBox(height: 24),
 
                 Text(
-                  'Adres i Kontakt',
+                  'Adres i kontakt',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 16),

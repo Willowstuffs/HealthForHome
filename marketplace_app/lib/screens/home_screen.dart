@@ -293,7 +293,7 @@ class HomeScreenState extends State<HomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Health for Home',
+                            'HealthForHome',
                             style: TextStyle(
                               fontSize: 24,
                               color: AppColors.onSurface,

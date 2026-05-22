@@ -36,7 +36,6 @@ class Data {
     return [
       Category(title: 'Fizjoterapia', icon: Icons.accessibility_new),
       Category(title: 'Pielęgniarstwo', icon: Icons.medical_services),
-      Category(title: 'Rehabilitacja', icon: Icons.fitness_center),
     ];
   }
 

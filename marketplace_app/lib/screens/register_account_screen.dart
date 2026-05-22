@@ -90,6 +90,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _selectDate() async {
     final picked = await showDatePicker(
       context: context,
+      locale: const Locale('pl', 'PL'),
       initialDate: DateTime(2000),
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
