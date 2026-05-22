@@ -33,74 +33,79 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool isLoading = false;
 
   Future<void> _register() async {
-    final prefs = await SharedPreferences.getInstance();
+  // 1. Najpierw sprawdź walidację formularza (imię, hasła, zgody)
+  // Bez sensu męczyć sieć/Firebase, jeśli użytkownik np. nie podał maila
+  if (!_formKey.currentState!.validate()) return;
+  
+  if (passwordController.text != repeatPasswordController.text) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Hasła nie są identyczne!')),
+    );
+    return;
+  }
+  
+  if (!acceptedPrivacy || !acceptedTerms || !acceptedLocation) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Musisz zaakceptować wszystkie zgody')),
+    );
+    return;
+  }
 
+  // Włączamy ładowanie, bo teraz zaczynają się akcje asynchroniczne
+  setState(() => isLoading = true);
+
+  try {
+    // 2. Wywołaj logikę generowania/odświeżania tokenu w NotificationService
+    // Zakładam, że ta metoda pobiera token z Firebase i zapisuje do SharedPreferences
+    await NotificationService().uploadTokenToServer();
+
+    // 3. Dopiero TERAZ pobieramy zapisany przed chwilą token
+    final prefs = await SharedPreferences.getInstance();
     final fcmToken = prefs.getString('fcm_token');
 
     if (fcmToken == null || fcmToken.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nie udało się pobrać tokena powiadomień'),
-        ),
+        const SnackBar(content: Text('Nie udało się pobrać tokena powiadomień')),
       );
+      setState(() => isLoading = false);
       return;
     }
-    await NotificationService().uploadTokenToServer();
-    if (!_formKey.currentState!.validate()) return;
-    if (passwordController.text != repeatPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Hasła nie są identyczne!')),
-      );
-      return;
-    }
-    if (!acceptedPrivacy || !acceptedTerms || !acceptedLocation) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Musisz zaakceptować wszystkie zgody'),
-        ),
-      );
-      return;
-    }
-    setState(() => isLoading = true);
+
+    // 4. Wywołanie rejestracji w API
     final apiService = ApiService();
+    await apiService.registerSpecialist(
+      email: emailController.text.trim(),
+      password: passwordController.text,
+      firstName: firstNameController.text.trim(),
+      lastName: lastNameController.text.trim(),
+      specialization: mapSpecializationToProfession(selectedSpecialization!),
+      fcmToken: fcmToken,
+    );
 
-    try {
-      await apiService.registerSpecialist(
-        email: emailController.text.trim(),
-        password: passwordController.text,
-        firstName: firstNameController.text.trim(),
-        lastName: lastNameController.text.trim(),
-        specialization: mapSpecializationToProfession(
-          selectedSpecialization!,
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Konto zostało utworzone')),
+    );
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VerifyCodeScreen(
+          email: emailController.text.trim(),
         ),
-        fcmToken: fcmToken,
-      );
-    
+      ),
+    );
+  } catch (e) {
+    if (!mounted) return;
 
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Konto zostało utworzone')));
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => VerifyCodeScreen(
-            email: emailController.text.trim(),
-          ),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
-      );
-    } finally {
-      if (mounted) setState(() => isLoading = false);
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+    );
+  } finally {
+    if (mounted) setState(() => isLoading = false);
   }
+}
   Future<void> _openUrl(String url) async {
   final uri = Uri.parse(url);
 
