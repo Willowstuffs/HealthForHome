@@ -3,6 +3,7 @@
     public class AppointmentOfferDto
     {
         public Guid SpecialistId { get; set; }
+        public string? AvatarUrl { get; set; } = null;
         public string FirstName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
         public decimal? ProposedPrice { get; set; }

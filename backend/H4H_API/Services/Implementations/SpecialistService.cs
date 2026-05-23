@@ -543,7 +543,7 @@ namespace H4H_API.Services.Implementations
                 ClientId = a.ClientId,
                 FinalDate = a.FinalDate,
                 PatientName = a.Client.FirstName + " " + a.Client.LastName,
-                ServiceName = a.ServiceNamesSnapshot?? "Brak usługi",
+                ServiceName = a.ServiceNamesSnapshot ?? "Brak usługi",
                 Status = a.AppointmentStatus,
                 Phonenumber = a.ContactPhoneNumber,
                 PatientAddress = a.ClientAddress ?? a.Client.Address ?? "Brak adresu",
@@ -605,7 +605,7 @@ namespace H4H_API.Services.Implementations
                 ClientRating = a.ClientRating,
                 ClientRaatingNote = a.ClientRatingComment,
             }).ToList();
-            
+
 
             return result;
         }
@@ -649,7 +649,7 @@ namespace H4H_API.Services.Implementations
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        public async Task<SpecialistProfileDto?> GetPublicProfileAsync(Guid id)
+        public async Task<SpecialistProfileTruncatedDto?> GetPublicProfileAsync(Guid id)
         {
             // 1. Pobieramy dane z bazy (bez mapowania współrzędnych w SQL)
             var specialist = await _context.specialists
@@ -659,14 +659,14 @@ namespace H4H_API.Services.Implementations
 
             if (specialist == null) return null;
 
-            // 2. Pobieramy profesję osobnym zapytaniem (prostsze i bezpieczniejsze)
-            var profession = await _context.specialist_qualifications
-                .Where(q => q.SpecialistId == id && q.IsActive)
+            // 2. Pobieramy kwalifikacje specjalisty
+            var qualifications = await _context.specialist_qualifications
+                .Where(q => q.SpecialistId == specialist.Id && q.IsActive)
                 .Select(q => q.Profession)
-                .FirstOrDefaultAsync();
+                .ToListAsync();
 
             // 3. Mapujemy na DTO w pamięci (tutaj .Y i .X zadziałają bez błędu bazy)
-            return new SpecialistProfileDto
+            return new SpecialistProfileTruncatedDto
             {
                 Id = specialist.Id,
                 FirstName = specialist.FirstName,
@@ -674,14 +674,12 @@ namespace H4H_API.Services.Implementations
                 ProfessionalTitle = specialist.ProfessionalTitle,
                 Bio = specialist.Bio,
                 AvatarUrl = specialist.User?.AvatarUrl,
-                PhoneNumber = specialist.User?.PhoneNumber,
-                Profession = profession,
+                Qualifications = qualifications,
                 Areas = specialist.ServiceAreas.Select(a => new ServiceAreaManageDto
                 {
                     City = a.City,
                     PostalCode = a.PostalCode,
                     MaxDistanceKm = (int)a.MaxDistanceKm,
-                    // Tutaj procesor C# obsłuży to poprawnie, bo dane są już pobrane z bazy
                     Latitude = a.Location?.Y,
                     Longitude = a.Location?.X
                 }).ToList()
@@ -733,13 +731,20 @@ namespace H4H_API.Services.Implementations
                     LastName = s.LastName,
                     ProfessionalTitle = s.ProfessionalTitle,
                     AvatarUrl = s.User.AvatarUrl,
-                    HourlyRate = s.HourlyRate ?? 0,
+                    ServiceNames = s.Services
+                        .Where(srv => srv.IsActive)
+                        .Select(srv => srv.ServiceType.Name)
+                        .ToList(),
+                    ServiceArea = s.ServiceAreas // select closest area to client
+                        .Where(sa => sa.Location != null)
+                        .OrderBy(sa => sa.Location!.Distance(clientPoint))
+                        .Select(sa => sa.City)
+                        .FirstOrDefault() ?? "Brak obszaru",
                     DistanceKm = s.ServiceAreas
                         .Where(sa => sa.Location != null)
                         .Select(sa => sa.Location!.Distance(clientPoint) / 1000)
                         .Min()
                 })
-                .OrderBy(s => s.DistanceKm)
                 .ToListAsync();
         }
         /// <summary>Pozwala specjaliście zrezygnować z potwierdzonej wizyty. Jeśli wizyta była już potwierdzona, metoda usuwa ofertę 
