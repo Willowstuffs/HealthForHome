@@ -31,6 +31,8 @@ namespace H4H_API.DTOs.Specialist
         [Required(ErrorMessage = "Specjalizacja jest wymagana")]
         public string Specialization { get; set; } = string.Empty;
 
+        public required string FcmToken { get; set; }
+
         /* skopiowane z ClientRegisterDto.cs
         [MaxLength(20)]
         [Phone(ErrorMessage = "Nieprawidłowy numer telefonu")]
