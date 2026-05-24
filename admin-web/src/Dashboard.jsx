@@ -131,7 +131,7 @@ function OrdersChart({
   if (loading) {
     return (
       <div className="card card-pad">
-        <h2>Przychody</h2>
+        <h2>Wartość realizowanych usług</h2>
 
         <div className="muted" style={{ marginTop: 12 }}>
           Ładowanie danych...
@@ -143,7 +143,7 @@ function OrdersChart({
   if (!series.length) {
     return (
       <div className="card card-pad">
-        <h2>Przychody</h2>
+        <h2>Wartość realizowanych usług</h2>
 
         <div className="muted" style={{ marginTop: 12 }}>
           Brak danych
@@ -184,7 +184,7 @@ function OrdersChart({
     <div className="card card-pad">
       <div className="card-head">
         <div>
-          <h2>Przychody</h2>
+          <h2>Wartość realizowanych usług</h2>
 
           <div className="muted" style={{ marginTop: 6 }}>
             Ostatnie 7 dni
@@ -227,7 +227,7 @@ function OrdersChart({
         }}
       >
         <div>
-          <div className="muted">Łączny przychód</div>
+          <div className="muted">Łączna wartość zrealizowanych usług</div>
 
           <div className="stat-number" style={{ fontSize: 22 }}>
             {totalRevenue} PLN
@@ -258,7 +258,7 @@ function ActivityList({ items, loading }) {
   if (loading) {
     return (
       <div className="card card-pad">
-        <h2>Ostatnia aktywność</h2>
+        <h2>Najbliższe wizyty</h2>
 
         <div className="muted" style={{ marginTop: 12 }}>
           Ładowanie...
@@ -270,10 +270,10 @@ function ActivityList({ items, loading }) {
   if (!items.length) {
     return (
       <div className="card card-pad">
-        <h2>Ostatnia aktywność</h2>
+        <h2>Najbliższe wizyty</h2>
 
         <div className="muted" style={{ marginTop: 12 }}>
-          Brak aktywności
+          Brak wizyt
         </div>
       </div>
     );
@@ -281,7 +281,7 @@ function ActivityList({ items, loading }) {
 
   return (
     <div className="card card-pad">
-      <h2>Ostatnia aktywność</h2>
+      <h2>Najbliższe wizyty</h2>
 
       <div
         style={{
@@ -593,23 +593,24 @@ export default function Dashboard() {
         });
 
         const items = (res?.items ?? [])
-          .map((o) => ({
-            id: o.appointmentId,
-            type: "order",
-            name: o.contactName || "Klient",
-            subtitle: o.serviceName || "—",
+  .map((o) => ({
+    id: o.appointmentId,
+    type: "order",
 
-            text: o.createdAt
-              ? "Dodano nowe zamówienie"
-              : `Termin wizyty: ${
-                  o.scheduledStart
-                    ? formatDateTimePL(o.scheduledStart)
-                    : "—"
-                }`,
+    name: o.contactName || "Klient",
 
-            date: o.createdAt || o.scheduledStart,
-            createdAt: o.createdAt,
-          }))
+    subtitle: o.serviceName || "—",
+
+    text: `Termin wizyty: ${
+      o.scheduledStart
+        ? formatDateTimePL(o.scheduledStart)
+        : "—"
+    }`,
+
+    date: o.scheduledStart || o.createdAt,
+
+    createdAt: o.scheduledStart || o.createdAt,
+  }))
           .filter((x) => x.date)
           .sort(
             (a, b) =>
