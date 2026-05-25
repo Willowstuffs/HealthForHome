@@ -545,7 +545,9 @@ namespace H4H_API.Services.Implementations
                 PatientName = a.Client.FirstName + " " + a.Client.LastName,
                 ServiceName = a.ServiceNamesSnapshot ?? "Brak usługi",
                 Status = a.AppointmentStatus,
+                Phonenumber = a.ContactPhoneNumber,
                 PatientAddress = a.ClientAddress ?? a.Client.Address ?? "Brak adresu",
+
                 Price = a.TotalPrice ?? 0
             }).ToList();
         }
@@ -600,7 +602,8 @@ namespace H4H_API.Services.Implementations
 
                 Status = a.AppointmentStatus,
                 Price = a.TotalPrice ?? 0,
-                ClientRating = a.ClientRating
+                ClientRating = a.ClientRating,
+                ClientRaatingNote = a.ClientRatingComment,
             }).ToList();
 
 

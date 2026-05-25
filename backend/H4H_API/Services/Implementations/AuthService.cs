@@ -7,6 +7,7 @@ using H4H_API.Exceptions;
 using H4H_API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using NetTopologySuite.Geometries;
+using RTools_NTS.Util;
 using ErrorCodes = H4H_API.Helpers.ErrorCodes;
 
 
@@ -256,6 +257,13 @@ namespace H4H_API.Services.Implementations
                 };
 
                 _context.specialists.Add(specialist);
+                _context.device_tokens.Add(new DeviceToken
+                {
+                    UserId = specialist.UserId,
+                    FcmToken = request.FcmToken,
+                    CreatedAt = DateTime.UtcNow,
+                    LastUsedAt = DateTime.UtcNow
+                });
 
                 await _context.SaveChangesAsync();
 

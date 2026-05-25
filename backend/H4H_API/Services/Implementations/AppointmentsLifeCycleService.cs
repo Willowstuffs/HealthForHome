@@ -72,35 +72,53 @@ namespace H4H_API.Services.Implementations
 
         private async Task SendCompletedNotification(Appointment appointment)
         {
+            // CLIENT
             var clientUserId = await _context.clients
                 .Where(c => c.Id == appointment.ClientId)
                 .Select(c => c.UserId)
                 .FirstAsync();
 
-            var tokens = await _context.device_tokens
+            var clientTokens = await _context.device_tokens
                 .Where(t => t.UserId == clientUserId)
                 .Select(t => t.FcmToken)
                 .ToListAsync();
 
-            if (!tokens.Any())
-                return;
+            // SPECIALIST
+            var specialistUserId = await _context.specialists
+                .Where(s => s.Id == appointment.SpecialistId)
+                .Select(s => s.UserId)
+                .FirstAsync();
 
-            await _firebase.SendNotificationToManyAsync(
-                tokens,
-                "Wizyta zakończona",
-                "Twoja wizyta została zakończona. Oceń specjalistę ⭐",
-                appointment.Id.ToString(),
-                "rating",
-                true
-            );
-            await _firebase.SendNotificationToManyAsync(
-               tokens,
-               "Wizyta zakończona",
-               "Twoja wizyta została zakończona. Oceń pacjenta ⭐",
-               appointment.Id.ToString(),
-               "rating",
-               false
-           );
+            var specialistTokens = await _context.device_tokens
+                .Where(t => t.UserId == specialistUserId)
+                .Select(t => t.FcmToken)
+                .ToListAsync();
+
+            // Powiadomienie dla klienta
+            if (clientTokens.Any())
+            {
+                await _firebase.SendNotificationToManyAsync(
+                    clientTokens,
+                    "Wizyta zakończona",
+                    "Twoja wizyta została zakończona. Oceń specjalistę ⭐",
+                    appointment.Id.ToString(),
+                    "rating",
+                    true
+                );
+            }
+
+            // Powiadomienie dla specjalisty
+            if (specialistTokens.Any())
+            {
+                await _firebase.SendNotificationToManyAsync(
+                    specialistTokens,
+                    "Wizyta zakończona",
+                    "Twoja wizyta została zakończona. Oceń pacjenta ⭐",
+                    appointment.Id.ToString(),
+                    "rating",
+                    false
+                );
+            }
         }
     }
 }

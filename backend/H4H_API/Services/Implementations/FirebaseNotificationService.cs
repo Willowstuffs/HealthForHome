@@ -68,25 +68,45 @@ namespace H4H_API.Services.Implementations
 
             Console.WriteLine($"Success: {response.SuccessCount}, Failure: {response.FailureCount}");
         }
-        public async Task SendNotificationAsync(List<string> fcmTokens, string title, string body, bool isClientApp = false)
+        public async Task SendNotificationAsync(string fcmToken,string title,string body, bool isClientApp = false)
         {
-            if (fcmTokens == null || !fcmTokens.Any()) return;
+            if (string.IsNullOrWhiteSpace(fcmToken))
+                return;
 
-            var messages = fcmTokens.Select(token => new Message()
+            var message = new Message()
             {
-                Token = token,
+                Token = fcmToken,
+
                 Notification = new Notification()
                 {
                     Title = title,
                     Body = body
                 },
-                Android = new AndroidConfig() { Priority = Priority.High },
-                Apns = new ApnsConfig() { Aps = new Aps() { ContentAvailable = true } }
-            }).ToList();
 
-            var response = await GetMessaging(isClientApp).SendEachAsync(messages);
+                Android = new AndroidConfig()
+                {
+                    Priority = Priority.High,
+                    Notification = new AndroidNotification()
+                    {
+                        ChannelId = "healthforhome_channel",
+                        Sound = "default"
+                    }
+                },
 
-            Console.WriteLine($"Success: {response.SuccessCount}, Failure: {response.FailureCount}");
+                Apns = new ApnsConfig()
+                {
+                    Aps = new Aps()
+                    {
+                        ContentAvailable = true,
+                        Sound = "default"
+                    }
+                }
+            };
+
+            var response = await GetMessaging(isClientApp)
+                .SendAsync(message);
+
+            Console.WriteLine($"MessageId: {response}");
         }
 
         public async Task SendNotificationToManyAsync(List<string> fcmTokens, string title, string body, string appointmentId, string screen, bool isClientApp = false)

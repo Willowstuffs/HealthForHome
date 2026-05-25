@@ -14,8 +14,10 @@ namespace H4H_API.DTOs.Specialist
         public string Status { get; set; } = string.Empty; // np. pending, accepted, rejected, completed
         public string PatientAddress { get; set; } = string.Empty;
         public decimal Price { get; set; }
+        public string? Phonenumber { get; set; }
         public ClientStatsDto? reviews { get; set; }
         public string? ClientRating { get; set; }
+        public string? ClientRaatingNote { get; set; }
         public string? Description { get; set; }
         public double? DistanceKm { get; set; }
     }

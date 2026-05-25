@@ -179,17 +179,26 @@ namespace H4H_API.Services.Implementations
             });
             await _context.SaveChangesAsync();
             //firebase
-            var specialistTokens = await _context.device_tokens
-               .Where(dt => dt.UserId == specialist.Id)
-               .Select(dt => dt.FcmToken)
-               .ToListAsync();
+            var tempToken = await _context.device_tokens
+                .FirstOrDefaultAsync(dt => dt.UserId == specialist.UserId);
+            
+            if (tempToken != null)
+            {
+                /// wyślij push
+                await _firebaseNotificationService.SendNotificationToManyAsync(
+                    new List<string> { tempToken.FcmToken },
+                    "Weryfikacja zakończona",
+                    "Twoja weryfikacja przebiegła pomyślnie możesz się już zalogować",
+                    appointmentId: specialist.Id.ToString(),
+                    screen: "home",
+                    isClientApp: false
+                );
 
-            await _firebaseNotificationService.SendNotificationAsync(
-                specialistTokens,
-                $"{specialist.FirstName} {specialist.LastName}",
-                "Twoja weryfikacja przebiegła pomyślie możesz się już zalogować",
-                isClientApp: false
-            );
+                /// usuń tymczasowy token
+                //_context.device_tokens.Remove(tempToken);
+
+                await _context.SaveChangesAsync();
+            }
         }
 
         /// <summary>Odrzuca specjaliste zmieniajac status weryfikacji na rejected i logujac akcje wykonana przez admina z powodem odrzucenia.</summary>
@@ -213,19 +222,27 @@ namespace H4H_API.Services.Implementations
             });
 
             await _context.SaveChangesAsync();
-            //firebase
-            var specialistTokens = await _context.device_tokens
-               .Where(dt => dt.UserId == specialist.Id)
-               .Select(dt => dt.FcmToken)
-               .ToListAsync();
+            var tempToken = await _context.device_tokens
+        .FirstOrDefaultAsync(dt => dt.UserId == specialist.UserId);
 
-            await _firebaseNotificationService.SendNotificationAsync(
-                specialistTokens,
-                $"{specialist.FirstName} {specialist.LastName}",
-                $"Twoja weryfikacja została odrzucona {reason}",
-                isClientApp: false
-            );
+            if (tempToken != null)
+            {
+                /// wyślij push
+                await _firebaseNotificationService.SendNotificationToManyAsync(
+                    new List<string> { tempToken.FcmToken },
+                    "Weryfikacja zakończona",
+                    $"Twoja weryfikacja została odrzucona : {reason}",
+                    appointmentId: specialist.Id.ToString(),
+                    screen: "home",
+                    isClientApp: false
+                );
+
+
+                await _context.SaveChangesAsync();
+            }
         }
+
+      
 
 
         /// <summary>
