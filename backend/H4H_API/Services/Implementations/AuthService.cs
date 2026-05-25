@@ -430,7 +430,6 @@ namespace H4H_API.Services.Implementations
 
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
             user.UpdatedAt = DateTime.Now;
-
             await _context.SaveChangesAsync();
             return true;
         }

@@ -1,5 +1,6 @@
 ﻿using FirebaseAdmin.Auth;
 using H4H.Core.Models;
+using H4H_API.Dtos;
 using H4H_API.DTOs.Auth;
 using H4H_API.DTOs.Client;
 using H4H_API.DTOs.Common;
@@ -193,6 +194,37 @@ namespace H4H_API.Controllers
         {
             await _authService.VerifyCodeAsync(request);
             return Ok(ApiResponse.SuccessResponse("Konto zostało pomyślnie zweryfikowane i aktywowane. Możesz się teraz zalogować."));
+        }
+
+        /// <summary>
+        /// Zmienia hasło zalogowanego użytkownika.
+        /// </summary>
+        [Authorize]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+        {
+            // Bezpieczne pobranie UserId z tokenu JWT zalogowanej osoby
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            {
+                throw new AppException("Brak autoryzacji lub nieprawidłowy token.", ErrorCodes.ValidationError);
+            }
+
+            try
+            {
+                await _authService.ChangePasswordAsync(userId, dto.CurrentPassword, dto.NewPassword);
+
+                return Ok(ApiResponse<object?>.SuccessResponse(null, "Hasło zostało pomyślnie zmienione."));
+            }
+            catch (ArgumentException ex)
+            {
+                throw new AppException(ex.Message, ErrorCodes.ValidationError);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                throw new AppException("Podane bieżące hasło jest nieprawidłowe.", ErrorCodes.InvalidCredentials);
+            }
         }
     }
 }
