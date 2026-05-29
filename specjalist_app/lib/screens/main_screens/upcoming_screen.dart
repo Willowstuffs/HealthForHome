@@ -140,7 +140,7 @@ _checkForNewConfirmedVisit();
         'distance': i['patientAddress'] ?? i['PatientAddress'] ?? '',
         'price': i['price'] ?? i['Price'] ?? '0.00',
         'status': i['status'] ?? i['Status'] ?? 'confirmed',
-        'phoneNumber': i['phonenumber'] ?? i['Phonenumber'],
+        'phoneNumber': i['phonenumber'] ?? i['Phonenumber'] ?? 'Brak TELEFONU',
         'clientRating': i['clientRating'] ?? i['ClientRating'],
         'clientComment': i['clientRaatingNote'] ?? i['ClientRaatingNote'] ?? 'Brak opini', // Dodane dla spójności
       };
@@ -242,13 +242,23 @@ _checkForNewConfirmedVisit();
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation(AppColors.primary)))
-          : SafeArea(
+  @override
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: AppColors.surface,
+    body: isLoading
+        ? const Center(
+            child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation(AppColors.primary)))
+        : SafeArea(
+            // 1. Dodajemy RefreshIndicator wokół przewijanej zawartości
+            child: RefreshIndicator(
+              onRefresh: _fetchData, // Wywołanie Twojej metody pobierania danych
+              color: AppColors.primary,
+              backgroundColor: AppColors.surfaceContainer,
               child: SingleChildScrollView(
+                // 2. Wymuszamy, aby lista była zawsze przewijalna (potrzebne do działania gestu)
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -277,8 +287,9 @@ _checkForNewConfirmedVisit();
                 ),
               ),
             ),
-    );
-  }
+          ),
+  );
+}
 
   Widget _buildCalendar() {
     return TableCalendar<Map<String, dynamic>>(
@@ -435,7 +446,7 @@ _checkForNewConfirmedVisit();
               if (isUpcoming && item['distance'].isNotEmpty) ...[
                 const SizedBox(height: 8),
                 _buildInfoRow(Icons.location_on_outlined, item['distance']),
-                _buildInfoRow(Icons.medical_services_outlined, item['phoneNumber']),
+                _buildInfoRow(Icons.contact_phone_outlined, item['phoneNumber']),
               ],
               if (!isUpcoming) ...[
                 const SizedBox(height: 12),
@@ -464,7 +475,7 @@ _checkForNewConfirmedVisit();
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () {
-                          // TODO: API cancel
+                          _showResignDialog(item);
                         },
                         child: const Text('Zrezygnuj'),
                       ),
@@ -764,6 +775,114 @@ _checkForNewConfirmedVisit();
       );
     },
   );
+}
+Future<void> _showResignDialog(
+  Map<String, dynamic> visit,
+) async {
+  final formattedDate = visit['finalDate'] != null
+      ? displayFormatter.format(visit['finalDate'])
+      : '';
+
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (_) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded,
+                color: Colors.orange),
+            SizedBox(width: 8),
+            Text("Wycofanie z wizyty"),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Czy na pewno chcesz wycofać się z tej wizyty?",
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            _infoLine(
+              icon: Icons.person_outline,
+              label: "Pacjent",
+              value: visit['name'],
+            ),
+
+            _infoLine(
+              icon: Icons.calendar_today_outlined,
+              label: "Termin",
+              value: formattedDate,
+            ),
+
+            _infoLine(
+              icon: Icons.medical_services_outlined,
+              label: "Usługa",
+              value: visit['service'],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context, false);
+            },
+            child: const Text("Anuluj"),
+          ),
+
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.pop(context, true);
+            },
+            child: const Text("Wycofaj się"),
+          ),
+        ],
+      );
+    },
+  );
+
+  if (confirmed != true) return;
+
+  try {
+    await ApiService().resignFromAppointment(
+      visit['id'],
+    );
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content:
+            Text('Wycofano się z wizyty'),
+      ),
+    );
+
+    await _fetchData();
+  } catch (e) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          e.toString()
+              .replaceAll('Exception: ', ''),
+        ),
+      ),
+    );
+  }
 }
 
   IconData _ratingIcon(String? rating) {

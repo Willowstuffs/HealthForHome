@@ -48,7 +48,7 @@ class HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 16),
          Text(
-            'Health for Home',
+            'HealthForHome',
             style: Theme.of(context).textTheme.headlineLarge!.copyWith(
               fontSize: 48,
               fontWeight: FontWeight.bold,

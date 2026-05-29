@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:specjalist_app/screens/change_password_screen.dart';
 import 'package:specjalist_app/screens/edit_profile_info.dart';
 import 'package:specjalist_app/screens/home_screen.dart';
 import 'package:specjalist_app/services/user_profile.dart';
@@ -192,8 +193,15 @@ Widget _buildProfileCard() {
 
         SizedBox(
           width: double.infinity,
-          child: OutlinedButton(
-            onPressed: () {},
+          child:OutlinedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ChangePasswordScreen(),
+                ),
+              );
+            },
             child: const Text('Zmień hasło'),
           ),
         ),

@@ -1,5 +1,8 @@
+import 'dart:convert'; // KROK 1: Potrzebne do jsonEncode / jsonDecode
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:specjalist_app/screens/home_screen.dart';
+import 'package:specjalist_app/screens/main_screens/upcoming_screen.dart';
 import '../screens/offer_from_screen.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'api_service.dart';
@@ -15,23 +18,25 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
   late GlobalKey<NavigatorState> _navigatorKey;
-  // Ta metoda tylko konfiguruje nasłuchiwanie - wywołaj ją w main lub na początku app
+
   Future<void> initializeSettings(GlobalKey<NavigatorState> navigatorKey) async {
     if (_initialized) return;
     _navigatorKey = navigatorKey;
+
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
-      'healthforhome_channel', // id
-      'Health for Home',       // nazwa widoczna w ustawieniach
+      'healthforhome_channel',
+      'Health for Home',
       description: 'Powiadomienia o nowych ofertach',
       importance: Importance.max,
     );
+
     final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     await flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
-  // Konfiguracja lokalnych powiadomień
+
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/aaa'); // Użyj nazwy zasobu, nie ścieżki pliku!
+        AndroidInitializationSettings('@mipmap/aaa');
   
     const InitializationSettings initializationSettings =
         InitializationSettings(android: initializationSettingsAndroid);
@@ -39,38 +44,41 @@ class NotificationService {
     await _localNotifications.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (details) {
+        // KROK 2: Odbieramy pełny JSON i zamieniamy go z powrotem na Mapę
         if (details.payload != null) {
-          _handleMessageData({'appointmentId': details.payload, 'screen': 'offer'});
+          try {
+            final Map<String, dynamic> data = jsonDecode(details.payload!);
+            _handleMessageData(data);
+          } catch (e) {
+            print("Błąd parsowania payloadu lokalnego powiadomienia: $e");
+          }
         }
       },
     );
 
-    // Nasłuchiwanie na wiadomości (nie prosi o uprawnienia)
     FirebaseMessaging.onMessage.listen(_handleForeground);
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageClick);
     
     _initialized = true;
-}
-Future<void> requestPermissionsAndToken() async {
-  // Dopiero tutaj wyskoczy systemowe okno
-  NotificationSettings settings = await _messaging.requestPermission(
-    alert: true, 
-    badge: true, 
-    sound: true
-  );
-
-  if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-    final token = await _messaging.getToken();
-    await uploadTokenToServer(token);
-    _messaging.onTokenRefresh.listen(uploadTokenToServer);
   }
-}
+
+  Future<void> requestPermissionsAndToken() async {
+    NotificationSettings settings = await _messaging.requestPermission(
+      alert: true, 
+      badge: true, 
+      sound: true
+    );
+
+    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+      final token = await _messaging.getToken();
+      await uploadTokenToServer(token);
+      _messaging.onTokenRefresh.listen(uploadTokenToServer);
+    }
+  }
   
   Future<void> uploadTokenToServer([String? existingToken]) async {
     try {
-      // Pobierz token jeśli nie został przekazany
       final token = existingToken ?? await _messaging.getToken();
-      
       if (token != null) {
         if (UserSession.token != null) { 
            await ApiService().sendDeviceToken(token);
@@ -78,26 +86,34 @@ Future<void> requestPermissionsAndToken() async {
         }
       }
     } catch (e) {
-      print("Nie udało się wysłać tokenu (prawdopodobnie brak autoryzacji): $e");
+      print("Nie udało się wysłać tokenu: $e");
     }
   }
 
- void _handleForeground(RemoteMessage message) {
-    // Show local notification so user sees it while app is open
+  void _handleForeground(RemoteMessage message) {
+    print("=== PUSH ODEBRANY ===");
+    print(message.notification?.title);
+    print(message.notification?.body);
+    print(message.data);
+
+    // KROK 3: Zamieniamy całą mapę `message.data` na String (JSON)
+    // Dzięki temu nie zgubimy danych pacjenta i dat!
+    final String jsonPayload = jsonEncode(message.data);
+
     _localNotifications.show(
       message.hashCode,
-      'Health for Home',  // stały tytuł
-      'Nowa oferta',       // stała treść
+      message.notification?.title ?? 'Health for Home',
+      message.notification?.body ?? 'Masz nowe powiadomienie',
       NotificationDetails(
         android: AndroidNotificationDetails(
           'healthforhome_channel',
           'Health for Home',
           importance: Importance.max,
           priority: Priority.high,
-          icon: 'aaa', // własna ikona
+          icon: 'aaa',
         ),
       ),
-      payload: message.data['appointmentId'], // backendowe dane dalej w payloadzie
+      payload: jsonPayload, // <--- Przekazujemy pełny JSON
     );
 
     AppRefreshService().refresh();
@@ -107,24 +123,39 @@ Future<void> requestPermissionsAndToken() async {
     _handleMessageData(message.data);
   }
 
-  void _handleMessageData(Map<String, dynamic> data) {
-    final appointmentId = data['appointmentId'];
-    final screen = data['screen'];
+ void _handleMessageData(Map<String, dynamic> data) {
+  print("=== OBSŁUGA DANYCH PUSH ===");
+  print(data);
 
+  final screen = data['screen'];
+
+  // Jeśli to ekran 'offer', potrzebujemy appointmentId
+  if (screen == 'offer') {
+    final appointmentId = data['appointmentId'];
     if (appointmentId == null) return;
 
-    if (screen == 'offer') {
-      _navigatorKey.currentState?.push(
-        MaterialPageRoute(
-          builder: (_) => OfferFormScreen(
-            appointmentId: appointmentId,
-            patientName: data['patientName'] ?? '',
-            startDate: data['startDate'] ?? '',
-            endDate: data['endDate'] ?? '',
-            description: data['description'] ?? '',
-          ),
+    _navigatorKey.currentState?.push(
+      MaterialPageRoute(
+        builder: (_) => OfferFormScreen(
+          appointmentId: appointmentId,
+          patientName: data['patientName'] ?? 'Nieznany pacjent',
+          startDate: data['startDate'] ?? '',
+          endDate: data['endDate'] ?? '',
+          description: data['description'] ?? '',
         ),
-      );
-    }
+      ),
+    );
+  } 
+  // KROK DODATKOWY: Obsługa powiadomienia o weryfikacji konta (ekran Home)
+  else if (screen == 'home') {
+    _navigatorKey.currentState?.push(
+      MaterialPageRoute(builder: (_) => const HomeScreen()),
+    );
   }
+  else if (screen == 'rating') {
+    _navigatorKey.currentState?.push(
+      MaterialPageRoute(builder: (_) => const UpcomingScreen()),
+    );
+  }
+}
 }

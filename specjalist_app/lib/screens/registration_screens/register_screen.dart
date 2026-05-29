@@ -44,7 +44,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return;
   }
   
-  if (!acceptedPrivacy || !acceptedTerms || !acceptedLocation) {
+  if (!acceptedPrivacy || !acceptedTerms) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Musisz zaakceptować wszystkie zgody')),
     );
@@ -252,7 +252,7 @@ Widget build(BuildContext context) {
   switch (specialization) {
     case 'Pielęgniarz':
       return 'nurse';
-    case 'Rehabilitant':
+    case 'Fizjoterapeuta':
       return 'physiotherapist';
     default:
       throw Exception('Nieobsługiwana specjalizacja: $specialization');
@@ -276,14 +276,6 @@ Widget _buildLegalCheckboxes() {
         onChanged: (v) => setState(() => acceptedTerms = v ?? false),
         text: 'Regulaminem specjalisty',
         url: 'https://admin.makolino.com/legal/terms-specialist',
-      ),
-
-      /// LOCATION
-      _legalCheckbox(
-        value: acceptedLocation,
-        onChanged: (v) => setState(() => acceptedLocation = v ?? false),
-        text: 'Zasadami lokalizacji',
-        url: 'https://admin.makolino.com/legal/location',
       ),
     ],
   );

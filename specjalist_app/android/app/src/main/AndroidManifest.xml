@@ -5,9 +5,15 @@
         android:label="specjalist_app"
         android:name="${applicationName}"
         android:icon="@mipmap/aaa">
+
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@mipmap/aaa"/>
+
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="healthforhome_channel" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
