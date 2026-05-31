@@ -1,10 +1,11 @@
-Health For Home — Projekt Zespołowy 2025/2026
-🎓 Informacje o projekcie
+# Health For Home — Projekt Zespołowy 2025/2026
+
+Informacje o projekcie
 
 Projekt zrealizowany w ramach kursu Programowanie Zespołowe 2025/2026  
 Wydział Matematyki i Informatyki, Uniwersytet Mikołaja Kopernika w Toruniu  
 Zespół VIII
-🏥 Opis
+
 
 Health For Home to platforma wspierająca organizację usług okołomedycznych z dojazdem do domu pacjenta.
 Projekt obejmował stworzenie systemu umożliwiającego:
@@ -17,7 +18,7 @@ Projekt obejmował stworzenie systemu umożliwiającego:
 
     komunikację między częścią administracyjną a aplikacjami klienckimi.
 
-📦 Stan projektu
+Stan projektu
 
 Projekt został zakończony i zarchiwizowany.
 
